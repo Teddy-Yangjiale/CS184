@@ -10,11 +10,13 @@
 | 你的目标 | 直接去 |
 |---|---|
 | **系统学完一整门课** | **`sp26/` — Spring 2026 完整课程（推荐）**，索引见 `sp26/README.md` |
+| **看不懂课件，需要中文逐页讲解** | **`fa26/notes/`**，入口见 `fa26/notes/README.md` |
 | 跟当前最新进度 | `fa26/` — Fall 2026 当前学期，L1–L17 |
 | 补秋季还没发布/没开设的专题 | `su26/` — Summer 2026，最近的往期 |
 | **Final Project 选题与提案** | **`final-project/`**，入口见 `final-project/README.md` |
 | 了解图形学前缘与趋势 | `Graphics-2026-Overview.md` |
 | 视觉模型辅助学习 | `AI-Graphics-Tutor.md` |
+| 把讲课录像转成文字 | `tools/transcribe.py`，说明见 `ASR-LOCAL.md` |
 
 **为什么选 Spring 2026 作为完整课程**：它是完整 16 周学期，27 讲全部有对应讲义，动画 202 页、物理模拟 116 页、流体单独 56 页，深度明显高于 7 周压缩的 Summer 2026。
 
@@ -30,7 +32,8 @@ CS184_2026/
 │   └── discussions/       # D2–D14 共 20 份习题/解答
 ├── fa26/                  # Fall 2026 当前学期
 │   ├── lectures/          # L1–L17 最新版
-│   └── discussions/       # 已发布的讨论课资料
+│   ├── discussions/       # 已发布的讨论课资料
+│   └── notes/             # ★ 中文逐页讲解文档（L02 / L04–05 / L13）
 ├── su26/                  # Summer 2026 缺口补齐
 │   ├── lectures/          # 材质、相机、模拟、颜色、IP、VR 等
 │   └── discussions/       # 含 slides + worksheet + solutions
@@ -41,6 +44,9 @@ CS184_2026/
 │   ├── past-projects.md   # 往届 Showcase
 │   ├── proposal-template.md
 │   └── project-plan-4weeks.md
+├── tools/                 # 本地工具
+│   └── transcribe.py      # 离线语音转写（faster-whisper）
+├── ASR-LOCAL.md           # 本机 ASR 环境说明
 ├── README.md              # 本文件
 └── MANIFEST.md            # 全部 PDF 的页数/大小/SHA-256
 ```
