@@ -1,0 +1,2454 @@
+
+
+===== tof-restir-2026 | page 1/19 =====
+
+ToF ReSTIR: Time-of-Flight Rendering with Spatio-temporal Reservoir
+Resampling
+JUHYEON KIM, Dartmouth College, USA
+WOJCIECH JAROSZ, Dartmouth College, USA
+ADITHYA PEDIREDLA, Dartmouth College, USA
+(A) Real-time Time-of-Flight Rendering
+Path
+Tracing
+Naïve 
+Reuse
+Ours
+GT
+Time-gated Rendering
+~73 ms
+Transient Histogram Rendering
+Path
+Tracing
+Naïve 
+Reuse
+Ours
+GT
+Time-gated 
+image
+Per frame 
+time : 4 ms
+~178 ms
+(B) Downstream Applications
+NLOS Reconstruction
+NLOS Navigation
+Path Tracing
+Naïve Reuse
+Ours
+GT
+obstacle
+Ours
+Naïve 
+Reuse
+Path 
+Tracing
+Per frame 
+time : 10 ms
+Transient 
+histogram
+Bin #8
+Bin #24
+Bin #40
+Bin #56
+#24
+#8
+#56
+#40
+Inferred
+Fig. 1. We propose a real-time Time-of-Flight (ToF) rendering method inspired by ReSTIR, a state-of-the-art technique for steady-state real-time rendering,
+augmented with a novel path-length-aware shift mapping. (A) Compared to conventional path tracing and naive path reuse adapted from steady-state
+ReSTIR [Lin et al. 2022], our method produces improved visual results for both time-gated image rendering and transient histogram rendering in dynamic
+scenes at interactive frame rates. (B) We further demonstrate two interactive downstream applications enabled by our renderer. For non-line-of-sight (NLOS)
+reconstruction, we recover hidden voxel geometry using temporally focused imaging [Pediredla et al. 2019a], where time-gated image simulation with our
+method reliably reconstructs the shape of the teapot. We also simulate NLOS navigation tasks [Young et al. 2025], where the reduced noise in our rendered
+transient histograms enables robust neural network inference and reliable path planning, whereas baseline methods fail to produce safe paths due to noise.
+We present a novel spatio-temporal reuse framework for time-resolved light
+transport, enabling efficient Monte Carlo rendering of time-of-flight (ToF)
+phenomena such as time-gated imaging and transient light capture. Existing
+ToF rendering methods are computationally expensive, scale poorly to com-
+plex dynamic scenes, and are therefore unsuitable for applications with strict
+latency constraints. To address this limitation, we draw inspiration from
+ReSTIR, a reuse-based technique for steady-state real-time rendering, and
+adapt its core principles to interactive-rate ToF simulation. However, naively
+applying existing ReSTIR methods to ToF rendering leads to severe ineffi-
+ciency, as reused paths frequently violate optical path-length constraints
+and thus contribute little or no signal. We overcome this challenge by in-
+troducing a path reuse formulation that explicitly enforces physically valid
+optical path lengths. The key idea is path-length-aware shift mapping, a
+geometric transformation based on Newton’s method that adjusts reused
+light paths to satisfy temporal gating constraints, inspired by specular mani-
+fold exploration in steady-state caustics rendering. The resulting framework
+substantially improves the efficiency of ToF rendering across a wide range
+of scenarios, including complex scenes with glossy or specular materials and
+Authors’ Contact Information: Juhyeon Kim, Dartmouth College, USA, juhyeon.kim.
+gr@dartmouth.edu; Wojciech Jarosz, Dartmouth College, USA, wojciech.k.jarosz@
+dartmouth.edu; Adithya Pediredla, Dartmouth College, USA, adithya.k.pediredla@
+dartmouth.edu.
+This work is licensed under a Creative Commons Attribution 4.0 International License.
+© 2026 Copyright held by the owner/author(s).
+ACM 1557-7368/2026/7-ART89
+https://doi.org/10.1145/3811299
+dynamic motion. Our method supports both time-gated and transient ren-
+dering at interactive frame rates, enabling simulation under practical latency
+constraints. We demonstrate the effectiveness of our approach through two
+downstream applications, including shape reconstruction and navigation.
+CCS Concepts: • Computing methodologies →Ray tracing; Computa-
+tional photography.
+Additional Key Words and Phrases: Time-of-Flight imaging, Time-of-Flight
+rendering, real-time ray tracing
+ACM Reference Format:
+Juhyeon Kim, Wojciech Jarosz, and Adithya Pediredla. 2026. ToF ReSTIR:
+Time-of-Flight Rendering with Spatio-temporal Reservoir Resampling. ACM
+Trans. Graph. 45, 4, Article 89 (July 2026), 19 pages. https://doi.org/10.1145/
+3811299
+1
+Introduction
+Light travels fast, but not infinitely fast—and even small delays in a
+photon’s arrival carry rich information about the physical world.
+Time-of-flight (ToF) imaging leverages this principle by emitting
+controlled illumination and measuring when photons return to
+the sensor after interacting with the scene. These time-resolved
+measurements capture both direct reflections from visible surfaces
+and multiply scattered transport, often originating from partially
+or fully hidden objects. As a result, ToF imaging enables advanced
+sensing capabilities—such as non-line-of-sight reconstruction and
+material characterization in challenging environments—that are
+inaccessible to conventional steady-state intensity cameras.
+ACM Trans. Graph., Vol. 45, No. 4, Article 89. Publication date: July 2026.
+arXiv:2605.11536v2  [cs.GR]  7 Oct 2026
+
+
+===== tof-restir-2026 | page 2/19 =====
+
+89:2
+•
+Kim et al.
+Time-of-flight rendering provides a physically grounded way for
+simulating measurements from time-resolved imaging systems and
+plays an important role in understanding, validating, and develop-
+ing modern ToF sensors. Such simulations support offline analysis
+and algorithm development, and enable the generation of ground-
+truth datasets that may be difficult or impractical to acquire exper-
+imentally. Beyond these offline uses, improved rendering perfor-
+mance enables ToF-based systems to be evaluated in interactive
+and decision-driven settings. For example, applications such as real-
+time reconstruction, navigation, and closed-loop perception require
+simulation to operate within strict latency budgets in order to be
+applicable. Efficient and physically accurate ToF rendering there-
+fore, can extend the scope of time-resolved simulation from offline
+analysis to interactive sensing and perception tasks.
+Despite recent progress, existing ToF rendering methods face a
+fundamental trade-off. Physically accurate approaches [Jarabo et al.
+2014; Liu et al. 2022; Marco et al. 2019; Pediredla et al. 2019b] are of-
+ten computationally expensive and limited to offline use, while faster
+methods [Iseringhausen and Hullin 2020; Klein et al. 2016] rely on
+simplified assumptions such as reduced geometry, materials, or light
+transport. As a result, current techniques struggle to achieve both
+efficiency and physical generality in dynamic, large-scale scenes.
+Motivated by these limitations, it is natural to ask whether tech-
+niques developed for real-time physically based steady-state render-
+ing (e.g., games or commercial rendering) can be adapted to support
+interactive and scalable ToF simulation. In particular, reuse-based
+methods from Monte Carlo path tracing provide a promising start-
+ing point, as they aim to reduce computational cost while preserving
+physical correctness. Reservoir-based spatio-temporal resampling,
+so-called ReSTIR [Bitterli et al. 2020] and related approaches [Lin
+et al. 2022; Ouyang et al. 2021] are representative methods in this
+direction, demonstrating how aggressive spatio-temporal reuse can
+scale path tracing to dynamic and interactive settings. However,
+these methods are fundamentally designed for steady-state ren-
+dering and do not account for optical path length. When applied
+directly to ToF rendering, reused paths frequently violate temporal
+constraints, leading to invalid contributions (Fig. 2).
+To address these challenges, we introduce a path-length-aware
+spatio-temporal reuse framework for ToF rendering. The key idea
+is path-length-aware shift mapping, which geometrically adjusts a
+reused path so that its optical path length matches the active time
+gate (red arrow in Fig. 2). We formulate this adjustment as a con-
+strained root-finding problem and solve it using Newton’s method.
+Our approach is inspired by manifold exploration techniques for
+specular transport [Hong et al. 2025; Jakob and Marschner 2012;
+Lehtinen et al. 2013], but is adapted to enforce path-length con-
+straints specific to ToF rendering. By incorporating path-length
+awareness into ReSTIR-style reuse, our method enables scalable
+and efficient simulation of ToF sensors in complex, dynamic envi-
+ronments. Our reuse strategy supports both per-frame image and
+transient histogram rendering, and we demonstrate its effectiveness
+in two downstream NLOS applications: shape reconstruction and
+inference-based navigation (Fig. 1).
+The code and data are available on the project page1.
+1https://juhyeonkim95.github.io/project-pages/tof_restir
+Path reuse 
+with shift-
+mapping 
+[Lin et al.]
+Time 
+gate
+Left Pixel
+Path length (=time-of-flight)
+Path length (=time-of-flight)
+Right Pixel
+Not in the 
+valid time 
+gate!
+Left 
+Pixel
+Right 
+Pixel
+(A)
+(B)
+Path length 
+aware shift 
+mapping
+Reused 
+vertex
+Fig. 2. Overview of proposed path-length-aware reuse strategies. (A) Naive
+path reuse from conventional steady-state ReSTIR (e.g., hybrid shift-
+mapping by Lin et al. [2022]) ends up going outside of the valid time gate.
+To address this issue, we introduce path-length-aware shift mapping, illus-
+trated by the red arrow. (B) Illustration of a base path in the left pixel (blue),
+the naively reused path in the right pixel (orange), and the corrected path
+produced by our method (green), which satisfies the temporal constraint.
+2
+Related Works
+2.1
+Time-of-Flight Imaging
+Here, we review representative ToF imaging systems that acquire ei-
+ther transient measurements—sequences of time-resolved images—or
+time-gated measurements, which capture a single image within a
+narrow temporal window. Jarabo et al. [2017] provide a more com-
+prehensive review.
+One common approach employs high-speed optical gating to se-
+lectively detect photons that arrive within short temporal windows
+after pulsed illumination. Intensified CCD/CMOS cameras achieve
+this using a fast-gating image intensifier, allowing selective cap-
+ture of early or late light within sub-nanosecond windows [Cester
+et al. 2019]. By shifting these gates over repeated acquisitions, a full
+transient profile can be reconstructed. Streak cameras achieve even
+finer temporal resolution by mapping photon arrival times to spatial
+deflections, enabling picosecond-scale measurements [Velten et al.
+2012, 2013]. Single-photon avalanche diode (SPAD) sensors have
+emerged as compact, scalable detectors operating at the level of indi-
+vidual photons [Zappa et al. 2007]. In time-correlated single-photon
+counting (TCSPC) mode, SPAD arrays time-stamp photon arrivals
+to build transient histograms at each pixel [Gariepy et al. 2015;
+Henderson et al. 2019]. Continuous-wave ToF cameras are widely
+used for conventional range imaging, but transient information can
+also be recovered by multi-frequency phase measurements [Heide
+et al. 2013; Peters et al. 2015]. There are also interferometric ap-
+proaches that measure optical phase with micron-scale path-length
+sensitivity [Gkioulekas et al. 2015; Kadambi et al. 2016].
+ToF imaging has become an important tool in computational
+imaging and robotics. Time-resolved transient measurements en-
+able advanced tasks such as non-line-of-sight (NLOS) reconstruc-
+tion [Buttafava et al. 2015; Kirmani et al. 2011; Laurenzis and Vel-
+ten 2014; Somasundaram et al. 2023; Tsai et al. 2017; Velten et al.
+2012], separation of direct and indirect transport [O’Toole et al.
+2014; Wu et al. 2014], and robust perception for autonomous naviga-
+tion [Young et al. 2025]. Time-gated imaging has a narrower range
+of applications but remains effective for depth-selective sensing in
+autonomous vehicle [Grauer and Sonn 2015] or military applica-
+tions [Baker et al. 2004], and some NLOS applications [Pediredla
+et al. 2019a]. Additionally, transient capture realized by shifting
+ACM Trans. Graph., Vol. 45, No. 4, Article 89. Publication date: July 2026.
+
+
+===== tof-restir-2026 | page 3/19 =====
+
+ToF ReSTIR: Time-of-Flight Rendering with Spatio-temporal Reservoir Resampling
+•
+89:3
+gating delays behaves as time-gated imaging for dynamic scenes,
+since each gate samples a slightly different configuration.
+2.2
+Time-of-Flight Rendering
+Time-of-flight (ToF) rendering simulates measurements from tran-
+sient and time-gated sensors by explicitly incorporating optical path
+length into light transport. Following Liu et al. [2022]; Pediredla
+et al. [2019b], we use this term to refer to both transient render-
+ing (time-resolved image sequences, i.e., histogram) and time-gated
+rendering (single images within a temporal window).
+A key challenge shared by both ToF rendering tasks arises from
+the presence of a narrow temporal manifold induced by a time gate
+or a temporal bin. As a result, naive steady-state rendering algo-
+rithms tend to fail, since most sampled light paths fall outside the
+valid temporal range and contribute nothing. For transient render-
+ing under a static scene, this can be partially mitigated by sharing
+samples across all temporal bins 2, where each sampled path is accu-
+mulated into its corresponding time bin [Adam et al. 2016; Ament
+et al. 2014; Jarabo 2012; Marco 2013], performing histogram density
+estimation. To obtain accurate transient profiles, a small bin width
+is required, but this often leads to noisy histograms. To address
+this issue, Jarabo et al. [2014] introduced progressive kernel-density
+estimation in the temporal domain, trading variance for bias. This
+was later extended to progressive spatio-temporal density estima-
+tion using photon beams [Jarosz et al. 2011] under participating
+media [Marco et al. 2019]. An alternative strategy of the temporal
+blurring is directly determining the time stamp and only sampling
+light paths that are valid at that specific time stamp. This is essential
+for time-gated rendering and also beneficial for transient rendering,
+as uniformly distributed samples are helpful for kernel density esti-
+mation. Prior work has explored path-length-constrained sampling
+in participating media [Jarabo et al. 2014] and surface transport
+via ellipsoidal path connection [Pediredla et al. 2019b], while more
+recent methods slice photon primitives into temporal wavefronts
+for efficient filtering [Liu et al. 2022].
+Beyond forward rendering, differentiable ToF formulations [Wu
+et al. 2021; Yi et al. 2021] and extensions to Doppler effects [Kim
+et al. 2025, 2023] have also been explored.
+From a performance perspective, none of the previous ToF ren-
+dering methods targeted interactive rate rendering for complex
+scenes. Several fast radiosity-based approaches on GPU have been
+proposed to accelerate simulation by modeling objects as Lamber-
+tian patches [Klein et al. 2016] or interpolating radiance over mesh
+triangle vertices [Iseringhausen and Hullin 2020]. However, these
+methods are typically limited to two-bounce light transport and
+often require heavy mesh preprocessing. Recently, some GPU-based
+transient path tracers have also been introduced, but they are still
+not designed for interactive purposes [Royo et al. 2022, 2025].
+Overall, while physically accurate ToF rendering techniques exist,
+they remain computationally expensive and difficult to apply to
+large-scale, dynamic environments at interactive rates on a GPU.
+This motivates the development of scalable ToF rendering approaches
+2This is called path reuse in Jarabo et al. [2014]. This keeps the sampled path unchanged
+over temporal bins, different from path reuse in ReSTIR, which is in a more aggressive
+form that can even deform the path (e.g., reconnect to a new vertex) for reuse.
+inspired by modern real-time steady-state rendering techniques,
+while explicitly accounting for temporal constraints.
+2.3
+Spatio-Temporal Path Reuse
+Reservoir-based spatiotemporal reuse, or ReSTIR, has recently trans-
+formed steady-state real-time Monte Carlo rendering [Bitterli et al.
+2020]. ReSTIR leverages an importance-resampling strategy [Talbot
+et al. 2005] to reuse light samples across neighboring pixels and
+successive frames, achieving high-quality results with only a few
+samples per pixel. Follow-up works have extended these principles
+to global illumination [Ouyang et al. 2021], volumetric transport [Lin
+et al. 2021], general multi-bounce path tracing [Lin et al. 2022], depth
+of field and antialiasing [Zhang et al. 2024], motion blur [Liu et al.
+2025], BDPT [Hedstrom et al. 2025], path guiding [Zeng et al. 2025],
+and specular manifold sampling [Hong et al. 2025]. These methods
+excel in scenarios where spatial and temporal coherence can be ex-
+ploited, achieving high-quality results with real-time performance
+even in complex scenes. However, they assume a steady-state setting
+and are agnostic to optical path length. As a result, when directly ap-
+plied to ToF sensors, reused paths often become temporally invalid
+and fail to yield meaningful variance reduction.
+2.4
+Sampling on Specular Manifold
+Sampling a narrow temporal manifold is closely related to sampling
+specular manifolds in steady-state rendering. A representative ex-
+ample is manifold walk [Jakob and Marschner 2012], which proposes
+finding valid specular paths from initially invalid mutated MCMC
+paths using Newton’s iteration. This idea was later extended to
+half-vector space light transport [Kaplanyan et al. 2014] and mani-
+fold next-event estimation [Hanika et al. 2015; Zeltner et al. 2020].
+Several follow-up works further improved specular manifold sam-
+pling through techniques such as manifold path guiding [Fan et al.
+2023; Li et al. 2022] and spatio-temporal reuse [Xu et al. 2023]. More
+recently, Hong et al. [2025] adopted sample-space partitioning to
+improve specular manifold sampling and demonstrated its effective-
+ness when implemented within a ReSTIR framework. Our temporal
+manifold path reuse is closely related to these specular manifold
+methods, but differs in the underlying degrees of freedom of the
+constraint manifold. We address this difference by introducing an
+additional gauge condition to uniquely determine valid solutions.
+3
+Background
+3.1
+Time-of-Flight Rendering
+The path integral formulation of conventional steady-state Monte
+Carlo rendering is given by [Veach 1997]
+𝐼=
+∫
+𝒫
+𝑓(x) d𝜇(x)
+(1)
+where 𝐼denotes the measurement at a pixel, 𝒫is the set of all
+possible light paths x, consisting of vertices x0, ..., x𝐾, 𝑓(x) is the
+path throughput and 𝜇is its Lebesgue measure. For ToF rendering,
+the path integral formulation is slightly modified as [Jarabo et al.
+2014; Pediredla et al. 2019b]
+𝐼(𝜏) =
+∫
+𝒫
+𝑊𝜏(ℓ(x)) 𝑓(x) d𝜇(x)
+(2)
+ACM Trans. Graph., Vol. 45, No. 4, Article 89. Publication date: July 2026.
+
+
+===== tof-restir-2026 | page 4/19 =====
+
+89:4
+•
+Kim et al.
+where 𝑊𝜏is path-length importance function at time 𝜏, and ℓ(x) is
+the optical path length defined as Í𝐾−1
+𝑘=0 𝜂𝑘∥x𝑘+1 −x𝑘∥where 𝜂𝑘is
+the refractive index. For simplicity, we set the speed of light as 𝑐= 1
+throughout the paper. For transient histogram rendering, we record
+a sequence of images for different 𝜏∈{𝜏1, ...,𝜏𝐵} where 𝐵is the
+number of histogram bins.
+3.2
+Resampled Importance Sampling and ReSTIR
+We next review the theoretical foundations of ReSTIR for evaluating
+the path integral in Eq. (1). This summary is based on Lin et al.
+[2022]; Sawhney et al. [2022], and we recommend readers to read
+the original papers for additional details.
+3.2.1
+Basic RIS (Same Domain, Same PDF). Resampled Importance
+Sampling (RIS) [Talbot et al. 2005] aims to estimate the integral of a
+function 𝑓using a non-negative unnormalized target function ˆ𝑝(𝑥)
+in an unbiased manner. In its basic form, RIS begins by generating
+𝑀independent candidate samples {𝑥1, . . . ,𝑥𝑀} from a domain Ω
+according to a pdf 𝑝that is easy to sample. From these candidates,
+a single representative sample 𝑦= 𝑥𝑠is selected with a probability
+proportional to 𝑤𝑠/Í𝑀
+𝑖=1 𝑤𝑖, where a resampling weight 𝑤𝑖is
+𝑤𝑖= 1
+𝑀ˆ𝑝(𝑥𝑖)𝑊𝑖, 𝑊𝑖:=
+1
+𝑝(𝑥𝑖) .
+(3)
+The factor 𝑊𝑖is known as the unbiased contribution weight (UCW).
+The probability density function of the selected sample 𝑦, denoted
+by 𝑝𝑌(𝑦), which is required for traditional Monte Carlo integration,
+is generally unavailable in a closed form. Instead, RIS computes the
+UCW of the winner as
+𝑊𝑦:=
+1
+ˆ𝑝(𝑦)
+𝑀
+∑︁
+𝑖=1
+𝑤𝑖,
+(4)
+which can be used as an effective substitute for 1/𝑝𝑌(𝑦) [Bitterli
+et al. 2020]. This yields the RIS estimator for an integrand 𝑓,
+⟨𝐼⟩RIS = 𝑓(𝑦)𝑊𝑦.
+(5)
+Provided that 𝑝𝑌(𝑦) is non-zero wherever 𝑓(𝑦) > 0 (i.e., over the
+support of 𝑓), the estimator remains unbiased. A typical choice is
+to set ˆ𝑝(𝑥) = 𝑓(𝑥), so that RIS asymptotically achieves an ideal
+importance sampling or zero-variance estimator.
+3.2.2
+Combining with MIS (Same Domain, Different PDF). RIS can
+be extended to incorporate multiple importance sampling (MIS)
+when candidate samples are generated using different sampling
+strategies (e.g., BSDF, light sampling), while still operating over the
+same domain Ω. In this setting, each candidate sample 𝑥𝑖is drawn
+from its own proposal distribution 𝑝𝑖. To combine these samples
+consistently, a resampling MIS scheme [Talbot 2005] is applied,
+analogous to the balance heuristic [Veach 1997]. Specifically, each
+sample is assigned a mixing weight given by
+𝑚𝑖(𝑥𝑖) =
+𝑝𝑖(𝑥𝑖)
+Í𝑀
+𝑗=1 𝑝𝑗(𝑥𝑖)
+.
+(6)
+These mixing weights replace the uniform factor 1/𝑀used in the
+i.i.d. case (Eq. (3)) and lead to the generalized resampling weight
+𝑤𝑖= 𝑚𝑖(𝑥𝑖) ˆ𝑝(𝑥𝑖)𝑊𝑖, 𝑊𝑖=
+1
+𝑝𝑖(𝑥𝑖) .
+(7)
+As long as the collection of proposal distributions 𝑝𝑖jointly covers
+the support of ˆ𝑝, the resulting RIS estimator remains unbiased.
+3.2.3
+Generalized RIS (Different Domain). Resampling candidates
+may be drawn from different target domains (reused across different
+pixels or time steps), which makes the previous assumption that
+all samples share the domain Ω invalid. Generalized RIS [Lin et al.
+2022] addresses this limitation by allowing candidate samples 𝑥𝑖
+to be drawn from different domains Ω𝑖, each associated with its
+own target function ˆ𝑝𝑖. The key idea that enables resampling across
+different domains is shift mapping, which defines a bijective transfor-
+mation between domains. Note that shift mapping does not always
+need to be successful, as we can reject the reuse if shift mapping
+fails. Given a candidate sample 𝑥𝑖∈Ω𝑖, a shift map 𝑆𝑖: Ω𝑖→Ω
+maps it to a corresponding sample 𝑦𝑖= 𝑆𝑖(𝑥𝑖) ∈Ω. Under this
+formulation, the resampling weight is given by
+𝑤𝑖= 𝑚𝑖(𝑦𝑖) ˆ𝑝(𝑦𝑖)𝑊𝑖·
+
+𝜕𝑆𝑖
+𝜕𝑥𝑖
+ .
+(8)
+To compute the MIS weights 𝑚𝑖, Lin et al. [2022] introduce a gener-
+alized balance heuristic given by
+𝑚𝑖(𝑦𝑖) =
+𝑀𝑖ˆ𝑝←𝑖(𝑦𝑖)
+Í𝑀
+𝑗=1 𝑀𝑗ˆ𝑝←𝑗(𝑦𝑗)
+(9)
+where 𝑀𝑖denotes a confidence weight, and the term “ ˆ𝑝from 𝑖” is
+defined as ˆ𝑝←𝑖(𝑦𝑖) = ˆ𝑝𝑖(𝑥𝑖)
+𝜕𝑆−1
+𝑖/𝜕𝑦𝑖
+ or 0 if 𝑆−1
+𝑖
+is not valid. This
+formulation remains applicable even when the 𝑥𝑖originate from RIS
+steps, such as merging winner samples from neighboring pixels, in
+which case the proposal density 𝑝𝑖may not be explicitly available.
+Selecting a good shift-mapping 𝑆is critical, since a sample that
+is important in one domain may contribute little or nothing after
+being mapped to another domain where the integrand changes sig-
+nificantly. A variety of shift-mapping strategies have been proposed
+in prior works. Path reconnection [Lehtinen et al. 2013; Ouyang et al.
+2021] reconnects base and offset paths at the earliest compatible sur-
+face interaction and performs well for moderately rough materials.
+Alternative strategies include half-vector copying [Kettunen et al.
+2015] and random replay [Hua et al. 2019], which are particularly
+effective for specular transport. To handle a broad class of materials
+robustly, Lin et al. [2022] propose a hybrid shift-mapping approach
+that mixes path reconnection and random replay (Fig. 3).
+We note that existing shift-mapping techniques are designed for
+steady-state rendering, which tries to match 𝑓(x) after the reuse. In
+ToF rendering, however, the integrand additionally includes a path-
+length-dependent term 𝑊𝜏(ℓ(x)), which introduces new challenges
+that are not addressed by prior methods.
+3.2.4
+ReSTIR. ReSTIR builds upon previous RIS-based resampling
+strategies to enable sample sharing across pixels, both spatially
+within a single frame and temporally across consecutive frames.
+Rather than explicitly storing all 𝑀samples used in RIS, ReSTIR
+employs Weighted Reservoir Sampling (WRS) [Chao 1982] to per-
+form resampling in an incremental manner. This approach uses a
+compact data structure, referred to as a reservoir, which stores only
+the current winner sample and its associated contribution weight.
+A typical ReSTIR pipeline proceeds through the following stages:
+ACM Trans. Graph., Vol. 45, No. 4, Article 89. Publication date: July 2026.
+
+
+===== tof-restir-2026 | page 5/19 =====
+
+ToF ReSTIR: Time-of-Flight Rendering with Spatio-temporal Reservoir Resampling
+•
+89:5
+𝐱1
+𝐱2
+𝐱3
+𝐱4 = 𝐲4
+𝐱5
+𝐲1
+𝐲2
+𝐲3
+𝐲4
+′
+Glossy
+Diffuse
+Path-length 
+aware shift-map
+Base 
+path
+Offset path 
+(hybrid shift)
+Path length adjusted 
+offset path (ours)
+𝐱6
+Diffuse
+Reconnection
+Vertex 𝐩
+Fig. 3. Baseline shift mapping (hybrid shift mapping [Lin et al. 2022]) trans-
+forms the base path x (blue) into an offset path y (orange), with the re-
+connection vertex p at y4(= x4). We further perturb the offset path y to
+y′ (green) to satisfy the path-length constraint, ℓ(y′) = ℓ(x) + 𝛿ℓ. Rather
+than perturbing the entire offset path, we apply path-length-aware shift
+mapping only at the reconnection vertex, similar to Sawhney et al. [2022].
+(This figure is adapted from Fig. 6 of that paper to highlight the similarity.)
+(1) Initial sampling: Generate multiple initial candidates and
+apply RIS to select a single representative sample, which
+is then stored in the reservoir.
+(2) Temporal resampling: Reuse samples across consecutive frames,
+often using motion vectors.
+(3) Spatial resampling: Select reservoirs from neighboring pixels
+and merge them into the current reservoir.
+(4) Final shading: Compute the final pixel estimate by evaluating
+𝑓(𝑦)𝑊𝑦using the reservoir sample.
+In the following sections, we describe how this ReSTIR framework
+can be extended to support ToF rendering, where path-length con-
+straints must be explicitly enforced.
+4
+Path Length Aware Shift Mapping
+In this section, we introduce path-length-aware shift mapping strate-
+gies that address the path-length mismatch arising from naive path
+reuse. We further show efficient initial RIS sample generation from
+previously proposed ellipsoidal path connections [Pediredla et al.
+2019b], or shrinking from samples with wider gate, which also ex-
+ploits path-length-aware shift mapping. Finally, we show how our
+method extends to transient and Doppler rendering scenarios.
+4.1
+Offset Path Further Perturbation
+We begin with a baseline shift-mapping algorithm which transforms
+a base path x into a shift-mapped offset path y. Specifically, we
+use hybrid shift-mapping [Lin et al. 2022] that uses random seed
+replay and reconnect at the first consecutive diffuse vertex (so called
+reconnection vertex p, corresponding to y4 in Fig. 3). Now, the goal
+of path-length-aware shift mapping is to find an additional mapping
+𝑆: y ↦→y′ that further perturbs the offset path y into a new path
+y′ satisfying a prescribed path-length condition
+ℓ(y′) = ℓ(x) + 𝛿ℓ,
+(10)
+where 𝛿ℓis a constant determined by the reuse configuration (e.g.,
+𝛿ℓ= 0 for reuse within the same time gate, or 𝛿ℓ= Δ𝑡for time-gate
+shifting). Since we perform the transformation starting from y, it is
+𝐩
+𝐩1
+𝐩2
+𝐩′
+Specular Constraint 
+𝐹∈ℝ2
+Path Length Constraint 
+𝐹∈ℝ1
+𝐽𝐩′ 𝑇 𝐡𝐩′, 𝐩1, 𝐩2 = 𝟎
+ℓ𝐩′ = ℓ𝐩+ 𝛿ℓ
+Half-way vector
+Tangent frame
+Gauge
+Equi-
+distance 
+contour
+Path length 
+increment
+𝐩1
+𝐩2
+𝐩′
+𝐩
+Fig. 4. Specular material imposes a 2D constraint, which uniquely deter-
+mines p′ (function of 𝜉′) on the surface given p1 and p2. On the other hand,
+path length imposes a 1D constraint, the feasible p′ lies on an equi-distance
+contour on the surface. To further reduce the degree of freedom, we intro-
+duce an additional constraint, referred to as a gauge in this paper.
+convenient to express the constraint as
+ℓ(y′) = ℓ(y) + 𝛿ℓ,
+(11)
+where 𝛿ℓis a fixed constant given x; we retain this notation by a
+slight abuse. For simplicity, we assume that x and y share the end-
+points adjacent to the reconnection vertex, so that 𝛿ℓis independent
+of its position; the general case is detailed in the supplementary
+material. Rather than modifying the entire offset path y, we only
+adjust the reconnection vertex p, following a strategy similar to
+the localized mutation used by Sawhney et al. [2022]. This further
+simplifies the constraint into
+ℓ(p′) = ℓ(p) + 𝛿ℓ,
+(12)
+where ℓ(p) is now path length sum from two adjacent vertices
+p1, p2, on the offset path (corresponds to y3, x5 in Fig. 3). Because
+our transformation is deterministic, we refer to it as a mapping
+rather than a mutation.
+4.2
+Two-Dimensional Surface Parameterization
+We focus on surface-based light transport and parameterize the
+reconnection vertex p using a two-dimensional coordinate 𝜉∈R2.
+This parameterization may take various forms, such as barycentric
+coordinates on a triangle, uv coordinates of an implicit surface, or
+polar coordinates on a hemispherical shadow map. Our objective
+is to find a new surface coordinate 𝜉′ that satisfies the path-length
+constraint:
+ℓ(𝜉′) = ℓ(𝜉) + 𝛿ℓ.
+(13)
+Mathematically, this problem closely resembles the computation
+of valid paths on thin (or delta) manifolds induced by specular
+reflection [Jakob 2013; Kaplanyan et al. 2014; Lehtinen et al. 2013].
+As in prior work, we therefore employ Newton’s method to solve
+for 𝜉′. However, there is a fundamental difference between specular
+manifolds and the path-length manifold considered in ToF rendering.
+Specular constraints restrict two degrees of freedom from halfway
+vector alignment, which locally determine a unique solution for
+𝜉′. In contrast, the path-length constraint introduces only a single
+scalar constraint, leaving one remaining degree of freedom in 𝜉′
+(Fig. 4). As a result, 𝜉′ is not uniquely defined under the path-length
+constraint alone.
+ACM Trans. Graph., Vol. 45, No. 4, Article 89. Publication date: July 2026.
+
+
+===== tof-restir-2026 | page 6/19 =====
+
+89:6
+•
+Kim et al.
+To resolve this ambiguity, we introduce an additional constraint,
+which we refer to as a gauge condition by analogy. This terminology
+reflects the similarity to gauge fixing in physics, where redundant
+degrees of freedom are removed by enforcing invariance under a
+chosen constraint, although there is no direct physical connection
+to electromagnetism. Assuming that a chosen gauge function 𝐺(·)
+remains invariant under the shift, we can define a two-dimensional
+constraint function 𝐹as
+𝐹(𝜉, 𝜉′) =
+ℓ(𝜉′) −ℓ(𝜉) −𝛿ℓ
+𝐺(𝜉′) −𝐺(𝜉)
+
+=
+0
+0
+
+.
+(14)
+This formulation yields a well-posed system that can be solved
+efficiently using Newton iteration.
+4.3
+Selecting a Good Gauge Condition
+A simple choice of gauge is a fixed linear axis, e.g.,𝐺(𝜉) = 𝑎𝑇𝜉(Fig. 5-
+(A)). This choice is reversible and easy to implement. However, it
+often results in large displacements in surface parameter space,
+which can negatively impact path similarity. To reduce deformation,
+a natural alternative is to move along the gradient direction ∇ℓ(𝜉)
+which locally minimizes vertex displacement (Fig. 5-(B)). However,
+this approach is not reversible: starting from 𝜉′ and reducing the
+path length by 𝛿ℓdoes not recover 𝜉unless ∇ℓ(𝜉) ∥∇ℓ(𝜉′). This lack
+of bijectivity violates the requirements for unbiased shift mapping.
+Instead, we propose a bijective average-gradient gauge (Fig. 5-
+(C)) which symmetrically depends on both the start and end points.
+Specifically, we define the constraint function
+𝐹(𝜉, 𝜉′) =
+ℓ(𝜉′) −ℓ(𝜉) −𝛿ℓ
+(𝑅𝑚)𝑇(𝜉′ −𝜉)
+
+=
+0
+0
+
+,
+(15)
+where 𝑚= (∇ℓ(𝜉) + ∇ℓ(𝜉′)) /2 and 𝑅denotes a 90 degree rotation
+matrix. Because the search direction 𝑚depends equally on 𝜉, 𝜉′,
+this formulation is symmetric and therefore reversible, ensuring
+bijectivity and unbiasedness of shift-mapping. Practically, in many
+cases, we could not easily see the biasedness of sample reuse using
+the initial gradient only, as the moving distance is typically small
+compared to the gradient variation. However, to maintain theoretical
+correctness, we choose the average gradient method throughout
+the manuscript. Meanwhile, we can also use mid-point gradient
+𝑚= ∇ℓ((𝜉+ 𝜉′)/2), and this behaves similarly to using average
+gradient. However, since our objective is to solve for the endpoint
+𝜉′, the midpoint method still requires evaluating a path at 𝜉′, which
+introduces additional overhead.
+Newton’s Iteration. Now we solve for 𝜉′ using Newton’s method,
+initialized at 𝜉and iteratively updated using gradients:
+𝜉′
+0 = 𝜉,
+𝜉′
+𝑘+1 ←𝜉′
+𝑘−
+ 𝜕𝐹
+𝜕𝜉′
+𝑘
+−1
+𝐹(𝜉, 𝜉′
+𝑘).
+(16)
+We use backtracking line search as Jakob and Marschner [2012]
+for better step-size control. We also require the determinant of the
+Jacobian of the shift mapping, which can be computed via implicit
+differentiation as
+det
+ 𝜕𝜉′
+𝜕𝜉
+
+= det
+ 𝜕𝐹
+𝜕𝜉
+ ,
+det
+ 𝜕𝐹
+𝜕𝜉′
+
+.
+(17)
+ℓ𝜉
+(A) Fixed Axis
+(B) Initial Gradient
+(D) Gradient Flow
+(C) Avg Gradient
+𝜉
+Equi-distance 
+contours
+∇ℓ(𝜉)
+∇ℓ(𝜉′)
+Not 
+Reversible!
+𝑎
+𝜉′
+𝜉
+𝜉′
+𝜉
+∇ℓ(𝜉)
+∇ℓ(𝜉′)
+𝜉′
+𝜉
+𝜉′
+Fig. 5. Methods for imposing an additional constraint. (A) A fixed-axis
+gauge is reversible and easy to implement, but it may require traveling
+a long distance to find a valid solution. (B) Tracing along the gradient
+reduces the displacement, but it is not guaranteed to be reversible. (C) Our
+average-gradient method uses gradients at both the start and end points,
+ensuring reversibility. (D) Gradient flow is also bijective and yields small
+displacements, but it is not based on Newton’s method and requires many
+small steps.
+Note that we still need to consider an additional Jacobian term that
+transforms 𝜉to p to be applied to Eqs. (8) and (9):
+det
+ 𝜕p′
+𝜕p
+
+=
+√︁
+det 𝐽′𝑇𝐽′
+√︁
+det 𝐽𝑇𝐽
+det
+ 𝜕𝜉′
+𝜕𝜉
+
+,
+(18)
+where 𝐽= (𝜕p/𝜕𝜉) ∈R3×2 is the local tangent frame.
+Both Newton’s iteration and Jacobian evaluation require the par-
+tial derivatives of 𝐹with respect to 𝜉and 𝜉′ :
+𝜕𝐹
+𝜕𝜉′ =
+
+∇ℓ(𝜉′)
+ 𝑅𝑚+ 0.5∇2ℓ(𝜉′)𝑅(𝜉′ −𝜉)𝑇
+
+,
+𝜕𝐹
+𝜕𝜉=
+
+−∇ℓ(𝜉)
+− 𝑅𝑚+ 0.5∇2ℓ(𝜉)𝑅(𝜉′ −𝜉)𝑇
+
+,
+(19)
+which involve both the gradient and the Hessian of ℓ.
+Gradient and Hessian Evaluation. The gradient and Hessian of ℓ
+can be evaluated by transforming derivatives with respect to p ∈R3
+into derivatives with respect to 𝜉∈R2. The path length is given by
+ℓ(p) = ∥p1 −p∥+ ∥p2 −p∥, and we can evaluate its gradient as
+∇pℓ= −p1 −p
+∥p1 −p∥−
+p2 −p
+∥p2 −p∥= −(d1 + d2) = −s,
+(20)
+where d1, d2 are unit direction vectors and s is the unnormalized
+half-vector. The Hessian of ℓwith respect to p is
+∇2
+pℓ= 𝐼−d1d𝑇
+1
+∥p1 −p∥+ 𝐼−d2d𝑇
+2
+∥p2 −p∥= 𝐴.
+(21)
+We can then transform the gradient with respect to 𝜉, using the
+local tangent frame 𝐽,
+∇𝜉ℓ= 𝐽𝑇(−s).
+(22)
+Similarly, the Hessian with respect to 𝜉is given by
+∇2
+𝜉ℓ= 𝐽𝑇𝐴𝐽+ 𝑄,
+(23)
+where 𝑄is defined as
+𝑄∈R2×2,
+𝑄𝑖𝑗= (−s)𝑇
+ 𝜕2p
+𝜕𝜉𝑖𝜕𝜉𝑗
+
+(24)
+ACM Trans. Graph., Vol. 45, No. 4, Article 89. Publication date: July 2026.
+
+
+===== tof-restir-2026 | page 7/19 =====
+
+ToF ReSTIR: Time-of-Flight Rendering with Spatio-temporal Reservoir Resampling
+•
+89:7
+for 𝑖, 𝑗∈{1, 2}. The second-order term 𝜕2p/𝜕𝜉𝑖𝜕𝜉𝑗, which captures
+surface curvature, can be evaluated for specific surface parame-
+terizations. In practice, we ignore the physical surface curvature,
+effectively treating the geometry as a collection of infinitesimal flat
+patches, which simplifies evaluating 𝑄.
+Comparison with Gradient Flow. Another intuitive alternative
+for handling the additional degrees of freedom is to follow the
+continuous gradient flow 𝜉(𝑠), defined by d𝜉/d𝑠= ∇𝐿(𝜉(𝑠)) (Fig. 5-
+(D)). This approach also guarantees bijectivity, but it is significantly
+slower than Newton’s method (linear vs. quadratic convergence).
+Further discussion can be found in the supplementary material.
+Cost of Newton’s Iteration. In prior steady-state specular mani-
+fold methods, the cost of Newton’s iteration is a major concern,
+as it often requires tracing long specular chains via ray tracing. In
+contrast, for the path-length constraint in our setting, it suffices
+to perturb a single path vertex. This significantly reduces the cost
+of each Newton iteration, making it much less expensive than the
+specular-manifold case. We note that this strategy does not directly
+extend to mixed manifolds involving both specular and path-length
+constraints, which we do not consider in this work.
+4.4
+Initial Sample Generation
+So far, we have focused on the efficient reuse of valid samples using
+path-length-aware shift mapping. However, time-gated rendering
+also suffers from a low probability of generating valid initial samples,
+as the time gate accepts only a very narrow range of path lengths.
+In this subsection, we discuss strategies to address this issue.
+4.4.1
+Initialization with Ellipsoidal Path Connection. One approach
+is to adopt existing techniques that explicitly target valid sample
+generation for time-gated rendering, such as ellipsoidal path connec-
+tion [Pediredla et al. 2019b]. Our path-length-aware shift mapping
+is complementary to these techniques, and can therefore be com-
+bined with them to improve the quality of initial RIS samples. Some
+adjustments are required to make this approach suitable for GPU
+implementation, which we discuss in the implementation section.
+4.4.2
+Initial Sampling with Path-length Shrink Mapping. In some
+cases, ellipsoidal path connection is not suitable, either because it is
+too slow or because the geometry is not represented as a triangular
+mesh. To address this, we additionally use path-length-aware shift
+mapping for initial sample generation. The key idea is simple: we
+first sample paths using a wider time gate, and then shift (or shrink)
+these samples into a narrower time gate. In this setting, the path-
+length constraint in Eq. (10) becomes
+ℓ(x′) = 1
+𝐾(ℓ(x) −ℓ0) + ℓ0,
+(25)
+where we use x′ instead of y′ since no baseline shift mapping is
+required. Here, ℓ0 is the path length corresponding to the center
+of the time gate, and 𝐾denotes the scaling factor of the wider
+time gate. The difference between translation-based mapping (used
+for spatio-temporal reuse) and shrink mapping (used for initial
+sample refinement) is illustrated in Fig. 6. We can therefore reuse the
+previous Newton iteration by setting 𝛿ℓ= 1
+𝐾(ℓ(x) −ℓ0) + ℓ0 −ℓ(x).
+The only required modification is to scale the Jacobian determinant
+ℓത𝐱′ = ℓ0 + (1/𝐾) ℓത𝐱−ℓ0
+ℓത𝐲′ = ℓത𝐱+ 𝛿ℓ
+(B) Path Length Shrink Mapping 
+(A) Path Length Translate Mapping 
+Used for RIS fine-tuning
+Used for spatiotemporal reuse
+Path length
+Path length
+ℓത𝐱
+ℓത𝐱′
+ℓ0
+Δ𝜏rough
+Δ𝜏fine
+𝛿ℓ
+Path length
+Path length
+ℓത𝐱
+ℓത𝐲′
+Transformed into 
+same relative 
+position
+𝐾=
+Δ𝜏rough
+Δ𝜏fine
+Fig. 6. Two types of path-length-aware shift mappings are used for different
+purposes. (A) Path-length translation mapping is used for spatio-temporal
+path reuse. (B) Path-length shrink mapping is used for efficient initial sample
+generation: samples are drawn from a wider time gate and then shrunk
+back to the original gate.
+by 1/𝐾. Importantly, note that we do not apply this shrink mapping
+for all RIS samples, but only to the RIS winner, so the computational
+cost is minimal.
+Initial sample generation with shrink mapping can introduce bias
+if used in isolation. This arises for two main reasons: (1) Newton’s
+method may become unstable when initial samples are far from the
+target manifold, and (2) the support of the transformed paths may
+be smaller than the valid time gate, causing the Jacobian correction
+(scaling by 1/𝐾) to be over-applied, which typically leads to darker
+estimates. This bias can be eliminated by combining shrink-mapped
+samples with canonical samples from the target (narrow) time gate
+using proper MIS weighting (Eq. (9)), which yields an unbiased
+estimator. In practice, however, we find that allocating all samples
+to the wider time gate often provides stronger variance reduction,
+which may outweigh the bias introduced by omitting canonical
+samples. Further discussion is provided in the results section.
+4.5
+Extension to Transient Histogram Rendering
+Our method is applicable not only to time-gated image render-
+ing, which produces a two-dimensional image (𝐻×𝑊), but also to
+transient histogram rendering, which outputs a three-dimensional
+transient histogram (𝐻× 𝑊× 𝐵) per frame. By interpreting tran-
+sient histogram as a sequence of time gates, we can directly apply
+path-length-aware shift mapping independently to each histogram
+bin. Compared to the image case, histogram rendering introduces
+two differences: (1) all 𝐵reservoirs must be updated for each pixel,
+increasing the reuse overhead, and (2) there is an additional reuse
+dimension along the bin axis 𝐵. An overview comparing path reuse
+for image and histogram rendering is shown in Fig. 7.
+Cost-to-Performance Analysis. As mentioned earlier, a key chal-
+lenge of path reuse in the histogram setting is the cost-to-performance
+trade-off, as reuse can be expensive. Here, we provide a simple anal-
+ysis to illustrate this effect. Let the cost of tracing a path sample be
+𝐶trace, and the cost of performing a path reuse operation be 𝐶reuse.
+ACM Trans. Graph., Vol. 45, No. 4, Article 89. Publication date: July 2026.
+
+
+===== tof-restir-2026 | page 8/19 =====
+
+89:8
+•
+Kim et al.
+(A) Reuse in Image
+(B) Reuse in Histogram
+Spatial 
+reuse
+Temporal reuse
+Temporal reuse
+Spatial 
+reuse
+Bin reuse
+Per frame output : 𝐻× 𝑊
+Per frame output : 𝐻× 𝑊× 𝐵
+Prev Frame
+Curr Frame
+Prev Frame
+Curr Frame
+𝐵
+Fig. 7. (A) Time-gated image rendering whose per-frame output is 𝐻× 𝑊,
+we can use temporal and spatial reuse. (B) Transient histogram rendering
+whose per-frame output is 𝐻× 𝑊× 𝐵, has two differences: (1) reservoir
+update is more expensive as we need to update all 𝐵reservoirs per pixel,
+and (2) we can use not only temporal and spatial reuse but also bin reuse.
+For image rendering with path reuse, the total cost is 𝐶trace + 𝐶reuse.
+For transient histogram rendering, reuse must be applied indepen-
+dently to each bin, increasing the reuse cost by a factor of 𝐵, while
+the per-bin quality improvement remains unchanged. As a result,
+the relative cost-to-performance efficiency degrades by a factor of
+𝐶trace + 𝐶reuse
+𝐶trace + 𝐵× 𝐶reuse
+.
+(26)
+As 𝐵increases, the effectiveness of path reuse therefore decreases.
+This effect is particularly pronounced when 𝐶reuse is large, for ex-
+ample, when path reuse requires expensive path throughput recom-
+putation. Refer to the results section for a detailed comparison.
+Comparison with Jarabo et al. [2014]’s ‘Path Reuse’. For initial
+sample generation, we adopt the “path reuse” in Jarabo et al. [2014]
+(which differs from ReSTIR-style path reuse), even though our over-
+all framework uses ReSTIR. Specifically, we deposit each sample’s
+contribution into its corresponding time bin and use these as initial
+samples for subsequent ReSTIR-style reuse. We consider the tran-
+sient histogram as a sequence of time-gated images and apply reuse
+independently for each bin only during the ReSTIR-style path reuse.
+4.6
+Extension to Doppler Frequency Rendering
+The path-length constraints introduced in the previous sections
+can be naturally extended to the frequency domain induced by
+the Doppler effect. Analogous to the time-resolved path integral
+in Eq. (2), the frequency-resolved power spectral density (PSD) 𝑆(𝜈)
+resulting from Doppler shift [Kim et al. 2025] is given by
+𝑆(𝜈) =
+∫
+𝒫
+𝑊𝜈(𝜔(x)) 𝑓(x) d𝜇(x).
+(27)
+Here 𝑊𝜈is a frequency weight similar to 𝑊𝜏, and 𝜔(x) denotes the
+path frequency derived from the path velocity 𝑢(x) = −d
+d𝑡ℓ(x). This
+can be expressed as
+𝑢(x) =
+𝐾−1
+∑︁
+𝑘=0
+𝜂𝑘(v𝑘−v𝑘+1) · ˆd𝑘,
+(28)
+where ˆd𝑘is the unit vector from x𝑘to x𝑘+1 and v𝑘= d
+d𝑡x𝑘denotes
+the instantaneous velocity at each vertex. The path velocity induces
+(A) Length ℓ𝜉
+(B) Length derivative  d
+d𝑡ℓ𝜉
+𝐩1
+𝐩2
+𝜉
+(2)
+(1)
+(3)
+(1)
+(2)
+(3)
+Fig. 8. (A) Path length ℓ(𝜉) on the plane, forming ellipsoidal iso-value
+contours. (B) Temporal derivative of path length,
+d
+d𝑡ℓ(𝜉), on the plane
+under three different scenarios: (1) the plane moves upward, (2) p2 moves
+away, and (3) the plane rotates, each producing distinct iso-value contours.
+a Doppler frequency shift given by Δ𝑓(x) ≔𝑓0𝑢(x)/𝑐, where 𝑓0 is
+the carrier frequency3.
+Rather than constraining the optical path length ℓ(p), we impose
+a constraint on its temporal derivative
+d
+d𝑡ℓ(p) i.e., path velocity.
+This constraint defines a different manifold from the path-length
+manifold considered earlier. We visualize examples of manifolds in-
+duced by path-velocity constraints in Fig. 8 for three different cases.
+A comparison between time-gated and frequency-gated rendering
+is also summarized in Tab. 1. Overall, the same path reuse frame-
+work can be applied by substituting the path-length constraint with
+the path-velocity constraint. Full derivations of the corresponding
+gradients and Hessians are provided in the supplementary material.
+Table 1. Comparison between time-domain and frequency-domain formu-
+lations and their corresponding constraints.
+Time Domain
+Frequency Domain
+Measurement
+Transient signal 𝐼(𝜏)
+PSD 𝑆(𝜈)
+Depends on
+Path Length
+Path Velocity
+Notation
+ℓ(x)
+𝑢(x) = −d
+d𝑡ℓ(x)
+Constraint
+ℓ(p′) = ℓ(p′) + 𝛿ℓ
+d
+d𝑡ℓ(p′) = d
+d𝑡ℓ(p′) + 𝛿𝑢
+5
+Implementation Detail
+Reservoir Implementation. Our reservoir structure largely follows
+the design of Lin et al. [2022]. The main difference is that we addi-
+tionally store the next vertex of the reconnection vertex, and keep
+the reconnection information (e.g., incident direction and radiance
+used to recompute the path throughput) at this next vertex rather
+than at the original reconnection vertex. This difference is illustrated
+in Fig. 9. Note that for temporal reuse under dynamic lighting or an-
+imated meshes, the reconnection information must be re-evaluated
+to remain valid. For further details, see Lin et al. [2022].
+Light Source. Rather than considering general scene lighting, we
+restrict our setup to delta light sources, which are commonly used
+in ToF applications. Specifically, we model a spotlight under two
+regimes: (1) a collimated, laser-like case with a very small angular
+extent, and (2) a point light–like case with a large angular extent. In
+the collimated case, we trace additional rays from the light source
+to generate light samples prior to performing next event estimation
+3For chirped lasers, 𝜔depends on both path length and velocity. Here, we consider
+only a standard (constant-frequency) laser, for which 𝜔(x) = 2𝜋Δ𝑓(x).
+ACM Trans. Graph., Vol. 45, No. 4, Article 89. Publication date: July 2026.
+
+
+===== tof-restir-2026 | page 9/19 =====
+
+ToF ReSTIR: Time-of-Flight Rendering with Spatio-temporal Reservoir Resampling
+•
+89:9
+(A) Reconnection
+Vertex
+𝜔i
+𝐿i
+Also used to 
+eval 𝑓ത𝐲 
+ത𝐱
+ത𝐲
+Reconnection
+Vertex
+ത𝐱
+𝜔i
+𝐿i
+Also used to 
+eval 𝑓ത𝐲′  
+ത𝐲′
+Reconnection
+Next Vertex
+(B)
+Fig. 9. (A) Lin et al. [2022] stores the hit record of the reconnection vertex
+along with additional information (incident direction 𝜔i and radiance 𝐿i) to
+recompute the offset path throughput. (B) We additionally store the next
+vertex after the reconnection vertex and attach this information to that
+vertex instead of the original reconnection vertex. The red arrow indicates
+path-length-aware shift mapping.
+(NEE), similar to bidirectional path tracing. In the point light case,
+we instead rely on direct NEE.
+Ellipsoidal Path Connection. Several modifications are required
+to adapt the original ellipsoidal path connection method [Pediredla
+et al. 2019b] to our setting. In the original approach, ellipsoid–AABB
+and ellipsoid–triangle intersection tests are performed on the BVH
+to gather all triangles that may intersect a given ellipsoid. However,
+this strategy does not scale well on GPUs. For complex meshes, it
+can produce thousands of candidate triangles, leading to excessive
+memory usage and register spilling. Instead of explicitly collecting
+all intersecting triangles, we sample BVH nodes using heuristic
+weights. Each node is assigned a weight proportional to the total
+area of the triangles it contains, and set to zero weight if it does not
+intersect the ellipsoid. We also apply MIS between direct connection
+and ellipsoidal path connection to robustly handle specular materi-
+als. Finally, to avoid the complexity of a full BDPT implementation,
+we restrict ellipsoidal path connection to NEE only.
+6
+Results
+We implement our algorithm within the Falcor framework [Kall-
+weit et al. 2022] and conduct experiments with an AMD Ryzen Pro
+3955WX CPU and an NVIDIA RTX 3090 GPU. Most test scenes are
+taken from Bitterli [2016]; however, to better mimic laser-based ToF
+sensing, we replace the original scene light sources with a custom
+delta light source. We report and visualize only indirect illumination,
+as direct illumination under a delta light source is trivial.
+6.1
+Offline Time-Gated Rendering with Spatial Reuse
+We first present offline time-gated rendering results for the Cornell-
+Box scene with different material configurations for initial valida-
+tion. A collimated laser illuminates the upper region of the back
+wall, with its direction parallel to the camera direction. The box size
+is 2× 2× 2, and the time gate, which is a box function, is set to cover
+0.5 −2.5% of the scene scale. For the ReSTIR configuration, follow-
+ing Lin et al. [2022], we use 32 path trees as initial candidates and
+perform spatial reuse three times, each time considering five neigh-
+boring pixels within a 10-pixel radius. We compare three methods:
+path tracing without any reuse, naive reuse based on ReSTIR-PT,
+and our proposed method. All methods are evaluated under the
+Path 
+Tracing
+Naïve 
+Reuse
+Ours
+Ground 
+Truth
+DIFFUSE-BOXES
+(~1500 ms)
+0.3907
+MAPE
+0.2205
+0.0994
+GLASS-BUNNY
+(~2700 ms)
+0.2598
+MAPE
+0.1384
+0.0966
+SPECULAR-DRAGON
+(~4000 ms)
+0.4797
+MAPE
+0.3858
+0.2147
+Δ𝜏= 0.02
+Δ𝜏= 0.05
+Δ𝜏= 0.01
+Reuse 
+pattern
+Fig. 10. Comparison of the Cornell-Box scene with various objects and
+materials under an equal time budget. All images are rendered at a resolution
+of 1024 × 1024, with the maximum path depth set to 6.
+same time budget. We report the mean absolute percentage error
+(MAPE) as the evaluation metric, following Lin et al. [2022].
+The results are shown in Fig. 10. Path tracing produces noisy
+images, while naive reuse moderately improves image quality but
+still fails to produce satisfactory results. Interestingly, naive reuse
+exhibits ellipsoidal reuse patterns (highlighted by the white curved
+arrow), as valid reuse without explicit path-length preservation can
+only occur along ellipsoidal loci that satisfy the path-length con-
+straint. In contrast, our proposed path-length-aware shift mapping
+produces the best results across different scenarios, as it ensures
+that reused paths remain valid across neighboring pixels, even when
+they lie on different ellipsoids. Results for more scenes, including
+convergence plots, are shown in Fig. 13. Our method consistently
+achieves the best performance, while naive reuse can even perform
+worse than plain path tracing due to its low reuse validity rate.
+Effect of Time Gate Width. Similar to Pediredla et al. [2019b], we
+compare results under different time-gate widths Δ𝜏in Fig. 11. All
+images are normalized by the time-gate width to ensure comparable
+intensity levels. The error for different Δ𝜏∈[0.005, 1.0] is plotted
+in Fig. 11–(A). We find that our method is most effective for narrow
+time gates. As the time gate widens, naive path reuse is less likely
+to violate the path-length constraint, making the additional compu-
+tation for path-length correction less beneficial. In Fig. 11–(B), we
+also report the path reuse success rate for both naive reuse and our
+method. For very small time gates, naive reuse achieves a very low
+success rate, which gradually increases as the time gate widens. In
+contrast, our method maintains a nearly constant and high reuse
+ACM Trans. Graph., Vol. 45, No. 4, Article 89. Publication date: July 2026.
+
+
+===== tof-restir-2026 | page 10/19 =====
+
+89:10
+•
+Kim et al.
+(A) MAPE (Equal Time, 3 sec)
+(B) Path Reuse Success Rate
+Δ𝜏= 1.0 
+(50 %)
+Δ𝜏= 0.005
+(0.25 %)
+Length : 2
+Time gate
+Time gate
+Path Trace
+Naïve Reuse
+Ours
+Naïve Reuse
+Ours
+Fig. 11. (A) MAPE comparison under different time-gate widths within a
+3-second time budget. (B) Comparison of path reuse success rates between
+naive reuse and our method. Overall, our method performs best when the
+time gate is sufficiently narrow, 5 −10% of the scene size.
+success rate across different time-gate widths. Notably, for very
+large time gate, the success rate of our method becomes slightly
+lower than that of naive reuse. This reduction is primarily due to
+failures in Newton’s iteration or additional occlusion introduced
+when moving the reconnection vertex. Overall, our method is most
+beneficial for narrow time gates, whereas naive reuse is sufficient
+for wider gates. The exact threshold depends on the scene, but we
+observe thatΔ𝜏below approximately 5 −10% of the scene scale
+serves as a practical boundary.
+Gauge Direction Comparison. We demonstrate the effectiveness
+of the proposed gauge in Fig. 12. We evaluate horizontal, vertical,
+and average-gradient directions under different coordinate systems,
+including a local plane and a unit hemisphere4. Each method is eval-
+uated under an equal-time budget with Δ𝜏= 0.01. We observe that,
+for each region, one fixed axis typically performs better than the
+other in terms of error, depending on the scene geometry. However,
+regardless of the coordinate system, the gradient-based direction
+achieves the best performance on average. We also report the mov-
+ing distance of the reconnection vertex (∥p −𝑆(p)∥) induced by
+each method and find that our gradient-based approach consistently
+results in the shortest displacement. In fact, moving distance is
+not a perfect indicator of path-throughput similarity, since shorter
+displacements may break the similarity due to newly appeared oc-
+clusions. Still, we could observe a clear overall correlation between
+shorter moving distances and reduced variance. Regarding the per-
+formance, we could not find a noticeable difference when evaluating
+additional Hessians from using the gradient gauge direction.
+Newton’s Iteration Statistics. We also report statistics for Newton’s
+iteration. We set the convergence threshold to 1% of the time-gate
+width and limit the maximum number of iterations to 5. Consistent
+with the observations of Jakob and Marschner [2012], we find that
+approximately two to three Newton iterations are sufficient to reach
+a valid solution, with a failure rate below 10 −15%. The overall
+statistics are summarized in Tab. 2. Here, Newton SR denotes the
+Newton’s iteration success rate and Actual SR denotes the actual
+path reuse success rate, which is consistently lower, as it excludes
+samples that are occluded (from p1) or rejected due to excessive
+Jacobian factors.
+4Each coordinate system has its own advantages and limitations, and we employ
+heuristics that leverage both. See the supplementary material for details.
+Average MAPE
+Average 𝐩−𝑆𝐩
+0.205
+2.95e-2
+0.189
+2.82e-2
+0.163
+2.65e-2
+0.109
+0.085
+0.087
+0.208
+0.256
+0.167
+𝐩
+𝑆𝐩
+Unit 
+Hemisphere
+Horizontal
+Vertical
+Avg Grad
+0.175
+3.12e-2
+0.186
+3.25e-2
+0.129
+2.21e-2
+0.128
+0.157
+0.108
+0.166
+0.159
+0.106
+Average MAPE
+Average 𝐩−𝑆𝐩
+𝐩
+𝑆𝐩
+Local Plane
+(~1500 ms)
+(~2700 ms)
+Fig. 12. Comparison of gauge directions using fixed horizontal and vertical
+axes, and the proposed average-gradient direction. Our method consistently
+produces the best results, largely due to the reduced displacement.
+Table 2. Newton iteration counts and success rates across different scenes.
+The actual success rate accounts for occlusion and Jacobian factors and is
+always lower than the Newton success rate.
+Scene
+# of Iter.
+Newton SR
+Actual SR
+Cornell-Box
+1.5267
+0.9652
+0.9356
+Cornell-Dragon
+1.6499
+0.9454
+0.9027
+Veach-Ajar
+1.5549
+0.9578
+0.9026
+Kitchen
+1.9003
+0.9197
+0.8127
+Bedroom
+1.9854
+0.9199
+0.8331
+Staircase
+2.2179
+0.8664
+0.7238
+Bistro
+2.3480
+0.8455
+0.6638
+Initialization with Ellipsoidal Path Connection. So far, we have
+used direct connection for initial sample generation, but ellipsoidal
+path connection [Pediredla et al. 2019b] can also be employed for
+this purpose, producing higher-quality initial samples. The results
+are shown in Fig. 13. We present equal-time comparisons for differ-
+ent strategies, along with convergence plots with respect to both
+spp and time. Compared to direct connection, ellipsoidal connec-
+tion yields better results, although the improvement depends on
+the scene. Importantly, we find that regardless of the initial sam-
+pling strategy, our method consistently outperforms the baseline
+methods. The computational cost of ellipsoidal path connection is
+significantly higher than that of direct connection—by a factor of 5×
+to 10×, depending on the scene—which often necessitates the use of
+narrower time gates to clearly observe its advantage. Our heuristic-
+based ellipsoidal sampling strategy may be suboptimal, as it is not
+the primary focus of this paper. Designing more efficient ellipsoidal
+ACM Trans. Graph., Vol. 45, No. 4, Article 89. Publication date: July 2026.
+
+
+===== tof-restir-2026 | page 11/19 =====
+
+ToF ReSTIR: Time-of-Flight Rendering with Spatio-temporal Reservoir Resampling
+•
+89:11
+BISTRO
+Direct
+Ellipsoidal
+Path Trace Naïve Reuse
+Ours
+Path Trace Naïve Reuse
+Ours
+time (sec)
+Path Trace
+Naïve Reuse
+Ours
+Direct
+Ellipsoidal
+~ 16 sec
+Δ𝜏= 0.05
+(0.5 %)
+spp
+VEACH-AJAR
+Direct
+Ellipsoidal
+MAPE
+MAPE
+spp
+time (sec)
+~ 4 sec
+Δ𝜏= 0.01
+(0.5 %)
+KITCHEN
+Direct
+Ellipsoidal
+MAPE
+MAPE
+spp
+time (sec)
+~ 8 sec
+Δ𝜏= 0.01
+(0.5 %)
+MAPE
+MAPE
+Fig. 13. We implement ellipsoidal path connection [Pediredla et al. 2019b], adapted to a GPU environment, and use it as an initial candidate generation.
+Compared to a direct connection, an ellipsoidal path connection produces better initial samples at the cost of increased computation time. Our method
+improves the result regardless of the initial candidate generation method. The light source is collocated with the camera. For the Veach-Ajar scene, a collimated
+laser is used, while a point light is used for the others. Image size is 960 × 540, and max bounce is set to 6.
+connection algorithms that are well-suited for GPU execution is an
+interesting direction for future work.
+6.2
+Evaluation of Path Length Shrink Mapping
+In this subsection, we evaluate the proposed path-length shrink
+mapping as an efficient strategy for initial sample generation under
+narrow time gates. To clearly show the variance–bias behavior, we
+disable spatial reuse in this experiment. We focus on two parameters:
+the relative width of the rough time gate, defined as 𝐾=
+Δ𝜏rough
+Δ𝜏fine , and
+the fraction of samples allocated to the rough time gate, defined as
+𝑅=
+𝑀rough
+𝑀rough+𝑀fine . Fig. 14–(A) reports the MAPE for different values of
+𝐾∈[1.0, 500] and 𝑅∈[0.0, 1.0], evaluated at a fixed fine time gate
+of Δ𝜏= 0.01. Overall, we observe that using a moderately larger
+rough time gate and allocating all samples to the rough gate yields
+the best metric across different scenes. In Fig. 14–(B), we fix 𝑅= 1.0
+and vary the value of 𝐾. When the rough time gate is too small,
+the benefit of using a wider gate is limited, and variance dominates
+the result. On the other hand, when the rough time gate becomes
+excessively large, the result becomes biased and typically darker
+than the ground truth image, since the region mapped from the
+rough time gate becomes smaller than the original fine gate. The
+MAPE plot in Fig. 14–(A) suggests that an acceptable bias–variance
+trade-off occurs for 𝐾values between approximately 10 and 100.
+This range is scene dependent and also varies with the chosen time-
+gate width.
+We further examine the effect of sample allocation in Fig. 14–(C)
+by varying 𝑅while keeping 𝐾fixed. As discussed earlier, setting
+𝑅< 1 and applying MIS between canonical samples from the fine
+time gate and candidate samples from the rough time gate produces
+an unbiased estimator. Setting 𝑅= 1 completely ignores canonical
+samples, resulting in a biased estimate that is typically darker than
+the reference image, but with substantially reduced variance. De-
+spite being biased, this approach does not introduce the blurring
+artifacts observed when simply increasing the time-gate width alone
+(rightmost column of Fig. 14–(C)). This improvement arises because
+shrink mapping explicitly attempts to match path lengths, whereas
+merely widening the time gate does not.
+Performance Comparison with Ellipsoidal Path Connection. Since
+shrink mapping is designed to address sampling difficulties under
+narrow time gates without expensive scene–ellipsoid intersections,
+we compare it with ellipsoidal path connection in Fig. 15. We use
+𝑅= 1 and 𝐾= 10. Under an equal-spp constraint, ellipsoidal path
+connection achieves the best performance, as it guarantees valid
+time-gated path samples. However, when compared under equal-
+time budgets, our shrink mapping demonstrates an advantage, es-
+pecially in complex scenes where ellipsoidal sampling incurs huge
+overhead due to scene–ellipsoid intersection tests. We also show
+shrink mapping with spatial reuse (red curve), which can further
+improve performance, although it remains biased due to 𝑅= 1.
+In summary, while shrink mapping does not guarantee exact
+path-length correctness in the same way as analytic ellipsoidal in-
+tersection, it offers a substantial performance advantage, particularly
+at 𝑅= 1, at the cost of bias, but without introducing blurring.
+ACM Trans. Graph., Vol. 45, No. 4, Article 89. Publication date: July 2026.
+
+
+===== tof-restir-2026 | page 12/19 =====
+
+89:12
+•
+Kim et al.
+Variance Dominates
+Bias Dominates
+Smaller 𝐾
+Larger 𝐾
+(B)
+𝑅=
+𝑀rough
+𝑀total
+Rough Time Gate Ratio (𝐾)
+CORNELL-DRAGON
+STAIRCASE
+BEDROOM
+MAPE
+BEDROOM
+CORNELL-DRAGON
+STAIRCASE
+Rough Time Gate Ratio (𝐾) Rough Time Gate Ratio (𝐾)
+(A)
+Δ𝜏= 0.01
+Δ𝜏= 0.01,  Δ𝜏rough = 0.1 (𝐾= 10)
+𝑅= 0.5
+𝑅= 1.0
+Δ𝜏= 0.1
+𝑅= 0.0
+Ground Truth
+Ground Truth
+(C)
+over-
+blurred
+biased 
+(darker)
+over-
+blurred
+biased 
+(darker)
+over-
+blurred
+biased 
+(darker)
+0.00
+0.25
+0.50
+0.75
+1.00
+MAPE
+CORNELL-DRAGON
+STAIRCASE
+BEDROOM
+(𝑅= 1.0 for all)
+Fig. 14. Results of path-length shrink mapping using a rough time gate. (A)
+When the rough time gate is too small, little benefit is gained from widening
+the gate, and variance dominates, whereas excessively large rough time
+gates introduce bias. (B) Visually acceptable results are typically obtained
+when the rough time gate is approximately 10–20 times wider than the fine
+time gate. (C) Simply increasing the time-gate width leads to over-blurring
+of scene details.
+6.3
+Real-time Time-Gated Rendering with Temporal Reuse
+Path-length-aware reuse can also be applied to temporal reuse across
+frames. Following Lin et al. [2022], we use a single iteration of spatial
+reuse with three neighbor selections and set 𝑀cap = 5–20 (maximum
+confidence in Eq. (9)), while generating multiple initial paths per
+frame. As in other ReSTIR-based methods, we exploit motion vector
+information to determine the corresponding pixel from which to
+fetch the reservoir in the previous frame. For simplicity, we use
+direct connection for initial samples here, but it can be combined
+with ellipsoidal connection or shrink mapping described earlier.
+Real-time Transient Rendering. We can exploit temporal reuse for
+real-time transient simulation in static scenes, producing transient
+Direct
+Ellipsoidal
+Direct + 
+Shrink 
+Mapping
+(𝐾= 10, 𝑅= 1)
+MAPE vs SPP
+MAPE vs Time
+Time (ms)
+Time (ms)
+Time (ms)
+spp
+spp
+spp
+STAIRCASE
+CORNELL-DRAGON
+BEDROOM
+(w/ spatial reuse)
+Fig. 15. Comparison between ellipsoidal path connection, direct connection,
+and direct connection combined with shrink mapping. Under an equal-
+spp constraint, an ellipsoidal path connection achieves the best quality.
+However, for complex scenes where ellipsoidal sampling becomes expensive,
+our method provides a more favorable trade-off under an equal-time budget.
+We also show shrink mapping with spatial reuse as a red line.
+images in a streaming fashion. This is less common in the ToF com-
+munity than in gaming or real-time rendering, but it is still useful
+for rapid inspection, as constructing a full histogram requires long
+accumulation times. We visualize a real-time transient rendering
+result for the Classroom scene in Fig. 16-(A).
+Dynamic Scene. We further demonstrate time-gated rendering in
+dynamic scenes, which is relevant for simulating proximity cameras
+or transient sensors that form image sequences by sweeping the time
+gate. In Fig. 16-(B), we simulate a proximity-sensing drone equipped
+with a fixed time-gated sensor and a collocated point light hovering
+within the Bedroom scene. Our method produces substantially
+improved results compared to path tracing and naive reuse in this
+dynamic setting, and can even faithfully reproduce mirror-reflected
+regions. We also evaluate the NLOS-Bunny scene in Fig. 16-(C). In
+this scene, the camera remains fixed while a collimated laser beam
+scans across the back wall, indicated by the red dot in the ground-
+truth image. The time gate also shifts as the laser moves. Again, our
+method yields superior results compared to baseline approaches.
+We also demonstrate a downstream application for object shape
+reconstruction under a similar scene setting, which is described in
+detail in Sec. 7.1.
+6.4
+Evaluation of Transient Histogram Rendering
+We also evaluate our algorithm on transient histogram rendering, as
+discussed in Sec. 4.5. In this setting, the goal is to render a sequence
+of transient images simultaneously, producing an output histogram
+of size (𝐻,𝑊, 𝐵) per frame. An example of transient histogram
+rendering is shown in Fig. 16-(D), where the camera moves forward
+in the Veach-Ajar scene. We use a histogram bin count of 64, and
+to limit reuse cost, we apply temporal reuse only. We find that
+our method produces higher-quality results for transient histogram
+rendering compared to standard path tracing and naive reuse.
+Cost-to-Performance Evaluation with Different 𝐵. We evaluate the
+effectiveness of path reuse while accounting for its computational
+cost under different values of 𝐵. Specifically, we measure rendering
+error, execution time, and their product as a simple indicator of
+ACM Trans. Graph., Vol. 45, No. 4, Article 89. Publication date: July 2026.
+
+
+===== tof-restir-2026 | page 13/19 =====
+
+ToF ReSTIR: Time-of-Flight Rendering with Spatio-temporal Reservoir Resampling
+•
+89:13
+Scene Frames
+Time Gate Position
+Rendered Frames
+Rendered Frames
+Ground 
+Truth
+BEDROOM-HOVER
+NLOS-BUNNY
+(B)
+(C)
+Time Gate Window : 0.05 (~2% of scene)
+Max Bounce : 6
+Max Bounce : 3
+Scene Frames
+Time Gate Position
+Time Gate Window: 0.02 (~1% of scene)
+Temporal Reuse
+555 spp  (177.7 ms)
+310 spp (178.2 ms)
+256 spp (178.5 ms)
+Path Tracing
+Naïve Reuse
+Ours
+VEACH-AJAR-TRANSIENT
+(D)
+Max Bounce : 6
+Histogram Bin Window:
+ 0.0625 (~3% of scene)
+Scene Frames
+Histogram Bin
+Rendered Frames
+MAPE : 0.978
+MAPE : 1.229
+MAPE : 0.865
+352 spp  (83.31 ms)
+272 spp (84.25 ms)
+256 spp (83.77 ms)
+Path Tracing
+Naïve Reuse
+Ours
+MAPE : 1.720
+MAPE : 1.567
+MAPE : 0.908
+54 spp (72.36 ms)
+38 spp (71.90 ms)
+32 spp (72.92 ms)
+Path Tracing
+Naïve Reuse
+Ours
+MAPE : 1.053
+MAPE : 0.939
+MAPE : 0.558
+Image Size : 960 x 540
+Image Size : 960 x 540
+Histogram Size : 480 x 270 x 64
+Temporal Reuse
+3D 
+Histo
+gram
+Ground 
+Truth
+Ground 
+Truth
+Scene Frames
+Time Gate Position
+Rendered 
+Frames
+CLASSROOM
+(A)
+Time Gate Window : 0.05 (~2% of scene)
+Max Bounce : 6
+Temporal 
+Reuse
+Image Size : 960 x 540
+Ground 
+Truth
+74 spp (101.45 ms)
+70 spp (100.56 ms)
+64 spp (98.11 ms)
+Path Tracing
+Naïve Reuse
+Ours
+MAPE : 1.080
+MAPE : 1.016
+MAPE : 0.742
+Fig. 16. Four scenarios demonstrating the proposed path temporal reuse. (A) Streamed transient rendering in a static Classroom scene. (B) Dynamic proximity
+camera simulation in a Bedroom scene. (C) Transient NLOS imaging with a time-gated camera and a moving collimated laser; this setup is also used in later
+sections. (D) Transient histogram rendering with the number of bins set to 𝐵= 64. Across all scenarios, our method consistently produces the highest-quality
+results.
+ACM Trans. Graph., Vol. 45, No. 4, Article 89. Publication date: July 2026.
+
+
+===== tof-restir-2026 | page 14/19 =====
+
+89:14
+•
+Kim et al.
+Time (ms)
+Error (relMSE)
+Time × Error (↓)
+Bin Size (𝐵)
+CORNELL-BOX
+VEACH-AJAR
+BEDROOM-HOVER
+Path 
+Tracing
+Temporal 
+Reuse
+Temporal + 
+Bin Reuse
+Temporal +Bin 
++Spatial Reuse
+Bin Size (𝐵)
+Bin Size (𝐵)
+Fig. 17. Comparison of path reuse in transient histogram rendering with
+different 𝐵s. We could find that the cost-to-performance efficiency of path
+reuse diminishes as 𝐵becomes larger.
+cost-to-performance efficiency. For the metric error × time, lower
+values indicate better cost-to-performance. Since second-order er-
+ror decreases linearly over time, we use relative MSE as the error
+metric. We evaluate several path reuse configurations, including
+temporal reuse, bin-wise reuse, and spatial reuse. All experiments
+are conducted with 𝐵∈[4, 64], while keeping the temporal width
+of each histogram bin fixed. Each configuration is rendered for 100
+frames with an animated camera, and the same spp is used across
+all experiments.
+The results are shown in Fig. 17. The first column reports ren-
+dering time. As expected, the cost of naive path tracing remains
+nearly constant even 𝐵increases, whereas the cost of path reuse
+grows linearly with 𝐵. Configurations with more aggressive reuse
+exhibit steeper slopes due to higher reuse overhead. The second
+column shows the relative MSE averaged over all bins. The error
+remains nearly constant across different values of 𝐵, with minor
+variations depending on the histogram bin range. Notably, more
+aggressive path reuse generally yields lower error. The third column
+presents the cost-to-performance metric computed as time multi-
+plied by error. For small values of 𝐵, aggressive path reuse is clearly
+beneficial, as the reuse overhead is relatively small compared to
+the resulting error reduction. As 𝐵increases, the benefit of path
+reuse diminishes, and beyond a certain point, disabling path reuse
+becomes more advantageous. We further observe that this trend is
+strongly influenced by the path reuse cost 𝐶reuse. The Cornell-Box
+scene exhibits the lowest reuse cost, while Veach-Ajar incurs a
+higher cost due to its textured materials. The Bedroom scene shows
+the highest reuse cost, as the collocated moving light source requires
+updating the path throughput beyond the reconnection vertex.
+In summary, increasing 𝐵reduces the benefit of complex path
+reuse strategies, and in practice, a limited amount of reuse (e.g.,
+temporal only) is often preferable.
+Progressive Kernel 
+Density Estimation
+[Jarabo et al. 2014]
+Triangle Approx.
+ [Iseringhausen 
+and Hullin 2020]
+Ours
+Path Tracing
+547.8 ms
+Subdivision
+(total 8712 tris)
+Unbiased
+Biased
+Too slow!
+230k tris
+Path Tracing
+Ours
+Prog. KDE
+Tri Approx.
+GT
+CORNELL-BOX
+(~40 ms)
+DINING-
+ROOM
+(~130 ms)
+(A)
+(B)
+Bin Index
+Bin #5
+Bin #25
+Bin Index
+Intensity
+GT
+Fig. 18. Comparison of our method with progressive KDE [Jarabo et al. 2014]
+and the linear triangle approximation [Iseringhausen and Hullin 2020], both
+of which are biased. Progressive KDE produces less noisy results but exhibits
+noticeable temporal blurring. The triangle approximation works only for
+simple scenes and does not scale to complex geometry. The transient profile
+at a specific point is shown in (A), and the full image is shown in (B).
+Comparison with Biased Transient Rendering. We compare our
+method with two previous transient rendering approaches: progres-
+sive kernel density estimation (KDE) [Jarabo et al. 2014] and the
+radiosity-based linear triangle approximation [Iseringhausen and
+Hullin 2020]. For progressive KDE, we use the Epanechnikov kernel
+with a kernel-width reduction rule Δ𝜏𝑗+1/Δ𝜏𝑗= (𝑗+𝛼)/(𝑗+1), with
+𝛼= 0.8, following Jarabo et al. [2014]. For the triangle approxima-
+tion, we subdivide the scene geometry to obtain a sufficiently fine
+mesh (8,712 triangles for Cornell-Box). For our method, we apply
+temporal reuse only. All methods are evaluated over 100 frames
+using 𝐵= 64 and the same time budgets, except for the triangle
+approximation. We visualize the transient profile at a specific point
+and the full image in Fig. 18, at a specific frame. Compared to unbi-
+ased methods, progressive KDE produces less noisy images at the
+cost of introducing bias, primarily in the form of temporal blurring.
+ACM Trans. Graph., Vol. 45, No. 4, Article 89. Publication date: July 2026.
+
+
+===== tof-restir-2026 | page 15/19 =====
+
+ToF ReSTIR: Time-of-Flight Rendering with Spatio-temporal Reservoir Resampling
+•
+89:15
+Doppler Frequency Shift
++ (approaching)
+- (receding)
+Path 
+Tracing
+Naïve 
+Reuse
+Ours
+GT
+0.9859
+0.7064
+0.4538
+MAPE
+Fig. 19. Doppler frequency shift rendering under different frequencies. The
+large box is receding from the camera, resulting in a negative frequency
+shift, while the small box is approaching the camera, producing a positive
+frequency shift. Overall, our proposed algorithm also performs well under
+path-velocity constraints.
+As shown in Fig. 18-(A), this bias manifests as non-zero values in
+regions where the ground truth is zero. The triangle approximation
+requires heavy tessellation and takes 547.8 ms even for the simple
+Cornell-Box scene, making it impractical for more complex scenes
+such as Dining-Room, which contains approximately 230k triangles.
+Moreover, it does not support multi-bounce light transport.
+Our method is unbiased and produces higher-quality results than
+naive path tracing under the same time budget. While the results
+remain noisier than those of biased methods, this gap highlights
+opportunities for future improvement.
+6.5
+Evaluation of Doppler Frequency Rendering
+Finally, we demonstrate a simple example of Doppler frequency
+rendering in Fig. 19. In this scene, the large box is receding from
+the camera, while the small box is approaching it. Each image is
+rendered with a 2-second budget in an offline style, with only spa-
+tial reuse performed. Across different Doppler frequency shifts, our
+method produces improved results both qualitatively and quantita-
+tively, exhibiting performance gains similar to those observed for
+the path-length constraint.
+7
+Downstream Applications
+Our renderer can be easily deployed to test downstream applica-
+tions. This capability has the potential to reduce the replication
+crisis in computational imaging while also accelerating the soft-
+ware development of imaging systems. Below, we demonstrate two
+applications of the renderer for downstream tasks.
+7.1
+NLOS Reconstruction with Temporal Focusing
+We first simulate NLOS detection with temporal focusing, similar
+to Pediredla et al. [2019a], but with a small change to allow for
+better signal processing. The scene configuration is illustrated in
+Fig. 20–(A). In this setup, the target object is hidden behind an
+occluder and is not directly visible to the imaging system, which
+Ellipsoidal Scan Trajectory
+Hidden Objects
+Target Voxel
+𝑊1
+𝑊2
+𝑉
+𝑆= 𝐷
+Path Tracing
+Naïve Reuse
+Ours
+Path Tracing
+Ellipsoidal
+Direct
+Voxel Reconstruction
+500 spp
+52 spp
+38 spp
+32 spp
+Rendered Image
+Scan Trajectory
+(~4 ms per single image)
+(B)
+(C)
+(A)
+(used for both laser and detector)
+Scene Configuration
+Voxel iteration order
+Occupied
+Unoccupied
+TEAPOT
+DRAGON
+Voxel Occupancy
+0.0
+1.0
+Normalized 
+version
+Fig. 20. Simulation of NLOS imaging with temporal focusing [Pediredla
+et al. 2019a] using our rendering pipeline. (A) Scene configuration for de-
+tecting a hidden object behind a wall. Both the laser and the sensor scan
+ellipsoidal trajectories on the visible wall to determine whether a target
+voxel is occupied. (B) Example rendered image, and (C) reconstructed voxel
+grids (the version normalized by the maximum value is shown in the bottom-
+left), obtained using different methods under a time budget of 4 ms per
+image, demonstrating the advantage of our proposed method.
+can directly see only a diffuse relay wall. The objective is to recover
+the voxel reflectance (albedo) of the hidden object by exploiting
+indirect multi-bounce reflections and ToF measurements. We will
+first describe the imaging setup and then the rendering strategy.
+Imaging setup. In Pediredla et al. [2019a]’s setup, the imaging
+system consists of a single-pixel time-gated sensor (𝐷) and a laser
+source (𝑆) that are colocated. Instead of a single-pixel detector, we
+assume an array time-gated sensor such as an ICCD. The key idea
+of Pediredla et al. [2019a] is to temporally focus the illumination
+and backprojected imaging rays onto a single voxel 𝑉and image
+the NLOS scene by scanning one voxel at a time.
+First, consider all light paths that temporally focus on a single
+voxel 𝑉at time gate 𝜏1. Light emitted from the laser first reflects off
+the visible relay wall and then arrives at 𝑉. Therefore, points 𝑊1 on
+ACM Trans. Graph., Vol. 45, No. 4, Article 89. Publication date: July 2026.
+
+
+===== tof-restir-2026 | page 16/19 =====
+
+89:16
+•
+Kim et al.
+the relay wall that lead to temporal focusing at 𝑉satisfy
+∥𝑆−𝑊1∥+ ∥𝑊1 −𝑉∥= 𝜏1.
+(29)
+Similarly, light reflected from 𝑉will focus on the detector at time
+𝜏2 after reflecting off wall points 𝑊2 that satisfy
+∥𝑉−𝑊2∥+ ∥𝑊2 −𝐷∥= 𝜏2.
+(30)
+Both Eq. (29) and Eq. (30) are equations of an ellipse; hence, by il-
+luminating and imaging an ellipse on the relay wall, we can compute
+the voxel reflectance. In Pediredla et al. [2019a], 𝜏1 = 𝜏2 = 𝜏.
+This technique only sums imaging rays along the ellipse. Instead,
+by using an array detector, we can treat all points along the imag-
+ing ellipse independently and develop improved signal-processing
+techniques for accurate NLOS scene estimation. Specifically, we
+exploit the observation that the entire imaging ellipse must be vis-
+ible at the specific time gate 𝜏, and thus we take the geometric
+mean of the ellipsoidal points. The geometric mean yields a better
+signal-to-background ratio than the arithmetic mean.
+Rendering setup. To simulate this process using our renderer, we
+render multiple images while steering the laser toward different
+positions along the ellipsoidal trajectory. In each rendered image, we
+take the geometric mean along the imaging ellipse to estimate the
+voxel reflectance. The target time range is set to 2𝜏, and 𝜏is chosen
+to be slightly larger than ∥𝑆−𝐶∥+ ∥𝐶−𝑉∥, where 𝐶denotes the
+center of the visible wall. An example of the rendered image and
+the corresponding sensor ellipsoidal trajectory for unoccupied and
+occupied voxels is shown in Fig. 20–(B).
+We compare four different methods: path tracing with direct
+connection, path tracing with ellipsoidal connection, ellipsoidal
+connection with naive path reuse, and ellipsoidal connection with
+our proposed method. All images are rendered at a resolution of
+256×256 under a time budget of 4 ms per image. The laser is scanned
+over 16 positions, and we scan 25 × 25 NLOS voxels, resulting in a
+total of 16 × 25 × 25 rendered images. The time-gate width is set
+to 0.01, corresponding to less than 1% of the scene scale. We apply
+both temporal and spatial reuse for reuse-based methods. To ensure
+frame-to-frame similarity between rendered images (which makes
+temporal reuse useful), we scan voxels in a continuous order, as
+indicated by the bright green trajectory in Fig. 20–(A).
+The voxel reconstruction results are shown in Fig. 20–(C). As
+observed by Pediredla et al. [2019a], direct connection performs
+poorly in this scenario because most rays do not contribute to the
+target voxels. Ellipsoidal path connection improves reconstruction
+quality, but the results remain noisy. Naive path reuse provides
+some improvement, such as partially recovering the teapot spout.
+In contrast, our method produces the most accurate reconstruction,
+owing to the significantly reduced noise in the rendered images, as
+shown in Fig. 20–(B). We use a simple scene configuration here, but
+more challenging scenarios, such as scenes with multiple objects,
+non-diffuse materials, and higher-order bounces, could be explored
+in future evaluations.
+7.2
+NLOS Navigation
+We also simulate an inference-based NLOS navigation scenario
+similar to Young et al. [2025]. We consider an L-shaped road with
+an obstacle located in an occluded region. The goal is to detect the
+GT
+Ours
+Naïve 
+Reuse
+Path 
+Tracing
+Frame
+Inferred obstacle x pos
+Corner
+GT
+Path 
+Tracing
+Ours
+x
+z
+Make 
+inference at 
+each point
+Make path 
+planning 
+based on 
+average 
+inference
+GT 
+obstacle
+Inferred obstacles
+Naïve 
+Reuse
+(A)
+(B)
+(C)
+GT obstacle
+Collision 
+occurs!
+#4
+#12
+#20
+#28
+#36
+#44
+#52
+#60
+Bin Index
+Fig. 21. We simulate NLOS navigation [Young et al. 2025] using our ren-
+dering pipeline. (A) Overall scene configuration, where a camera with a
+collocated light source moves forward and captures transient histograms.
+(B) Rendered transient image used for inference. (C) Inferred hidden object
+position. When the camera reaches 𝑧= 0.5, path planning is performed
+based on the averaged object inference. Compared to path tracing and
+naive reuse, which result in collisions with the true obstacle, our method
+achieves more accurate object localization and consequently more robust
+path planning.
+hidden object from global transient illumination and enable safe,
+fast, and robust path planning. The overall scene configuration is
+illustrated in Fig. 21–(A).
+The camera is initially positioned at (𝑥,𝑧) = (0, 1) and moves
+toward the (0, −1) direction, starting from a location outside the
+field of view. As it advances, the system continuously infers the
+location of the hidden object and, at a predefined point (𝑧= 0.5),
+performs path planning based on the accumulated estimates. For
+simplicity, we infer only the 𝑥-coordinate of the object, assuming
+that the 𝑧-coordinate and object size are known. The camera and
+laser are collocated, with the laser having a small opening angle
+and a slight downward tilt toward the ground.
+We train a lightweight convolutional neural network (CNN) for
+object location inference. The network takes as input the camera
+position, viewing direction, and transient histogram data, and out-
+puts the estimated 𝑥-coordinate of the object. Training is performed
+using ground-truth rendered data with randomly sampled object
+positions, while inference uses noisy data generated by different
+rendering methods. An equal time budget of 10 ms per frame is en-
+forced for all methods. We use temporal reuse only. The per-frame
+histogram resolution is 64 × 64 with 𝐵= 64. The CNN consists of
+two convolutional layers followed by a fully connected layer.
+The rendered transient histograms and the corresponding infer-
+ence results are shown in Fig. 21–(B) and (C), respectively. In this
+experiment, the object is located at 𝑥= 0.4. Path tracing and naive
+reuse produce inaccurate estimates due to noise in the rendered
+histograms. In contrast, our method yields more accurate inference
+results by reducing noise through temporal path reuse.
+The accuracy of object inference directly affects path planning
+quality. We visualize the ground-truth obstacle position and the
+ACM Trans. Graph., Vol. 45, No. 4, Article 89. Publication date: July 2026.
+
+
+===== tof-restir-2026 | page 17/19 =====
+
+ToF ReSTIR: Time-of-Flight Rendering with Spatio-temporal Reservoir Resampling
+•
+89:17
+planned paths produced by each method using the A* algorithm
+with spline smoothing. Because path tracing and naive reuse predict
+the object to be much farther than its true position, the resulting
+paths collide with the actual obstacle. In contrast, our method pro-
+duces a more accurate estimate of the object location, enabling safer
+and more robust navigation. While we focus on a simple scenario
+here, more advanced navigation strategies and more complex en-
+vironments could be explored using our simulation framework in
+future work.
+8
+Discussion and Conclusion
+In this manuscript, we introduce a path-length-aware shift map-
+ping framework that enables effective spatio-temporal sample reuse
+for time-of-flight (ToF) rendering. By explicitly enforcing optical
+path-length constraints during reuse, our method overcomes a key
+limitation of steady-state ReSTIR when applied to time-resolved
+imaging, where naive reuse often produces temporally invalid con-
+tributions. The proposed approach supports a wide range of ToF
+rendering scenarios, including offline time-gated rendering, interac-
+tive transient rendering, transient histogram rendering in dynamic
+scenes, and extensions to Doppler frequency simulation. We further
+demonstrate two downstream applications—shape reconstruction
+and navigation—highlighting the potential of our renderer for inter-
+active and decision-driven ToF sensing systems.
+Limitations and Future Works. We discuss the limitations of our
+approach and outline potential directions for future research.
+First, we use the reconnection vertex in the ReSTIR-PT frame-
+work as the adjustment vertex for path-length-aware shift mapping.
+More sophisticated heuristics for selecting this vertex—such as in-
+corporating geometric or material properties of adjacent vertices
+p1 and p2—could improve both robustness and efficiency. Alterna-
+tively, instead of perturbing a single vertex, one could distribute
+the path-length adjustment across the entire path to minimize per-
+segment changes, although this would incur additional cost due to
+updating the full path. Moreover, our method primarily enforces
+path-length constraints and does not explicitly account for specular
+manifolds. In scenes where both temporal and specular constraints
+are important, a joint manifold formulation would be required, and
+designing efficient strategies for such mixed constraints remains an
+open challenge.
+We currently employ a basic Newton-based solver for manifold
+traversal, but more advanced variants from steady-state caustics ren-
+dering [Fan et al. 2024; Hong et al. 2025] could be adapted to improve
+convergence and stability. Also, while we select the update direction
+based on the gradient to minimize vertex displacement, this heuris-
+tic does not always guarantee valid reuse due to visibility changes
+(e.g., the discrepancy between Newton success rate and actual reuse
+success rate in Tab. 2). Developing more robust direction-selection
+strategies that incorporate visibility and geometric constraints is an
+important direction for future work.
+Our current implementation also assumes delta light sources,
+which precludes searching over extended light source domains. For
+finite-area light sources, the constraint simplifies to the distance
+between the previous vertex and the light source, allowing sampling
+directly over the emitter surface. Also in this setting, spherical
+connections are more appropriate than ellipsoidal ones, as discussed
+by Pediredla et al. [2019b].
+Finally, there is substantial room for improvement in transient
+histogram rendering. In this work, we directly apply path-length-
+aware shift mapping to each histogram bin. However, since transient
+histograms involve continuous time bins rather than strict delta
+manifolds, explicitly enforcing path-length constraints via root find-
+ing may be unnecessary. Time-bin splatting strategies, similar to
+those proposed by Liu et al. [2025], could provide a more efficient
+alternative. A remaining challenge is the design of effective backup
+sampling strategies for time bins that receive no prior samples. De-
+veloping more scalable ReSTIR-based algorithms for large numbers
+of time bins 𝐵is also an important direction for future work.
+Acknowledgments
+We acknowledge the support of the Visual Computing Seminar and
+colleagues from the RISC and VCL labs for their helpful feedback
+on this project. This work was supported in part by the National
+Science Foundation under Awards 2403122 and 2326904.
+References
+A Adam, C Dann, O Yair, S Mazor, and S Nowozin. 2016. Bayesian Time-of-Flight for
+Realtime Shape, Illumination and Albedo. IEEE Transactions on Pattern Analysis and
+Machine Intelligence (2016).
+Marco Ament, Christoph Bergmann, and Daniel Weiskopf. 2014. Refractive Radiative
+Transfer Equation. ACM Transactions on Graphics 33, 2 (April 2014), 17:1–17:22.
+doi:10/gbf323
+Ian M Baker, Stuart S Duncan, and Jeremy W Copley. 2004. A low-noise laser-gated
+imaging system for long-range target identification. In Infrared Technology and
+Applications XXX, Vol. 5406. SPIE, 133–144.
+Benedikt Bitterli. 2016. Rendering Resources. https://benedikt-bitterli.me/resources/
+Benedikt Bitterli, Chris Wyman, Matt Pharr, Peter Shirley, Aaron Lefohn, and Wojciech
+Jarosz. 2020. Spatiotemporal Reservoir Resampling for Real-Time Ray Tracing with
+Dynamic Direct Lighting. ACM Transactions on Graphics (Proceedings of SIGGRAPH)
+39, 4 (July 2020). doi:10/gg8xc7
+Mauro Buttafava, Jessica Zeman, Alberto Tosi, Kevin Eliceiri, and Andreas Velten. 2015.
+Non-Line-of-Sight Imaging Using a Time-Gated Single Photon Avalanche Diode.
+Optics Express 23, 16 (2015). doi:10/gfz5k4
+Lucrezia Cester, Ashley Lyons, Maria Chiara Braidotti, and Daniele Faccio. 2019. Time-
+of-Flight Imaging at 10 ps Resolution with an ICCD Camera. Sensors 19, 1 (2019),
+180.
+Min-Te Chao. 1982. A General Purpose Unequal Probability Sampling Plan. Biometrika
+69, 3 (Dec. 1982), 653–656. doi:10/fd87zs
+Zhimin Fan, Jie Guo, Yiming Wang, Tianyu Xiao, Hao Zhang, Chenxi Zhou, Zhenyu
+Chen, Pengpei Hong, Yanwen Guo, and Ling-Qi Yan. 2024. Specular Polynomials.
+ACM Transactions on Graphics (TOG) 43, 4 (2024), 1–13.
+Zhimin Fan, Pengpei Hong, Jie Guo, Changqing Zou, Yanwen Guo, and Ling-Qi Yan.
+2023. Manifold path guiding for importance sampling specular chains. ACM
+Transactions on Graphics (TOG) 42, 6 (2023), 1–14.
+Genevieve Gariepy, Nikola Krstajić, Robert Henderson, Chunyong Li, Robert R Thom-
+son, Gerald S Buller, Barmak Heshmat, Ramesh Raskar, Jonathan Leach, and Daniele
+Faccio. 2015. Single-Photon Sensitive Light-in-Fight Imaging. Nature Communica-
+tions 6 (2015).
+Ioannis Gkioulekas, Anat Levin, Frédo Durand, and Todd Zickler. 2015. Micron-Scale
+Light Transport Decomposition Using Interferometry. ACM Transactions on Graphics
+(Proceedings of SIGGRAPH) 34, 4 (2015). doi:10/f7mzkt
+Yoav Grauer and Ezri Sonn. 2015. Active gated imaging for automotive safety applica-
+tions. In Video Surveillance and Transportation Imaging Applications 2015, Vol. 9407.
+SPIE, 112–129.
+Johannes Hanika, Anton Kaplanyan, and Carsten Dachsbacher. 2015. Improved Half
+Vector Space Light Transport. Computer Graphics Forum (Proceedings of the Euro-
+graphics Symposium on Rendering) 34, 4 (July 2015), 65–74. doi:10/gfzv83
+Trevor Hedstrom, Markus Kettunen, Daqi Lin, Chris Wyman, and Tzu-Mao Li. 2025.
+ReSTIR BDPT: Bidirectional ReSTIR Path Tracing with Caustics. ACM Transactions
+on Graphics (2025).
+Felix Heide, Matthias B. Hullin, James Gregson, and Wolfgang Heidrich. 2013. Low-
+Budget Transient Imaging Using Photonic Mixer Devices. ACM Transactions on
+Graphics (Proceedings of SIGGRAPH) 32, 4 (July 2013), 45:1–45:10. doi:10/gbdg7s
+ACM Trans. Graph., Vol. 45, No. 4, Article 89. Publication date: July 2026.
+
+
+===== tof-restir-2026 | page 18/19 =====
+
+89:18
+•
+Kim et al.
+Robert K Henderson, Nick Johnston, Francescopaolo Mattioli Della Rocca, Haochang
+Chen, David Day-Uei Li, Graham Hungerford, Richard Hirsch, David Mcloskey,
+Philip Yip, and David JS Birch. 2019. A 192x128 time correlated SPAD image sensor in
+40-nm CMOS technology. IEEE Journal of Solid-State Circuits 54, 7 (2019), 1907–1916.
+Pengpei Hong, Meng Duan, Beibei Wang, Cem Yuksel, Tizian Zeltner, and Daqi Lin. 2025.
+Sample Space Partitioning and Spatiotemporal Resampling for Specular Manifold
+Sampling. In Proceedings of the SIGGRAPH Asia 2025 Conference Papers. 1–10.
+Binh-Son Hua, Adrien Gruson, Victor Petitjean, Matthias Zwicker, Derek
+Nowrouzezahrai, Elmar Eisemann, and Toshiya Hachisuka. 2019.
+A Survey
+on Gradient-Domain Rendering.
+Computer Graphics Forum (Proceedings of
+Eurographics State of the Art Reports) 38, 2 (2019), 455–472. doi:10/ggd8m5
+Julian Iseringhausen and Matthias B. Hullin. 2020. Non-Line-of-Sight Reconstruction
+Using Efficient Transient Rendering. ACM Transactions on Graphics 39, 1 (Jan. 2020),
+8:1–8:14. doi:10/gspq3m
+Wenzel Jakob and Steve Marschner. 2012. Manifold Exploration: A Markov Chain
+Monte Carlo Technique for Rendering Scenes with Difficult Specular Transport.
+ACM Transactions on Graphics (Proceedings of SIGGRAPH) 31, 4 (July 2012), 58:1–
+58:13. doi:10/gfzq4p
+Wenzel Alban Jakob. 2013. Light Transport on Path-Space Manifolds. Ph. D. Dissertation.
+Cornell University.
+Adrian Jarabo. 2012. Femto-Photography: Visualizing Light in Motion. M.Sc. Thesis.
+Universidad de Zaragoza.
+Adrian Jarabo, Julio Marco, Adolfo Munoz, Raul Buisan, Wojciech Jarosz, and Diego
+Gutierrez. 2014. A Framework for Transient Rendering. ACM Transactions on
+Graphics (Proceedings of SIGGRAPH Asia) 33, 6 (Nov. 2014), 177:1–177:10. doi:10/
+gfznb8
+Adrian Jarabo, Belen Masia, Julio Marco, and Diego Gutierrez. 2017. Recent Advances in
+Transient Imaging: A Computer Graphics and Vision Perspective. Visual Informatics
+1, 1 (2017), 65–79. doi:10/gfz5mh
+Wojciech Jarosz, Derek Nowrouzezahrai, Robert Thomas, Peter-Pike Sloan, and Matthias
+Zwicker. 2011. Progressive Photon Beams. ACM Transactions on Graphics (Proceed-
+ings of SIGGRAPH Asia) 30, 6 (Dec. 2011), 181:1–181:12. doi:10/fn5xzj
+Achuta Kadambi, Jamie Schiel, and Ramesh Raskar. 2016. Macroscopic Interferome-
+try: Rethinking Depth Estimation with Frequency-Domain Time-of-Flight. In IEEE
+Conference on Computer Vision and Pattern Recognition (CVPR).
+Simon Kallweit, Petrik Clarberg, Craig Kolb, Tom’aš Davidovič, Kai-Hwa Yao, Theresa
+Foley, Yong He, Lifan Wu, Lucy Chen, Tomas Akenine-Möller, Chris Wyman, Cyril
+Crassin, and Nir Benty. 2022. The Falcor Rendering Framework. https://github.
+com/NVIDIAGameWorks/Falcor https://github.com/NVIDIAGameWorks/Falcor.
+Anton S. Kaplanyan, Johannes Hanika, and Carsten Dachsbacher. 2014. The Natural-
+Constraint Representation of the Path Space for Efficient Light Transport Simulation.
+ACM Transactions on Graphics (Proceedings of SIGGRAPH) 33, 4 (July 2014), 102:1–
+102:13. doi:10/f6cz85
+Markus Kettunen, Marco Manzi, Miika Aittala, Jaakko Lehtinen, Frédo Durand, and
+Matthias Zwicker. 2015. Gradient-domain path tracing. ACM Transactions on
+Graphics (TOG) 34, 4 (2015), 1–13.
+Juhyeon Kim, Craig Benko, Magnus Wrenninge, Ryusuke Villemin, Zeb Barber, Woj-
+ciech Jarosz, and Adithya Pediredla. 2025. A Monte Carlo Rendering Framework for
+Simulating Optical Heterodyne Detection. ACM Transactions on Graphics (TOG) 44,
+4 (2025), 1–19.
+Juhyeon Kim, Wojciech Jarosz, Ioannis Gkioulekas, and Adithya Pediredla. 2023.
+Doppler Time-of-Flight Rendering. ACM Transactions on Graphics (TOG) 42, 6
+(2023), 1–18.
+Ahmed Kirmani, Tyler Hutchison, James Davis, and Ramesh Raskar. 2011. Looking
+around the Corner Using Ultrafast Transient Imaging. International Journal of
+Computer Vision (IJCV) 95, 1 (2011). doi:10/dsk2dt
+Jonathan Klein, Christoph Peters, Jaime Martín, Martin Laurenzis, and Matthias B
+Hullin. 2016. Tracking Objects Outside the Line of Sight Using 2D Intensity Images.
+Scientific Reports 6 (2016). doi:10/f82649
+Martin Laurenzis and Andreas Velten. 2014. Nonline-of-Sight Laser Gated Viewing of
+Scattered Photons. Optical Engineering 53, 2 (2014). doi:10/gfz5mr
+Jaakko Lehtinen, Tero Karras, Samuli Laine, Miika Aittala, Frédo Durand, and Timo
+Aila. 2013. Gradient-Domain Metropolis Light Transport. ACM Transactions on
+Graphics (Proceedings of SIGGRAPH) 32, 4 (July 2013), 95:1–95:12. doi:10/gbdghd
+He Li, Beibei Wang, Changhe Tu, Kun Xu, Nicolas Holzschuch, and Ling-Qi Yan. 2022.
+Unbiased Caustics Rendering Guided by Representative Specular Paths. In ACM
+SIGGRAPH Asia Conference Papers. Association for Computing Machinery, New
+York, NY, USA, 1–8. doi:10/grqvds
+Daqi Lin, Markus Kettunen, Benedikt Bitterli, Jacopo Pantaleoni, Cem Yuksel, and
+Chris Wyman. 2022. Generalized Resampled Importance Sampling: Foundations of
+ReSTIR. ACM Transactions on Graphics (Proceedings of SIGGRAPH) 41, 4 (July 2022),
+75:1–75:23. doi:10/gqjn7b
+Daqi Lin, Chris Wyman, and Cem Yuksel. 2021. Fast Volume Rendering with Spa-
+tiotemporal Reservoir Resampling. ACM Transactions on Graphics (Proceedings of
+SIGGRAPH Asia) 40, 6 (Dec. 2021). doi:10/grrjd6
+Jeffrey Liu, Daqi Lin, Markus Kettunen, Chris Wyman, and Ravi Ramamoorthi. 2025.
+Reservoir Splatting for Temporal Path Resampling and Motion Blur. In Proceedings of
+the Special Interest Group on Computer Graphics and Interactive Techniques Conference
+Conference Papers. 1–11.
+Yang Liu, Shaojie Jiao, and Wojciech Jarosz. 2022. Temporally Sliced Photon Primi-
+tives for Time-of-Flight Rendering. Computer Graphics Forum (Proceedings of the
+Eurographics Symposium on Rendering) 41, 4 (2022). doi:10.1111/cgf.14584
+Julio Marco. 2013. Transient Light Transport in Participating Media. Ph. D. Dissertation.
+Universidad de Zaragoza.
+Julio Marco, Ibón Guillén, Wojciech Jarosz, Diego Gutierrez, and Adrian Jarabo. 2019.
+Progressive Transient Photon Beams. Computer Graphics Forum 38, 1 (March 2019).
+doi:10/gfvr9w
+Matthew O’Toole, Felix Heide, Lei Xiao, Matthias B. Hullin, Wolfgang Heidrich, and
+Kiriakos N. Kutulakos. 2014. Temporal Frequency Probing for 5D Transient Analysis
+of Global Light Transport. ACM Transactions on Graphics (Proceedings of SIGGRAPH)
+33, 4 (2014), 87:1–87:11. doi:10/gfz5m2
+Yaobin Ouyang, Shiqiu Liu, Markus Kettunen, Matt Pharr, and Jacopo Pantaleoni. 2021.
+ReSTIR GI: Path Resampling for Real-Time Path Tracing. Computer Graphics Forum
+40, 8 (2021), 17–29. doi:10/gqwmdx
+Adithya Pediredla, Akshat Dave, and Ashok Veeraraghavan. 2019a. SNLOS: Non-line-
+of-sight Scanning through Temporal Focusing. In IEEE International Conference on
+Computational Photography (ICCP). 1–13. doi:10/gspq34
+Adithya Pediredla, Ashok Veeraraghavan, and Ioannis Gkioulekas. 2019b. Ellipsoidal
+Path Connections for Time-Gated Rendering. ACM Transactions on Graphics (Pro-
+ceedings of SIGGRAPH) 38, 4 (July 2019), 38:1–38:12. doi:10/gf5jbm
+Christoph Peters, Jonathan Klein, Matthias B Hullin, and Reinhard Klein. 2015. Solving
+Trigonometric Moment Problems for Fast Transient Imaging. ACM Transactions on
+Graphics (Proceedings of SIGGRAPH Asia) 34, 6 (2015). doi:10/f7wqfq
+Diego Royo, Jorge García, Adolfo Muñoz, and Adrian Jarabo. 2022. Non-Line-of-Sight
+Transient Rendering. Computers & Graphics 107 (Oct. 2022), 84–92. doi:10/gspq3r
+Diego Royo, Jorge Garcia-Pueyo, Miguel Crespo, Óscar Pueyo-Ciutad, Guillermo En-
+guita, and Diego Bielsa. 2025. mitransient: Transient light transport in Mitsuba 3.
+arXiv:2510.25660 [cs.GR] https://arxiv.org/abs/2510.25660
+Rohan Sawhney, Daqi Lin, Markus Kettunen, Benedikt Bitterli, Ravi Ramamoorthi,
+Chris Wyman, and Matt Pharr. 2022. Decorrelating ReSTIR Samplers via MCMC
+Mutations. arXiv:2211.00166 [cs] doi:10.48550/arXiv.2211.00166
+Siddharth Somasundaram, Akshat Dave, Connor Henley, Ashok Veeraraghavan, and
+Ramesh Raskar. 2023. Role of transients in two-bounce non-line-of-sight imaging. In
+Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition.
+9192–9201.
+Justin F. Talbot. 2005. Importance Resampling for Global Illumination. Master’s thesis.
+Brigham Young University. https://scholarsarchive.byu.edu/etd/663
+Justin F. Talbot, David Cline, and Parris Egbert. 2005. Importance Resampling for Global
+Illumination. In Rendering Techniques (Proceedings of the Eurographics Symposium
+on Rendering). Eurographics Association, 139–146. doi:10/gfzsm2
+Chia-Yin Tsai, Kiriakos N Kutulakos, Srinivasa G Narasimhan, and Aswin C Sankara-
+narayanan. 2017. The geometry of first-returning photons for non-line-of-sight
+imaging. In Proceedings of the IEEE Conference on Computer Vision and Pattern
+Recognition. 7216–7224.
+Eric Veach. 1997. Robust Monte Carlo Methods for Light Transport Simulation. Ph. D.
+Dissertation. Stanford University.
+Andreas Velten, Thomas Willwacher, Otkrist Gupta, Ashok Veeraraghavan, Moungi G.
+Bawendi, and Ramesh Raskar. 2012. Recovering Three-Dimensional Shape around a
+Corner Using Ultrafast Time-of-Flight Imaging. Nature Communications 3 (2012).
+Andreas Velten, Di Wu, Adrian Jarabo, Belen Masia, Christopher Barsi, Chinmaya
+Joshi, Everett Lawson, Moungi Bawendi, Diego Gutierrez, and Ramesh Raskar. 2013.
+Femto-Photography: Capturing and Visualizing the Propagation of Light. ACM
+Transactions on Graphics (Proceedings of SIGGRAPH) 32, 4, Article 44 (July 2013),
+8 pages. doi:10/gfxpkt
+Di Wu, Andreas Velten, Matthew O’Toole, Belen Masia, Amit Agrawal, Qionghai Dai,
+and Ramesh Raskar. 2014. Decomposing Global Light Transport Using Time of Flight
+Imaging. International Journal of Computer Vision (IJCV) 107 (2014). doi:10/f5v589
+Lifan Wu, Guangyan Cai, Ravi Ramamoorthi, and Shuang Zhao. 2021. Differentiable
+Time-Gated Rendering. ACM Transactions on Graphics (Proceedings of SIGGRAPH
+Asia) 40, 6 (Dec. 2021). doi:10/h2c9
+Xiaofeng Xu, Lu Wang, and Beibei Wang. 2023. Efficient caustics rendering via spatial
+and temporal path reuse. In Computer Graphics Forum, Vol. 42. Wiley Online Library,
+e14975.
+Shinyoung Yi, Donggun Kim, Kiseok Choi, Adrian Jarabo, Diego Gutierrez, and Min H.
+Kim. 2021. Differentiable Transient Rendering. ACM Transactions on Graphics
+(Proceedings of SIGGRAPH Asia) 40, 6 (Dec. 2021). doi:10/h2db
+Aaron Young, Nevindu M Batagoda, Harry Zhang, Akshat Dave, Adithya Pediredla, Dan
+Negrut, and Ramesh Raskar. 2025. Enhancing autonomous navigation by imaging
+hidden objects using single-photon lidar. In 2025 IEEE International Conference on
+Robotics and Automation (ICRA). IEEE, 4907–4914.
+ACM Trans. Graph., Vol. 45, No. 4, Article 89. Publication date: July 2026.
+
+
+===== tof-restir-2026 | page 19/19 =====
+
+ToF ReSTIR: Time-of-Flight Rendering with Spatio-temporal Reservoir Resampling
+•
+89:19
+Franco Zappa, Simone Tisa, Alberto Tosi, and Sergio Cova. 2007. Principles and features
+of single-photon avalanche diode arrays. Sensors and Actuators A: Physical 140, 1
+(2007), 103–112.
+Tizian Zeltner, Iliyan Georgiev, and Wenzel Jakob. 2020. Specular Manifold Sampling
+for Rendering High-Frequency Caustics and Glints. ACM Transactions on Graphics
+(Proceedings of SIGGRAPH) 39, 4 (July 2020). doi:10/gg8xc8
+Zheng Zeng, Markus Kettunen, Chris Wyman, Lifan Wu, Ravi Ramamoorthi, Ling-Qi
+Yan, and Daqi Lin. 2025. ReSTIR PG: Path Guiding with Spatiotemporally Resampled
+Paths. In Proceedings of the SIGGRAPH Asia 2025 Conference Papers. 1–11.
+Song Zhang, Daqi Lin, Markus Kettunen, Cem Yuksel, and Chris Wyman. 2024. Area
+ReSTIR: Resampling for Real-Time Defocus and Antialiasing. ACM Transactions on
+Graphics (TOG) 43, 4 (2024), 1–13.
+ACM Trans. Graph., Vol. 45, No. 4, Article 89. Publication date: July 2026.

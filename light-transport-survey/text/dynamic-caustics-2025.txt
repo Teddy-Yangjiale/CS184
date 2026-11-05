@@ -1,0 +1,647 @@
+
+
+===== dynamic-caustics-2025 | page 1/13 =====
+
+Dynamic Caustics by Ultrasonically Modulated Liquid
+Surface
+Koki Nagakura1, Tatsuki Fushimi2,3,*, Ayaka Tsutsui1, and Yoichi Ochiai2,4
+1Graduate School of Comprehensive Human Sciences, University of Tsukuba, Tsukuba, 305-8550, Japan
+2Institute of Library, Information and Media Science, University of Tsukuba, Kasuga Campus Kasuga 1-2, Tsukuba,
+305-8550, Ibaraki, Japan
+3R&D Center for Digital Nature, University of Tsukuba, Kasuga Campus Kasuga 1-2, Tsukuba, 305-8550, Ibaraki,
+Japan
+4Pixie Dust Technologies, Inc, Tokyo, 104-0028, Japan
+*tfushimi@slis.tsukuba.ac.jp
+ABSTRACT
+This paper presents a method for generating dynamic caustic patterns by utilising dual-optimised holographic fields with Phased
+Array Transducer (PAT). Building on previous research in static caustic optimisation and ultrasonic manipulation, this approach
+employs computational techniques to dynamically shape fluid surfaces, thereby creating controllable and real-time caustic
+images. The system employs a Digital Twin framework, which enables iterative feedback and refinement, thereby improving
+the accuracy and quality of the caustic patterns produced. This paper extends the foundational work in caustic generation by
+integrating liquid surfaces as refractive media. This concept has previously been explored in simulations but not fully realised in
+practical applications. The utilisation of ultrasound to directly manipulate these surfaces enables the generation of dynamic
+caustics with a high degree of flexibility. The Digital Twin approach further enhances this process by allowing for precise
+adjustments and optimisation based on real-time feedback. Experimental results demonstrate the technique’s capacity to
+generate continuous animations and complex caustic patterns at high frequencies. Although there are limitations in contrast and
+resolution compared to solid-surface methods, this approach offers advantages in terms of real-time adaptability and scalability.
+This technique has the potential to be applied in a number of areas, including interactive displays, artistic installations and
+educational tools. This research builds upon the work of previous researchers in the fields of caustics optimisation, ultrasonic
+manipulation, and computational displays. Future research will concentrate on enhancing the resolution and intricacy of the
+generated patterns.
+Please note: Abbreviations should be introduced at the first mention in the main text – no abbreviations lists. The suggested
+structure of the main text (not enforced) is provided below.
+Introduction
+In optics, caustics is defined as “the envelope of light rays that have been reflected or refracted by a curved surface or object, or
+the projection of that envelope of rays on another surface”1. When light enters an object with a high refractive index from the
+air, its direction of travel is altered in accordance to Snell’s law. A convex surface focuses light towards the center, thereby
+creating a bright spot in the vicinity of the focal point and a region of reduced brightness at the edges (Figure 1 (a)). In contrast,
+concave surfaces bend light outward, brightening the edges and darkening the center (Figure 1 (b)).
+Researchers have investigated methods for computing the shape of a light-refracting surface in order to generate specific
+projected images utilising caustics. For instance, methods have been proposed to calculate smooth refractive surfaces capable
+of producing desired image using differential geometry approaches2,3. Schwartzburg et al. proposed a method to calculate
+refractive surfaces with smooth regions, infinite strength singularities, and wholly black regions by solving the optimal transport
+problem4. However, these approaches often involve static solid surfaces acrylic, limiting their ability to produce dynamic
+animations. Additionally, they require milling processes on materials to achieve caustics in real-world applications. While
+Yue et al.3 optimized continuous and smooth refractive surfaces using the Poisson equation, Schwartzburg et al.4 introduced
+piecewise smooth surfaces, resulting in high-contrast caustic images with stark black regions and optical density singularities.
+Our method, due to the use of a liquid surface, aligns more closely with the approach by Yue et al., leading to more gradual
+transitions in the refractive surface and, consequently, lower contrast.
+Previous studies have proposed the use of liquid surfaces as refractive media for caustic generation, however, such work
+has been limited to in-silico simulations and has not been fully realized in practical applications5. Here, we experimentally
+arXiv:2505.16397v1  [cs.GR]  22 May 2025
+
+
+===== dynamic-caustics-2025 | page 2/13 =====
+
+Acoustics Pressure Distribution
+Liquid Surface
+Caustics (front)
+Caustics (side)
+(c)
+max: 2270 Pa
+Refraction Plane
+Light Distribution
+Parallel Light
+Target Image
+Target Optimization
+(b)
+(a)
+Figure 1. The core principle of forming caustic patterns through acoustic modulation of a liquid surface. (a, b) illustrate how
+the liquid surface deforms into convex or concave shapes due to acoustic pressure, resulting in caustic pattern formation. When
+parallel light rays pass through the deformed refractive surface, they are either focused inward (convex) or dispersed outward
+(concave), creating distinct caustic patterns. This iterative optimization process adjusts the liquid surface shape to align the
+refracted light distribution with a desired target image. The results displayed in (c) are visualizations of a numerically simulated
+process. This process calculates the phase delay of each transducer in the acoustic phased array based on the distance to the
+focal point, thereby estimating the liquid surface shape and generating the caustic pattern. The leftmost image shows the
+acoustic pressure distribution used to deform the liquid surface, followed by the corresponding liquid surface deformation.
+Finally, the resulting caustic pattern is shown from the side and front views, revealing a bright ring with a darker center that
+closely matches the intended target image.
+demonstrate dynamic caustics capable of depicting text and images by directly shaping fluid surfaces using ultrasound,
+achieving dynamic caustics in practise where previous studies were limited to simulations. To achieve this, we utilized a Phased
+Array Transducer (PAT), a technology commonly used for non-contact tactile displays6–8, volumetric displays9,10 and digital
+microfluidics11.
+Our approach to generating dynamic caustic patterns relies on the precise manipulation of fluid surfaces using the PAT.
+The PAT used in this study is equipped with 256 transducers arranged in a 16 × 16 matrix, which allows for the generation of
+complex acoustic pressure fields12. These pressure fields are capable of deforming the liquid surface in a controlled manner,
+thereby influencing the refraction of light and producing caustic patterns. As shown in Figure 2, The PAT is positioned 200 mm
+above the liquid surface, which is composed of 1 kg of transparent silicone oil, contained within a transparent acrylic tank.
+Shin-Etsu Chemical KF-96H-10000 silicone oil (cosmetic name: Dimethicone) was selected for its high viscosity of 10,000
+mm²/s at 25°C, which suppresses bubble formation under high acoustic pressures and stabilizes liquid surface deformation. Its
+specific gravity is 0.975, and its refractive index ranges from 1.399 to 1.403 (measured with respect to the sodium D line),
+making it suitable for precise light refraction. Additionally, it has a speed of sound of approximately 987 m/s and a surface
+tension of 20–21 mN/m.
+The experiment was conducted at approximately 25°C, where the physical properties of silicone oil vary with temperature.
+Specifically, the specific gravity of the KF-96H series decreases from 0.975 at 25°C to 0.960 at 50°C, while the viscosity of
+KF-96H-10000 drops from 10,000 mm2/s at 25°C to 9,800 mm2/s at 30°C.
+2/13
+
+
+===== dynamic-caustics-2025 | page 3/13 =====
+
+The silicone oil’s high viscosity suppresses fluid flow, reducing unintended fine vibrations and surface waves, stabilizing the
+caustic pattern generation. However, excessive viscosity may hinder the liquid surface’s ability to quickly respond to ultrasonic
+pressure changes, potentially reducing responsiveness.
+Phased Array Transducers
+Camera
+Mesh Screen
+Surface of Silicon Oil
+Frenel Lens
+Point Source (Light)
+Collimate on Frenel Lens
+Refraction on the surface of silicon oil
+Projection on Mesh screen
+Pass through mesh screen
+Deforms the surface of silicone oil
+300 mm
+190 mm
+60 mm
+140 mm
+(a)
+(b)
+(c)
+Figure 2. Schematic representation of the experimental setup and the principles behind caustic generation. (a) Overall system
+configuration including the phased array transducer, camera, mesh screen, silicone oil tank, Fresnel lens, and point light source.
+(b) Illustration of how light from below is collimated by the Fresnel lens and then refracted at the silicone oil surface, projecting
+a caustic pattern onto the mesh screen. (c) Depiction of how ultrasonic waves emitted from the phased array transducer pass
+through the mesh screen, deforming the silicone oil surface and dynamically modulating the formed caustic pattern.
+The system setup includes a vertically arranged configuration in which the PAT is directed downward towards the liquid
+medium (Figure 2). A parallel light source is created using a point LED light source, which is then collimated by a Fresnel lens
+to produce uniform illumination from below the tank. As the ultrasound waves emitted by the PAT interact with the liquid
+surface, they generate acoustic pressure fields that deform the surface, leading to the formation of caustic patterns when the
+light is refracted by these deformations. The acoustic pressure induces concave deformations on the liquid surface. As shown in
+Figure 1 (b), these concave surfaces bend light outward, generating shadows. In Figure 1 (c), a single focal point of acoustic
+pressure deforms the surface, resulting in a caustic pattern with a dark center, surrounded by light focused outward.
+Numerical Optimization to Caustics Image
+To project the desired target image as caustics, an efficient numerical optimization scheme is desirable. Through trial and error,
+we observed that the acoustic pressure field approximates the resultant caustics field well and, therefore, opted to optimize the
+caustics image via acoustic hologram optimization. Recent progress in acoustic hologram optimization led to the ability to
+generate more complex acoustic fields than a single focus point, and we employ Diff-PAT13, as it was recently demonstrated
+that it can efficiently use experimental feedback to improve acoustic hologram accuracy14.
+To optimize the acoustic pressure distribution based on the target image; we begin by calculating the total sound pressure
+pt(x,y) at a point (x,y) on the plane using:
+pt(x,y) =
+M
+∑
+m=0
+
+Pre f
+d(x,y,xt,yt)D(θ)ei(kd(x,y,xt,yt)+φm)
+
+,
+(1)
+where M is the total number of transducers, and Pref represents the amplitude of the reference pressure. Furthermore,
+d(x,y,xt,yt) denotes the Euclidean distance between the point (x,y) on the plane and the position (xt,yt) of the transducer,
+while D(θ) = 2J1(krsin(θ))
+krsin(θ)
+is the far-field directivity function of the transducer, with θ being the angle between the transducer’s
+normal and the point (x,y). Here, J1 is the Bessel function of the first kind of order 1, and r = 5 mm is the transducer radius.
+Furthermore, k is the wavenumber, given by k = 2π f
+c0 , where it is assumed that the speed of sound in the air (c0) is 346 m / s.
+Lastly, φm represents the phase delay of the m-th transducer.
+We then calculate the minimization loss function using the target image Ptarget and Ppred within the same Region of Interest
+(ROI). It is important to note that the target image should be input such that white is represented as 0 and black as 255. This is
+because, as illustrated in Figure 1, caustics are generated such that the shadows, i.e., the black areas, approximate the acoustic
+pressure field. Therefore, when optimizing the acoustic pressure field from the target image, it is essential to ensure that the
+3/13
+
+
+===== dynamic-caustics-2025 | page 4/13 =====
+
+Phased Array Transducers
+Experimental Setup
+Digital Model
+Acoustic Hologram
+Numerical
+Model
+Adam
+Optimizer
+Target Image
+Caustics on Mesh Screen
+Acoustic Propagation
+Silicon Oil
+Point Source (Light)
+Frenel Lens
+Camera
+Figure 3. Schematic diagram of the experimental setup and in-situ caustics optimization using a Digital Twin. The resulting
+caustics are captured by a camera at an angle to the screen and used for feedback. The captured caustics are compared to the
+target image, with the difference fed into the loss function, and the derivatives of the numerical model are calculated using
+automatic differentiation for real-time optimization.
+acoustic pressure field is generated in the black areas of the target image. Generally, Python libraries such as OpenCV represent
+white as 255 and black as 0, thus it may be necessary to invert the image to achieve the correct black and white representation
+in some cases.
+Lnum = ∑
+(x,y)∈S
+Ptarget,n −Ppred,n
+.
+(2)
+In the loss function (Equation 2), S represents the set of coordinates for each grid defined on the plane where the sound
+pressure calculation is performed. The subscript n, on which Ptarget,n, and Ppred,n, depend, represents the number of optimization
+steps by the Adam optimizer. Ptarget and Ppred are vectorized images. The normalized target pressure is given by
+Ptarget,n =
+Ptarget −min(Ptarget)
+max(Ptarget)−min(Ptarget),
+(3)
+while the normalized numerically simulated pressure field, based on equation 1, is defined as
+Ppred,n =
+Ppred −min(Ppred)
+max(Ppred)−min(Ppred).
+(4)
+By defining the loss function in this way, Ppred is appropriately normalized while the optimization is performed, balancing
+the accuracy of the maximum pressure and the pressure distribution. The acoustic hologram, φm, is optimized using the Adam
+4/13
+
+
+===== dynamic-caustics-2025 | page 5/13 =====
+
+optimizer15, an algorithm widely adopted for its efficient iterative updates in applications such as machine learning. The initial
+phase estimate for each transducer is generated randomly, and the gradient necessary for optimization is computed through
+reverse-mode automatic differentiation with respect to the objective function Lnum.
+The optimization runs for a fixed 1000 steps, without utilizing convergence criteria. This approach ensures that phase
+adjustments for the transducers form the desired sound pressure distribution over the two-dimensional plane within the
+predetermined step limit. The resulting pressure distribution closely replicates the target image, and the simulated loss
+demonstrates stable behavior after approximately 400 steps, as shown in Figure 4 (Simulation Loss).
+Time Averaging
+While the loss function has converged well and the generated acoustic pressure field closely resembles the target image, we
+observe that the generated caustics are sensitive to unevenness in the field, resulting in local bright spots. To mitigate this issue,
+we employ a time-averaging method by updating the PAT at a high frequency, which helps to even out these local bright spots.
+This approach aligns with recent methods proposed by Elizondo et al., who suggested similar techniques to enhance the spatial
+resolution of acoustic pressure fields in general16.
+We calculated the time-averaged pressure amplitude using:
+Pavg = 1
+F
+F
+∑
+f=1
+∥Ppred∥
+(5)
+where F is the number of frames. This time-averaged pressure field can be substituted into equation 2 for this averaged
+pressure. The improved caustics images with the varying number of frames (3, 9, 24 frames) are shown in Figure 4 b, c, and d,
+respectively. The latest PAT can reach up to an update frequency of 10,000 Hz17.
+Enhancing Caustic Generation with Digital Twin
+In order to further enhance the quality of the generated caustics, we perform experimental optimization. The experimental
+optimization of acoustic holograms presents a challenge, given that typical PAT systems comprise hundreds of transducers,
+and obtaining finite differences in such systems is time-consuming and inefficient. However, it is possible to approximate
+the gradient of the loss function in an experiment by combining the derivative obtained via automatic differentiation with the
+experimentally obtained values, as demonstrated by Fushimi et al.14. Since the derivative of the loss function is approximated
+using automatic differentiation, only a single image is required per step for the optimization, significantly increasing the speed
+and efficiency of the optimization process.
+In this approach, the generated caustics are captured using a camera fixed between the PAT and the tank, as illustrated in
+Fig. 2. Since the caustic image is captured from an angle, a perspective transform is employed in OpenCV. The transform
+matrix required was obtained experimentally using a checkerboard pattern. The warped image is then cropped and rotated to
+fit the size of the target image. Furthermore, to remove non-caustic artifacts from the image, we utilize a calibration image
+captured prior to the display of caustics. The resulting image, designated Cimg, is then passed to the Digital Twin optimization
+scheme, as depicted in Fig. 3.
+Rather than normalizing the pressure amplitude, we opted to utilize a cosine similarity loss function to compare the
+similarity between the target image and the experimentally obtained caustics18. As with numerical optimization, it is crucial to
+ensure that the target image is input such that white is represented as 0 and black as 255.
+Ldt = 1−⟨Pdt,Ptarget⟩
+∥Pdt∥∥Ptarget∥
+(6)
+where ⟨Ppred,Ptarget⟩denotes the inner product of Ppred and Ptarget, and ∥Ppred∥along with ∥Ptarget∥represent their respective
+norms. The Digital Twin uses the images taken to optimise the caustics directly, and the use of cosine similarity prevents the
+sound pressure from becoming too loud in some areas.
+The experimentally obtained images are input into the Digital Twin framework as follows. It is important to ensure that the
+experimentally obtained images are also input as the target images, with white set to 0 and black set to 255.
+Pdt = Pnum +G(Cimg −Pnum)
+(7)
+where Pnum represents the acoustic pressure obtained through numerical calculations, and Cimg denotes the experimentally
+obtained caustics images. G is used to prevent halt tracking of Cimg −Pnum by employing the tf.stop_gradient()
+function in TensorFlow. This ensures that the term is treated as a constant and unaffected by automatic differentiation.
+5/13
+
+
+===== dynamic-caustics-2025 | page 6/13 =====
+
+(a)
+target
+1 frame
+(b)
+3 frame
+(c)
+9 frame
+(d)
+24 frame
+Before Digital Twin
+Close up
+Close up
+After Digital Twin
+Simulation Loss
+Digital Twin Loss
+Figure 4. Experimental results for the sound pressure distribution-based focusing technique with varying numbers of frames:
+1, 3, 9, and 24. Each row displays, from left to right, the target pattern, visualization of the focus area before and after Digital
+Twin application (both overall and close-up views), and the loss function during optimization for both numerical simulation and
+the Digital Twin approach.
+The caustic images with Digital Twin optimisation are illustrated in Fig. 4a-d. In contrast to the numerical simulation, the
+loss value does not converge as smoothly in the Digital Twin optimisation. However, the contrast between the white and black
+regions in the checkerboard is significantly enhanced with the application of Digital Twin.
+Results and Discussion
+Animating Caustics
+The prime advantage of this method is its ability to alter caustics temporally. In this instance, the caustics are presented in
+a sequence of individual frames, rather than in the conventional sequence of frames that would be expected in an animated
+sequence. The actual animation, which is generated by projecting the frames in succession, is included in the supplementary
+materials video. Each frame was created by superimposing the sound pressure of nine frames in order to optimize the initial
+sound pressure distribution, which was then processed using Digital Twin technology. The resulting caustic animations are
+presented in Figure 5. Animations a-b, c-d, and e-f depict parallel flowing sticks, a character preying on a square object while
+sucking it, a running stick figure, a fish swimming while twisting its body, and an animation showing ripples spreading out from
+the center, respectively. Given the dynamic nature of the caustic image, we strongly encourage readers to view the original
+video, which can be found in the supplementary material.
+Contrast and Loss Behavior in Multi-Frame Processing
+While other quantitative metrics such as PSNR (Peak Signal-to-Noise Ratio) and SSIM (Structural Similarity Index) are
+commonly used for image quality assessment, we found them unsuitable for evaluating the current quality of our generated
+caustics. This is primarily because these metrics are designed to compare images with similar characteristics and are sensitive to
+pixel-level differences. However, in the current stage of our system, the generated caustic patterns, while visually recognizable,
+still exhibit significant differences in their textural properties compared to the target images. These differences stem from factors
+such as the inherent limitations of acoustic-based liquid surface deformation, the presence of noise as discussed previously,
+and the resolution limits of our current setup. Consequently, PSNR and SSIM tend to yield low scores that do not accurately
+reflect the perceived visual quality or the progress achieved in generating dynamic caustics. Therefore, we opted for Weber
+6/13
+
+
+===== dynamic-caustics-2025 | page 7/13 =====
+
+(a)
+(b)
+(c)
+(d)
+(e)
+(f)
+(g)
+(h)
+(i)
+(j)
+Figure 5. Comparison of target outcome used for animation and the generated caustics, presented frame by frame. The actual
+animation, created by projecting these frames sequentially, is included in the Supplemental material video. Each frame was
+generated by superimposing the sound pressure of 9 frames and then processed using the Digital Twin. (a)(b): Animation of
+parallel flowing sticks. (c)(d): Animation of a character preying on and sucking a square object. (e)(f): Animation of a running
+stick figure. (g)(h): Animation of a fish swimming and twisting its body. (i)(j): Animation showing ripples spreading from the
+center.
+7/13
+
+
+===== dynamic-caustics-2025 | page 8/13 =====
+
+Contrast as a more pragmatic metric for this study, as it focuses on the relative luminance difference between the target and its
+background, which aligns better with the characteristics of our current caustic images19.
+C = ∆L
+L
+(8)
+Here, ∆L represents the change in luminance of the target relative to the uniform background luminance L. For our analysis,
+we divided the caustic image into a target area and a background area based on the target image, using the average brightness of
+each area for the calculation.
+Table 1 shows improvements after applying Digital Twin processing across all frame counts. For instance, in the case of
+frame 1, the contrast increased by 231% from 0.039 to 0.129. However, as the number of frames increased, a slight reduction in
+contrast was observed. This can be attributed to the averaging effects of acoustic pressure fields over multiple frames, which
+smooth the resulting caustics but simultaneously suppress fine features and sharp edges.
+Despite the contrast improvements, the loss function during optimization displayed a notable behavior, particularly when
+increasing the number of frames. As shown in Figure 4 Digital Twin Loss, the loss initially decreases and stabilizes around
+200-400 steps but begins to rise again during later stages. This trend becomes more pronounced for higher frame counts, such
+as 9 and 24 frames. The differences between the numerical optimization process and the Digital Twin optimization likely
+contribute to this phenomenon.
+In numerical optimization, the target is a simple acoustic pressure distribution, and the loss function minimizes the absolute
+error between the predicted and target pressure fields. Conversely, the Digital Twin optimization uses experimentally captured
+caustic patterns as the target and employs cosine similarity as the loss function. The two approaches differ not only in their
+respective loss formulations but also in the nature of the target images. While numerical optimization operates purely in
+the acoustic domain, the Digital Twin incorporates real-world factors such as light refraction, surface tension, viscosity, and
+experimental noise. These physical complexities make it more challenging for the loss to converge smoothly, particularly in
+multi-frame scenarios where the acoustic field becomes increasingly intricate.
+Another contributing factor is the optimization algorithm itself. The Adam optimizer, used in both numerical and Digital
+Twin optimizations, updates parameters based on momentum and adaptive learning rates. This can cause the loss to oscillate
+near local minima, especially in multi-frame processing where the complexity of the acoustic pressure distribution and its
+interactions with the liquid surface are amplified. Additionally, time-averaging the pressure fields over multiple frames further
+increases the deviation between the predicted and target caustics, as finer details in the experiment may not be preserved
+accurately.
+Although the loss function does not exhibit smooth convergence in Digital Twin optimization, the contrast between the
+white and black regions of the checkerboard target is significantly improved, as shown in Figure 6. This suggests that the loss
+function, while useful for optimization, does not fully capture the perceptual quality of the caustics. Further refinement of the
+loss function to balance optical alignment and acoustic pressure accuracy may help address these issues. Improvements in the
+modeling of physical effects such as viscosity and light refraction could also contribute to more stable optimization results.
+Table 1. Weber Contrast
+Frame
+Before Digital Twin
+After Digital Twin
+1
+0.039
+0.129
+3
+0.049
+0.093
+9
+0.030
+0.094
+24
+0.026
+0.080
+Resolution
+Our experiments focused on evaluating the resolution of caustic patterns generated through optimized sound pressure distribu-
+tions. Figure 7 presents the results of varying the distance betweenda two circles to assess their resolution.
+We generated two circles, each with a radius of 10 mm, and varied the distance between them from 1 mm to −4 mm (where
+they increasingly overlap). Images were captured at different frame counts (1, 3, 9, 24 frames) both before and after applying
+Digital Twin processing. The findings reveal that when the regions are of an optimized size, they can be distinctly resolved,
+whether adjacent or separated. Even with an overlap as small as 1 mm, the regions maintain their shapes after optimization.
+However, as the overlap increases to 2 mm or more, preserving the shapes becomes increasingly challenging.
+8/13
+
+
+===== dynamic-caustics-2025 | page 9/13 =====
+
+Figure 6. Caustic generation results. In all cases, the left image is the target image, and the right image shows the
+experimentally generated caustic pattern.
+Digital Twin processing consistently improves contrast across all frame counts (Figure 7). However, it does not significantly
+enhance resolution, indicating that sound pressure optimization plays a more crucial role in achieving high resolution than
+optical enhancements alone.
+For overlaps of 2 mm or more, shape maintenance becomes difficult across all frame counts. Nevertheless, using nine
+or more frames results in relatively better shape preservation compared to cases with three or fewer frames. This indicates
+that higher frame counts can contribute to enhanced shape preservation under certain conditions. In conclusion, these results
+underscore the importance of optimizing sound pressure distribution to achieve high-resolution caustic patterns.
+Noise Characteristics
+Our experiments reveal two main categories of noise that reduce the clarity of the generated caustic patterns, as illustrated
+in Figures 1(c), 4, and 7. The first type consists of dark, spot-like artifacts that manifest in regions intended to be uniformly
+illuminated. These artifacts commonly arise from acoustic grating lobes inherent in the beamforming process of the transducer
+array, as well as from interference patterns caused by partial reflections at the tank walls or mesh screen holders. Such
+unintended acoustic pressure maxima introduce localized surface deformations in the liquid, leading to ring-shaped or blotchy
+dark regions on the caustic image. Although increasing the number of frames for time-averaging can partially mitigate these
+effects, small residual patches tend to remain, particularly in areas of high curvature or abrupt transitions in the caustic pattern.
+A second form of noise appears as bright speckles in areas that should remain dark. These speckles often originate from
+subtle ripples on the liquid surface—caused by microscopic fluid motion—that focus or scatter the parallel light rays in
+unpredictable ways. In addition, minor misalignments in the Fresnel lens, mesh screen, or camera calibration can amplify such
+bright points, since even a small deviation in the optical path can redirect light into otherwise shadowed regions.
+Figures 4 and 7 demonstrate that raising the frame count for time-averaging substantially alleviates both dark patches and
+bright speckles, resulting in improved global contrast. Nevertheless, there is an inherent trade-off between noise suppression
+and sharpness, as excessive averaging can soften the edges of the projected pattern, reducing the sharpness of the final caustic
+image. Taken together, these observations indicate that dark noise typically stems from unwanted grating lobes and interference,
+whereas bright speckles are more closely tied to local surface ripples and optical scattering. While time-averaging and Digital
+Twin optimization partly address both issues, neither approach fully resolves them, underscoring the need for more refined fluid
+modeling, transducer design, and optical alignment.
+Limitations and Future Directions
+The results presented in this study highlight several inherent challenges in generating high-quality caustic images using
+ultrasonically modulated liquid surfaces (Figures 5, 6). Micro-scale disturbances and subtle ripples in the fluid—arising from
+factors such as surface tension, viscosity variations, and incomplete acoustic control—introduce unintended refractions and
+bright streaks in darker regions (Figures 5, 6). These irregularities hinder the formation of the sharp, high-contrast edges
+achievable with precisely machined solid optics, resulting in more diffuse patterns.
+The fidelity of the generated images is also constrained by fundamental parameters, including transducer array spacing,
+operating frequency, and the size of the fluid surface. Currently, the optical outcomes cannot match the sharpness of static glass-
+based methods, leading to inherently softer and less defined patterns (Figures 5, 6). Scaling up the phased array configuration
+and the liquid surface dimensions is a promising direction to improve acoustic field control and potentially achieve finer pattern
+details.
+Future work will focus on refining the loss function and optimization strategies to enable more nuanced grayscale transitions.
+Exploring techniques such as advanced beamforming, the use of metasurfaces, or adaptive algorithms could better balance
+9/13
+
+
+===== dynamic-caustics-2025 | page 10/13 =====
+
+Target
+1 frame
+Before Digital Twin
+After Digital Twin
+3 frame
+Before Digital Twin
+After Digital Twin
+9 frame
+Before Digital Twin
+After Digital Twin
+24 frame
+Before Digital Twin
+After Digital Twin
+-4 mm
+-3 mm
+-2 mm
+-1 mm
+0 mm
+1 mm
+Figure 7. Resolution comparison using two circles with a radius of 10 mm, generated simultaneously with varying
+center-to-center distances. The distances range from 1 mm (bottom row) to -4 mm (top row, indicating overlap), increasing by 1
+mm per row. The second row from the bottom shows the circles touching at their outer edges. Images were captured with 1, 3,
+9, and 24 frames, both before and after applying the Digital Twin process.
+large-scale shape control with the pursuit of finer detail. These advancements, while potentially increasing complexity and cost,
+represent steps towards novel forms of optical modulation through dynamic liquid interfaces.
+Despite these challenges, this work demonstrates a new category of optically modulated surfaces and real-time computational
+optimization methods. With continued scaling, improved fluid–acoustic interaction models, and rigorous technical evaluation,
+this technology holds potential for applications in ambient displays, interactive installations, and novel optical deformation-based
+fabrication tools. This research lays a foundation for future innovations in dynamic caustic generation.
+Methods
+Equipment Setup
+The experimental setup, as depicted in Figure 2 (a) and detailed in Table 3, was placed in a dark room to minimize ambient light
+interference. This vertically aligned system facilitated the simultaneous generation of optical and acoustic fields. A Phased
+Array Transducer (PAT) with 256 transducers (40 kHz, TAMURA, H2 50137) arranged in a 16 × 16 matrix was positioned 200
+mm above the liquid medium’s surface. The PAT was controlled by an FPGA board (Waveshare CoreEP4CE6) as described by
+Morales et al.12. The liquid medium consisted of 1 kg of transparent silicone oil (Shin-Etsu Sillicons, KF-96H-10000) contained
+within a transparent acrylic tank (155 mm length, 155 mm width, and 45 mm height). A point LED light source (ELEKIT
+10/13
+
+
+===== dynamic-caustics-2025 | page 11/13 =====
+
+LK-3WH) was placed below the tank and collimated using a Fresnel lens (Nihon Tokushu Kogaku Jushi, AH0498891). A
+nylon mesh screen (106 micrometers thick, 150 × 150 grid with 61 micrometers per grid) was positioned between the silicone
+oil tank and the PAT.
+Image Acquisition and Camera Calibration
+Caustic patterns were captured using two cameras equipped with a PoC sensor kit (Sony Semiconductor Solutions Corporation)
+and FUJIFILM CF12ZA-1S lenses (F1.8/12 mm). The cameras were positioned diagonally to the projection screen to avoid
+obstruction by the Fresnel lens. These cameras operated at a resolution of 5320 × 4600 pixels and captured images at 6 frames
+per second with a gain of 30.0 dB and an exposure time of 6 ms.
+To correct for perspective distortion, a camera calibration was performed using a standard checkerboard pattern and
+the OpenCV library. A series of checkerboard images at various orientations were captured. Four corresponding points
+were manually selected on the checkerboard in the captured image and a reference frontal view. These points were used to
+calculate a perspective transformation matrix using the cv2.getPerspectiveTransform() function. This matrix was
+subsequently applied to the captured caustic images using the cv2.warpPerspective() function to obtain a frontal view
+of the caustic patterns, ensuring accurate alignment and measurement. The transformation matrix was saved for later use.
+Acoustic Hologram Generation and Upload
+The calculated phase delays were discretized and uploaded to the FPGA board controlling the PAT. Communication with the
+FPGA was established using the PySerial library. The phase values were sent to the respective transducers to generate the
+desired acoustic pressure field.
+Dynamic Caustic Generation Procedure
+The software and packages used in this manuscript is as summarized in Table 2, and the procedure for generating dynamic
+caustic patterns are as follows:
+1. Target Image Preparation: A target grayscale image was loaded using the Pillow (PIL) library and converted to a NumPy
+array. The pixel values were inverted such that black areas corresponded to high acoustic pressure regions. The image
+was then resized to 192x192 pixels using bicubic interpolation via TensorFlow.
+2. Initial Phase Calculation: Initial phase delays for each transducer were calculated numerically using the Diff-PAT
+method13, as described in the Introduction. This involved optimizing the phase delays to produce the desired acoustic
+pressure distribution corresponding to the inverted target image. The TensorFlow library was used for the numerical
+optimization, employing the Adam optimizer15.
+3. Liquid Surface Modulation: The generated acoustic pressure field deformed the surface of the silicone oil. The concave
+deformations acted as dynamic lenses, refracting the collimated light passing through the liquid.
+4. Caustic Pattern Capture: The resulting caustic pattern projected onto the mesh screen was captured by the cameras.
+5. Digital Twin Optimization: The captured image was processed using a Digital Twin framework implemented in
+TensorFlow. This involved applying the pre-calculated perspective transformation matrix and subtracting a background
+image to isolate the caustic pattern. The processed image was then compared to the target image using a cosine similarity
+loss function. The gradients of the loss function were calculated using automatic differentiation in TensorFlow, and the
+transducer phase delays were iteratively adjusted to minimize the loss, refining the caustic pattern.
+6. Time Averaging (Optional): For some experiments, the phase delays were updated sequentially over multiple frames (3,
+9, or 24 frames) to implement a time-averaging technique, as described in the Results and Discussion section.
+The numerical optimization of the acoustic hologram is detailed in the Introduction. The Digital Twin optimization process,
+including the loss function and update rule, is also described in the Introduction. This section focuses on the experimental
+implementation of these methods.
+11/13
+
+
+===== dynamic-caustics-2025 | page 12/13 =====
+
+Table 2. Summary of Software and Libraries
+Software/Library
+Description
+OpenCV
+Used for camera calibration, image processing, and perspective transformation.
+TensorFlow
+Used for numerical optimization of acoustic holograms and implementation of the
+Digital Twin framework.
+NumPy
+Used for numerical computations and array manipulation.
+Pillow (PIL)
+Used for image loading and manipulation.
+PySerial
+Used for serial communication with the FPGA board controlling the PAT.
+SciPy
+Used for loading transducer array data.
+Matplotlib
+Used for generating plots.
+Table 3. Summary of the Experimental Setup
+Component
+Specification / Description
+Phased Array Transducer
+256 transducers (40 kHz, TAMURA, H2 50137) arranged in a 16 × 16 matrix; positioned
+200 mm above the liquid surface; controlled by FPGA (Waveshare CoreEP4CE6)12.
+Liquid Medium
+1 kg
+transparent
+silicone
+oil
+(Shin-Etsu
+KF-96H-10000)
+in
+an
+acrylic
+tank
+(155 mm × 155 mm × 45 mm); chosen for viscosity and optical clarity.
+Light Source
+Point LED (ELEKIT LK-3WH) placed below the tank.
+Fresnel Lens
+Nihon Tokushu Kogaku Jushi (AH0498891), used to collimate LED light into a parallel
+beam.
+Projection Screen
+Nylon mesh screen (106 µm thick, grid: 150 × 150 with 61 µm per grid) between tank
+and PAT; transmits acoustic waves and supports light projection.
+Cameras
+Two cameras with PoC sensor kit (Sony), FUJIFILM CF12ZA-1S lens (F1.8/12 mm);
+resolution: 5320 × 4600, 6 fps, gain: 30.0 dB, exposure: 6 ms; positioned diagonally to
+avoid Fresnel lens interference.
+References
+1. Weinstein, L. A. & Beckmann, P. Open resonators and open waveguides (The Golem Press, Boulder (Colo.), 1969).
+2. Yue, Y., Iwasaki, K., Chen, B.-Y., Dobashi, Y. & Nishita, T. Pixel art with refracted light by rearrangeable sticks. Comput.
+Graph. Forum 31, 575–582 (2012).
+3. Yue, Y., Iwasaki, K., Chen, B.-Y., Dobashi, Y. & Nishita, T. Poisson-Based continuous surface generation for Goal-Based
+caustics. ACM Trans. Graph. 33, 1–7 (2014).
+4. Schwartzburg, Y., Testuz, R., Tagliasacchi, A. & Pauly, M. High-contrast computational caustic design. ACM Trans. Graph.
+33, 1–11 (2014).
+5. Suzuki, Fujisawa & Mikawa. Simulation controlling method for generating desired water caustics. In 2019 International
+Conference on Cyberworlds (CW), vol. 0, 163–170 (2019).
+6. Hoshi, T., Takahashi, M., Iwamoto, T. & Shinoda, H. Noncontact tactile display based on radiation pressure of airborne
+ultrasound. IEEE Transactions on Haptics 3, 155–165, DOI: 10.1109/TOH.2010.4 (2010).
+7. Long, B., Seah, S. A., Carter, T. & Subramanian, S. Rendering volumetric haptic shapes in mid-air using ultrasound. ACM
+Transactions on Graph. 33, 1–10, DOI: 10.1145/2661229.2661257 (2014).
+8. Monnai, Y. et al. Haptomime: mid-air haptic interaction with a floating virtual screen. In Proceedings of the 27th annual
+ACM symposium on User interface software and technology, 663–667 (2014).
+9. Hirayama, R., Plasencia, D. M., Masuda, N. & Subramanian, S. A volumetric display for visual, tactile and audio
+presentation using acoustic trapping. Nature 575, 320–323, DOI: 10.1038/s41586-019-1739-5 (2019).
+10. Fushimi, T., Marzo, A., Drinkwater, B. W. & Hill, T. L. Acoustophoretic volumetric displays using a fast-moving levitated
+particle. Appl. Phys. Lett. 115, 064101, DOI: 10.1063/1.5113467 (2019).
+12/13
+
+
+===== dynamic-caustics-2025 | page 13/13 =====
+
+11. Koroyasu, Y. et al. Microfluidic platform using focused ultrasound passing through hydrophobic meshes with jump
+availability. PNAS Nexus 2, gad207 (2023).
+12. Morales, R., Ezcurdia, I., Irisarri, J., Andrade, M. A. B. & Marzo, A. Generating airborne ultrasonic amplitude patterns
+using an open hardware phased array. NATO Adv. Sci. Inst. Ser. E Appl. Sci. 11, 2981 (2021).
+13. Fushimi, T., Yamamoto, K. & Ochiai, Y. Acoustic hologram optimisation using automatic differentiation. Sci. Reports
+DOI: 10.1038/S41598-021-91880-2 (2021).
+14. Fushimi, T., Tagami, D., Yamamoto, K. & Ochiai, Y. A digital twin approach for experimental acoustic hologram
+optimization. Commun. Eng. 3, 1–8 (2024).
+15. Kingma, D. P. & Ba, J. L. Adam: A method for stochastic optimization. 3rd Int. Conf. on Learn. Represent. ICLR 2015 -
+Conf. Track Proc. 1, 1–15 (2015).
+16. Elizondo, S., Ezcurdia, I., Goñi, J., Galar, M. & Marzo, A. Enhancing the quality of amplitude patterns using time-
+multiplexed virtual acoustic fields. Appl. Phys. Lett. 123, 154102, DOI: 10.1063/5.0164657 (2023). https://pubs.aip.org/
+aip/apl/article-pdf/doi/10.1063/5.0164657/18166719/154102_1_5.0164657.pdf.
+17. Plasencia, D. M., Hirayama, R., Montano-Murillo, R. & Subramanian, S. Gs-pat: High-speed multi-point sound-fields for
+phased arrays of transducers. ACM Trans. Graph. 39, DOI: 0.1145/3386569.3392492 (2020).
+18. Lee, M., Lew, H. M., Youn, S., Kim, T. & Hwang, J. Y. Deep learning-based framework for fast and accurate acoustic
+hologram generation. IEEE Transactions on Ultrason. Ferroelectr. Freq. Control. DOI: 10.1109/TUFFC.2022.3219401
+(2022).
+19. Peli, E. Contrast in complex images. J. Opt. Soc. Am. A 7, 2032–2040 (1990).
+Acknowledgements
+We would like to extend our sincere gratitude to Sony Semiconductor Solutions Corporation for their generous support in
+lending us a sensor kit, which was instrumental in the completion of our research. Additionally, we deeply appreciate the
+efforts of our lab member, Mr. Takumi Yokoyama, for his exceptional work in capturing the equipment and results beautifully.
+We gratefully acknowledge the support of AI tools, OpenAI’s GPT-4, and Anthropic’s Claude. The authors have diligently
+reviewed and verified all generated outputs to ensure their accuracy and relevance.
+Data availability
+All data generated or analyzed during this study, including experimental measurements, simulation results, and analy-
+sis scripts, are available in the Digital Nature Group repository at https://github.com/DigitalNatureGroup/
+Dynamic-Caustics-by-Ultrasonically-Modulated-Liquid-Surface.
+Author contributions statement
+K.N., T.F., and Y.O. conceived the research. K.N. designed the experiments, conducted the experimental work, and acquired the
+data. K.N. and A.T. contributed to data analysis. T.F. and Y.O. supervised the project and contributed to the interpretation of the
+results. All authors contributed to writing, revising, and final approval of the manuscript.
+13/13

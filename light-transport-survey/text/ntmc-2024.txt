@@ -1,0 +1,2032 @@
+
+
+===== ntmc-2024 | page 1/17 =====
+
+Neural Two-Level Monte Carlo Real-Time Rendering
+Mikhail Dereviannykh
+Karlsruhe Institute Of Technology
+Germany
+Dmitrii Klepikov
+Karlsruhe Institute Of Technology
+Germany
+Johannes Hanika
+Karlsruhe Institute Of Technology
+Germany
+Carsten Dachsbacher
+Karlsruhe Institute Of Technology
+Germany
+Ours [Unbiased]
+65.4ms 0.39/28.91
+Path-Tracing
+41.2ms 0.57/128.03
+Ours [Biased]
+37.9ms 0.36/28.52
+NRC [Biased] [Müller et al. 2021]
+38.2ms 0.47/65.4
+Reference
+Path Tracing
+Ours [Biased]
+NRC [Biased]
+Ours [Unbiased]
+0
+20
+20
+160
+128
+40
+MRSE
+Frame №
+40
+60
+80
+7
+Path-Tracing 1spp
+NRC [Biased]
+Ours [Biased]
+Ours [Unbiased]
+60
+80
+100
+Figure 1: The Bistro Exterior scene (RTX 3080 at 1080p) rendered using one sample per pixel to compare our Neural Incident
+Radiance Cache (NIRC) to path tracing as well as the Neural Radiance Cache (NRC) [Müller et al. 2021]. As does NRC, we
+replace tracing long light transport paths with a cache lookup. Our cache, however, stores incident radiance, avoiding a ray cast
+before lookup. In addition, combining Two-Level Monte Carlo (a subset of Multi-Level Monte Carlo, MLMC) with our, NIRC
+enables us to estimate the cache error and thus to remove bias. For each render, we show computation time, the perceptual
+image difference according to
+F
+LIP [Andersson et al. 2020], and the Mean Relative Squared Error (MRSE). On the right, we show
+NIRC cache visualizations and a convergence plot.
+ABSTRACT
+We introduce an efficient Two-Level Monte Carlo (subset of Multi-
+Level Monte Carlo, MLMC) estimator for real-time rendering of
+scenes with global illumination. Using MLMC we split the shading
+integral into two parts: the radiance cache integral and the residual
+error integral that compensates for the bias of the first one. For the
+first part, we developed the Neural Incident Radiance Cache (NIRC)
+leveraging the power of fully-fused tiny neural networks [Müller
+et al. 2021] as a building block, which is trained on the fly. The
+, ,
+2024.
+cache is designed to provide a fast and reasonable approximation of
+the incident radiance: an evaluation takes 2-25× less compute time
+than a path tracing sample. This enables us to estimate the radiance
+cache integral with a high number of samples and by this achieve
+faster convergence. For the residual error integral, we compute the
+difference between the NIRC predictions and the unbiased path
+tracing simulation.
+Our method makes no assumptions about the geometry, materials,
+or lighting of a scene and has only few intuitive hyper-parameters.
+We provide a comprehensive comparative analysis in different ex-
+perimental scenarios. Since the algorithm is trained in an on-line
+arXiv:2412.04634v1  [cs.GR]  5 Dec 2024
+
+
+===== ntmc-2024 | page 2/17 =====
+
+, ,
+Dereviannykh et al.
+fashion, it demonstrates significant noise level reduction even for
+dynamic scenes and can easily be combined with other importance
+sampling schemes and noise reduction techniques.
+CCS CONCEPTS
+• Computing methodologies →Ray tracing; Neural networks.
+KEYWORDS
+global illumination, neural networks, path tracing, real-time ren-
+dering
+1
+INTRODUCTION
+Rendering global illumination effects remains challenging in inter-
+active and real-time applications, even with modern hardware-
+accelerated ray tracing. Monte Carlo methods, which are used
+to compute a solution to the Rendering Equation [Kajiya 1986]
+are prone to noise due to their stochastic nature, amplified by
+complex materials and occlusions in a scene. Techniques such
+as importance sampling, and more recently learning-based ap-
+proaches have demonstrated effectiveness in addressing these is-
+sues, mitigating the noise problem significantly using radiance
+caching [Boissé et al. 2023; Gassenbauer et al. 2009; Ward et al. 1988],
+photon mapping [Hachisuka et al. 2008; Jensen 1996], adaptive sam-
+pling [Mitchell 1987], vertex connection and merging [Georgiev
+et al. 2012] and path guiding [Vorba et al. 2019].
+Our work also depends on caching: we use several path tracing
+samples to initialize a cached representation of the incident radi-
+ance field in the scene. This cache can then be evaluated to yield a
+fast approximation of the actual light field.
+In our approach, we introduce a novel caching method using fully-
+fused tiny neural networks, inspired by the Neural Radiance Cache
+(NRC) [Müller et al. 2021], and multiresolution hash encoding [Müller
+et al. 2022]. The important novelty of our method is that we em-
+ploy Neural Incident Radiance Caches (NIRCs) which are specifically
+designed to cache incident radiance (as opposed to outgoing radi-
+ance with NRCs). This allows us to query the cache for incident
+radiance at a shading point post-material evaluation to efficiently
+approximate the shading integral without additional ray tracing.
+Our combination with a Two-Level Monte Carlo scheme enables
+us to compensate for the resulting bias. For biased rendering, we
+introduce a new Balanced Termination Heuristic (BTH) to enhance
+path termination efficiency, leveraging the strengths of NIRCs while
+addressing their limitations with glossy details. The BTH allows us
+to use our cache instantly at the primary bounce since it predicts
+incident radiance directly, unlike the NRC Spread Angle Heuristic
+(SPH), which is unsuitable for stopping at the primarily visible
+surface.
+Along with that, we assessed the differences between Control
+Variates (CV) and Two-Level Monte Carlo methods by comparing
+analytical models, such as Spherical Harmonics (SH) and mixtures of
+von Mises-Fisher (vMF) lobes, commonly used in the earlier research
+[Pantaleoni 2020][Vorba et al. 2014], alongside Neural Control Vari-
+ates (NCV) [Müller et al. 2020]. While NCV is specifically designed
+to satisfy Control Variates requirements by providing analytical
+integral computation, our results show that NIRC in the Two-Level
+Monte Carlo framework can achieve lower variance of the residual
+error estimator, requiring significantly fewer training frames and
+offering higher generalization.
+Furthermore, the NIRC is designed to predict incident radiance
+for batches of 10 to 50 rays, amortizing the computation of the
+spatial feature for requests for the same shading point. This can
+lead to significant speedups compared to NRC. We also introduce
+an alternative encoding of the input to the multi-layer perceptron
+(MLP) [Haykin 1994], leading to a much more precise angular rep-
+resentation of the radiance field which is required for sufficiently
+accurate approximation of the shading integral. To train the cache,
+we derive a loss function which includes the two-level Monte Carlo
+estimator; further, we also evaluate a simplified loss based on the
+relative L2 difference.
+Additionally, we developed an error-based path termination algo-
+rithm to ensure a fair equal-bias comparison between the NIRC and
+the NRC. Our cache analysis shows that the NIRC can achieve up
+to 130.5 times fewer indirect radiance bounces, performing indirect
+ray bounces for only 0.1-1% of pixels while maintaining similar bias
+levels compared to the NRC. Using the SPH, NIRC achieves a Rela-
+tive Squared Bias up to 4.12× lower than NRC, though it increases
+noise. If we accept higher bias, BTH reduces light bounces by up to
+3.54 times and improves mean relative square error by up to 6.67
+times, enhancing real-time rendering performance and accuracy.
+Finally, we investigate the specific use case of environment map
+lighting. Instead of approximating the radiance [Rodriguez-Pardo
+et al. 2023], the neural cache is used to predict the visibility term,
+which is similar to a concurrent work [Fujieda et al. 2023]. However,
+there’s a notable difference in the encoding methods: while Fujieda
+et al. employ a grid-based method for encoding directions, our
+method utilizes Spherical Harmonics for this purpose. We observe
+that the Neural Visibility Cache (NVC) achieves significantly better
+reconstruction results compared to the NIRC. This improvement
+directly contributes to lower variance in the unbiased two-level
+estimator, enhancing the overall performance for environment map
+lighting.
+To sum up, our contributions are:
+• the introduction of the Neural Incident Radiance Cache (NIRC)
+• a Multi-Level Monte Carlo (MLMC) estimator to remove bias
+• new evidences suggesting that the MLMC framework in combi-
+nation with the NIRC can achieve superior variance reduction
+in less training time over CV
+• a comprehensive analysis comparing NRC and NIRC
+• a set of performance optimizations enabled by the NIRC concept
+• a specialized solution for environment map lighting.
+2
+BACKGROUND
+Light transport simulation. The rendering equation [Kajiya 1986]
+describes how light interacts with a scene. The radiance 𝐿𝑜(𝑥,𝜔𝑜)
+leaving a point 𝑥in direction 𝜔𝑜is:
+𝐿𝑜(𝑥,𝜔𝑜) = 𝐿𝑒(𝑥,𝜔𝑜) +
+∫
+𝐻+ 𝐿𝑖(𝑥,𝜔𝑖)𝑓𝑟(𝑥,𝜔𝑖,𝜔𝑜) cos𝜃𝑖𝑑𝜔𝑖, (1)
+where 𝐿𝑒(𝑥,𝜔𝑜) is the radiance emitted at 𝑥in direction 𝜔𝑜. The
+reflected light is computed by integrating over all incident light
+directions 𝐻+. 𝐿𝑖(𝑥,𝜔𝑖) is the incident light, 𝑓𝑟(𝑥,𝜔𝑖,𝜔𝑜) is the
+bidirectional reflectance distribution function, and cos𝜃𝑖is the
+
+
+===== ntmc-2024 | page 3/17 =====
+
+Neural Two-Level Monte Carlo Real-Time Rendering
+, ,
+foreshortening. A typical Monte Carlo estimator for 𝐿𝑜(𝑥,𝜔𝑜) is:
+ˆ𝐿𝑜(𝑥,𝜔𝑜) ≈𝐿𝑒(𝑥,𝜔𝑜) + 1
+𝑁
+𝑁
+∑︁
+𝑖=1
+𝐿𝑖(𝑥,𝜔𝑖)𝑓𝑟(𝑥,𝜔𝑖,𝜔𝑜) cos𝜃𝑖
+𝑝(𝜔𝑖)
+,
+(2)
+where 𝑁is the number of sampled light paths, and 𝑝(𝜔𝑖) is the
+probability density function used to sample incident directions 𝜔𝑖.
+Multi-Level Monte Carlo. Multi-Level Monte Carlo (MLMC) meth-
+ods [Giles 2008, 2015] have been applied in various fields, but have
+not yet found widespread application in rendering. In this paper, we
+introduce a two-level Monte Carlo scheme (a subset of MLMC) to
+turn the integration based on our NIRCs into an unbiased estimator.
+We begin with the standard Monte Carlo estimator for an integral
+𝐹over a domain D:
+𝐹≈1
+𝑁
+𝑁
+∑︁
+𝑖
+𝑓(𝑋𝑖)
+𝑝(𝑋𝑖) ,
+(3)
+where {𝑋𝑖} are samples drawn from a probability distribution 𝑝(𝑥).
+Our two-level MC consists of 1) a cache-based estimator 𝐹𝑐with
+an approximating function 𝑓𝑐(𝑥, w) and optimizable parameters w:
+𝐹𝑐≈1
+𝑁𝑐
+𝑁𝑐
+∑︁
+𝑖
+𝑓𝑐(𝑋𝑖, w)
+𝑝𝑐(𝑋𝑖) ,
+(4)
+and 2) a residual error estimator 𝐹𝑟:
+𝐹𝑟≈1
+𝑁𝑟
+𝑁𝑟
+∑︁
+𝑖
+𝑓(𝑌𝑖) −𝑓𝑐(𝑌𝑖, w)
+𝑝𝑟(𝑌𝑖)
+.
+(5)
+We obtain the full two-level estimator 𝐹𝑡𝑙as
+𝐹𝑡𝑙≈𝐹𝑐+ 𝐹𝑟,
+(6)
+where 𝑋𝑖∼𝑝𝑐(𝑋𝑖) and 𝑌𝑖∼𝑝𝑟(𝑌𝑖). Note that we can choose the
+number of samples for each estimator, 𝑁𝑐and 𝑁𝑟, individually. If
+the optimizable function 𝑓𝑐approximates the original function 𝑓
+well and is cheap to evaluate we can allocate more computation
+to the estimator 𝐹𝑐using more samples 𝑁𝑐per frame. The basis
+for 𝑓𝑐is the Neural Incident Radiance Cache (NIRC), which will be
+introduced and defined in Section 4.
+3
+RELATED WORK
+Radiance Caching. Since the seminal work of Ward et al. [Ward
+et al. 1988], numerous advances have been made in caching tech-
+niques. Important developments include the widely employed irra-
+diance volumes [Greger et al. 1998] and the introduction of radiance
+caching [Krivanek et al. 2005] using spherical harmonics for direc-
+tional domain representation. These methods have seen significant
+enhancements for both offline [Dubouchet et al. 2017; Marco et al.
+2018; Zhao et al. 2019] and real-time rendering [Majercik et al.
+2019], and new approaches to processing and storing lighting in-
+formation [Binder et al. 2018; Pantaleoni 2020; Rehfeld et al. 2014;
+Scherzer et al. 2012; Silvennoinen and Lehtinen 2017; Vardis et al.
+2014]. The popularity of neural networks leads to the Neural Radi-
+ance Cache (NRC) [Müller et al. 2021] which offers a method for
+dynamic scenes, learning during rendering and leveraging low-cost
+computation over memory access by utilizing fully-fused neural
+networks. A combination of NRC with multiresolution hash encod-
+ings significantly accelerates training convergence while improving
+Predicted Incident 
+Radiance (NIRC)
+Predicted Outgoing 
+Radiance (NRC)
+Predicted Incident 
+Radiance (NIRC)
+Figure 2: This figure illustrates the application of the Neu-
+ral Radiance Cache (NRC, left) [Müller et al. 2021] and our
+Neural Incident Radiance Cache (NIRC, right) in the biased
+path tracing. In NRC, a path is traced from the camera 𝑥0 to
+surface point 𝑥1, where it scatters and then terminates at 𝑥2
+in the cache. In contrast, NIRC stops tracing already at 𝑥1
+and estimates radiance using Monte Carlo, as described in
+Equation (11), by sampling scattering rays based on BRDF
+and querying the NIRC to predict incident radiance. In prac-
+tice, the exact termination point is determined by different
+heuristics for both models (see Section 4.4).
+the quality of radiance signal reconstruction [Müller et al. 2022].
+Moreover, pre-trained neural networks have been shown to support
+dynamic parameters such as mesh positions or light parameters [Di-
+olatzis et al. 2022; Rainer et al. 2022] and still predict a reasonable
+approximation of global illumination. In contrast to the aforemen-
+tioned works, we focus on efficient caching of incident radiance, a
+step that significantly improves rendering performance and lets us
+use the cache for an efficient unbiased Monte Carlo estimator for
+real-time rendering.
+Neural Methods. Neural Methods comprise a variety of tech-
+niques: Xie et al. [Xie et al. 2022] provide a detailed analysis of such
+techniques with an emphasis on Neural Radiance Fields (NeRFs) [Milden-
+hall et al. 2020]. Neural Radiosity [Hadadan et al. 2021] has parallels
+with traditional radiosity techniques but computes a solution to the
+rendering equation by applying neural networks to minimize the
+residuals. Additionally, deep neural networks can be used for guid-
+ing path tracing by generating scattering directions [Müller et al.
+2019; Vicini et al. 2019; Zhu et al. 2021] and by this enhancing the
+efficiency of Monte Carlo integration in light transport simulation.
+Control Variates (CV). A control variate 𝑔(𝑥), with a known ex-
+pected value 𝐸[𝑔(𝑥)], can be used to estimate the integral of a
+function 𝑓(𝑥) with:
+𝐸[𝑓(𝑥)] ≈𝐸[𝑔(𝑥)] + 1
+𝑁
+𝑁
+∑︁
+𝑖=1
+𝑓(𝑋𝑖) −𝑔(𝑋𝑖)
+𝑝(𝑋𝑖)
+,
+(7)
+where 𝑋𝑖are points sampled according to a probability distribution
+function 𝑝. Control Variates show a certain similarity to Multi-
+Level Monte Carlo, however, they differ in that the expected value
+𝐸[𝑔(𝑥)] is computed analytically. This is also an inherent limitation:
+CVs require a mathematical framework for analytical integration
+over the domain. In our case, the expected value is derived from
+the cache-based integral in a MLMC framework.
+
+
+===== ntmc-2024 | page 4/17 =====
+
+, ,
+Dereviannykh et al.
+Neural Control Variates (NCVs) [Müller et al. 2020]. NCVs use
+Normalizing Flows to model Control Variates. These models are
+primarily chosen for their capability to ensure that the final integral
+of the function equals to 1 multiplied by a prediction of another
+neural network. Despite their theoretical appeal, experimental re-
+sults on the performance of Normalizing Flow models [Müller et al.
+2019, 2020; Zeltner et al. 2023] have demonstrated notable compu-
+tational demands for both training and inference. Moreover, NCVs
+require to maintain a second neural network which predicts the
+integral coefficient. These resource requirements often exceed what
+is practical for real-time or interactive rendering.
+One motivation for our work was the potential advantage of
+MLMC over (N)CV in reducing the variance of the residual error.
+This requires a computationally efficient mathematical basis for
+numerically estimating the integral, which we achieve with NIRCs.
+4
+NEURAL INCIDENT RADIANCE CACHE
+The computation of 𝐿𝑖(𝑥,𝜔𝑖) is the most resource-intensive part of
+Equation (1). This is due to the need to trace rays, find intersection
+points, fetch surface material parameters and evaluate Equation (1)
+for a set of positions and directions, which often results in noisy
+estimations. In this work, we address this problem by firstly split-
+ting 𝐿𝑖(𝑥,𝜔𝑖) term into indirect lighting part 𝐿𝑖𝑛𝑑(𝑥,𝜔𝑖) and direct
+𝐿𝑛𝑒𝑒(𝑥,𝜔𝑖):
+𝐿𝑖(𝑥,𝜔𝑖) = 𝐿𝑖𝑛𝑑(𝑥,𝜔𝑖) + 𝐿𝑛𝑒𝑒(𝑥,𝜔𝑖)
+(8)
+since we will use MIS combination with next event estimation
+for 𝐿𝑛𝑒𝑒(𝑥,𝜔𝑖). Secondly, we propose a cache that approximates
+𝐿𝑖𝑛𝑑(𝑥,𝜔𝑖) via a neural network while computing the other terms
+normally:
+𝐿𝑖𝑛𝑑≈𝑓𝑐(𝑥,𝜔𝑖,𝜔𝑜,𝜙, w) = 𝑛𝑖(𝑥,𝜔𝑖,𝜙, w)𝑓𝑟(𝑥,𝜔𝑖,𝜔𝑜) cos𝜃𝑖. (9)
+Here 𝑛𝑖(𝑥,𝜔𝑖,𝜙, w) is a neural network with optimizable param-
+eters (weights) w, conditioned on a surface position 𝑥, incident
+vector 𝜔𝑖, and a set of additional features 𝜙provided for facilitating
+the search of correlation between target values and input parame-
+ters. This function 𝑛𝑖serves as the Neural Incident Radiance Cache
+(NIRC), approximating incoming lighting from all (hemi)-spherical
+directions onto a shading point.
+Using Equation (9), we are able to formulate an unbiased Multi-
+Level Monte Carlo estimator for computing the rendering equation:
+ˆ𝐿𝑜(𝑥,𝜔𝑜) ≈𝐿𝑒(𝑥,𝜔𝑜) + ˆ𝐿𝑐(𝑥,𝜔𝑜) + ˆ𝐿𝑟(𝑥,𝜔𝑜)
+(10)
+ˆ𝐿𝑐(𝑥,𝜔𝑜) ≈1
+𝑁𝑐
+𝑁𝑐
+∑︁
+𝑖=1
+𝑛𝑖(𝑥,𝜔𝑖,𝜙, w)𝑓𝑟(𝑥,𝜔𝑖,𝜔𝑜) cos𝜃𝑖
+𝑝(𝜔𝑖)
+(11)
+ˆ𝐿𝑟(𝑥,𝜔𝑜) ≈1
+𝑁𝑟
+𝑁𝑟
+∑︁
+𝑖=1
+(𝐿𝑖(𝑥,𝜔𝑖) −𝑛𝑖(𝑥,𝜔𝑖,𝜙, w))𝑓𝑟(𝑥,𝜔𝑖,𝜔𝑜) cos𝜃𝑖
+𝑝(𝜔𝑖)
+(12)
+4.1
+Neural Network Architecture
+Inspired by previous work we leverage the power of fully-fused
+executed multi-layer perceptions (MLP) [Müller et al. 2021] to rep-
+resent a radiance field. MLP can efficiently approximate signals
+defined over a five-dimensional manifold conditioned on surface a
+position (3D) and an outgoing direction (2D), even with real-time
+performance on GPUs. However the expressive power of a tiny
+MLP
+64
+64
+3+8+4
+24
+25
+𝑥𝑖
+𝜔𝑖,𝑘
+𝜔𝑖,𝑘
+𝜔𝑖,𝑘
+𝜔𝑖,𝑘
+¯𝑥
+¯𝜔
+¯𝜙
+position
+albedo, normal,
+roughness
+64
+64
+...
+...
+Output
+(3) inference
+(2) encode
+(1) gather
+identity/one blob
+hashed grid
+spherical harmonics
+neural input vector
+Figure 3: The stages of our neural inference pipeline. Initially,
+requests in the path tracing pass are gathered (1), utilizing
+multiple buffers to store per-surface parameters along with
+the incident direction vectors𝜔𝑖. Next, the per-surface param-
+eters are encoded (2) and aggregated. Finally, the spherical
+harmonics coefficients for the requested𝜔𝑖are calculated and
+appended in shared memory as input for the multi-layer per-
+ceptron inference (3). Our optimized implementation never
+stores the neural input and output vectors in global memory.
+MLP is limited, and its convergence rate is adversely affected if
+input parameters are forwarded without applying any nonlinear
+transformation to their domain space. Therefore, we employ encod-
+ings inspired by the following neural rendering literature [Müller
+et al. 2022; Müller et al. 2021; Verbin et al. 2022]:
+• The shading point position 𝑥is used for querying a multires-
+olution hash encoding with trainable features. The resolution
+is adjusted based on the complexity of the scenes, but in the
+majority of our experiments, we used 12 levels with 2 features
+per level.
+• To enhance the NIRC’s precision in the spherical domain, we
+propose estimating spherical harmonics coefficients for the in-
+put parameter 𝜔𝑖[Verbin et al. 2022]. Our experiments suggest
+that using 4 bands is a good compromise between increasing
+the neuron count and maintaining the network’s directional
+representational quality.
+• As proposed by [Müller et al. 2021], using the shading normal,
+albedo, and roughness as additional input parameters𝜙for NIRC,
+without altering their corresponding encodings.
+A notable challenge in integrating high-quality encodings before
+executing an MLP is performance degradation. Trainable features,
+used in hash encoding for shading point positions, require us to
+fetch numerous float variables from scattered memory locations.
+However, it is possible to amortize memory accesses across all re-
+quests for the same shading surface, given the way we use the cache
+(Equation (11)). This idea is extended to other shared input param-
+eters 𝜙and their corresponding encoding outputs. Furthermore,
+the computation of spherical harmonics coefficients for a relatively
+high number of bands can create bandwidth problems, moving 25
+float variables into global memory per request. To alleviate this,
+we advocate for a fully-fused execution approach, not just for MLP
+inference, but also for the spherical harmonics encoding layer. Our
+algorithm calculates the necessary coefficients and immediately
+
+
+===== ntmc-2024 | page 5/17 =====
+
+Neural Two-Level Monte Carlo Real-Time Rendering
+, ,
+Figure 4: Scalability and ablation study with the Bistro Exte-
+rior scene rendered on an RTX 3080 at 1080p. We show inci-
+dent lighting computed using conventional path tracing and
+our NIRC; the latter has been tested with various optimiza-
+tion strategies. The results demonstrate improved scalability
+of the NIRC method, particularly when it is optimized by
+exploiting shared surface encodings (1.74⇑improvement),
+fused spherical harmonics coefficients computation (2.62⇑),
+and direct output forwarding from the shared memory using
+atomic variables (3.64⇑). For the NRC and the naive NIRC
+implementations, we show extrapolated performance tim-
+ings after the 6th frame because of memory limitations (light
+blue and light red).
+stores them in a section of shared memory reserved for future in-
+ference as input neurons. Additionally, we found that packing and
+compressing directional components maximizes system bandwidth.
+Lastly, we suggest an optimization that avoids intermediate
+buffers used in the original tiny-cuda-nn framework during output:
+We write inference results into a final frame buffer directly from
+shared memory using atomic variables. This allows us to increase
+the number of neural samples per pixel within the time budget. We
+illustrate the final inference pipeline in Figure 3.
+By integrating these natural optimizations, which emerge from
+our cache design choices and the manner in which we use it to
+estimate the Rendering Equation, we achieve up to 3.64× speedup
+compared to the original neural inference pipeline, depending on
+the sample count, as demonstrated in Figure 4. The performance
+cost of one neural sample can be as low as 2.69% of the correspond-
+ing path tracing simulation in our experiments. This significant
+performance improvement allows us to allocate more samples per
+pixel, reducing the variance of the stochastic estimator 𝐿𝑐.
+4.2
+Radiance Cache Optimization
+To effectively optimize the trainable parameters w, we must derive
+a suitable and practical loss function. Recall that Multi-Level Monte
+Carlo (MLMC) methods aim to reduce the overall variance of the
+estimator. This reduction is achievable when the variance of the
+residual estimator is minimized. The residual estimator 𝐹𝑟Equa-
+tion (5), which can be defined as 𝐹𝑟= E
+h 𝑓(𝑋)−𝑓𝑐(𝑋,w)
+𝑝𝑟(𝑋)
+i
+, represents
+the expectation of the normalized difference between the function
+0
+900
+450
+.40
+.45
+.80
+.65
+.55
+Bistro Exterior
+F
+LIP
+training epochs
+0
+2000
+1000
+.12
+.16
+.40
+.30
+.25
+San Miguel
+training epochs
+.20
+L2
+Unbiased,     
+Unbiased,     
+LV
+L2
+Biased,     
+Biased,     
+LV
+Theoretical
+ Minimum     
+0
+1000
+500
+.20
+.30
+.82
+.60
+.50
+Country Kitchen
+training epochs
+.40
+Figure 5: We explore the implications of employing L2 and
+variance-based LV loss functions for the neural cache opti-
+mization with our two-level MC estimator and parameters
+𝑁𝑐= 4 and 𝑁𝑟= 1. We compute the
+F
+LIP error between our
+renders, utilizing Neural Incident Radiance Cache, and refer-
+ence renders every training epoch. The results demonstrate a
+detrimental effect on the quality of renders of the biased esti-
+mator when the LV loss function is applied. This is because
+the variance-based loss does not necessarily minimize the
+residual 𝐹𝑟. The data also shows divergence during training,
+likely due to issues when estimating 𝐹𝑟accurately, which is
+required for evaluating LV.
+𝑓and its controlled approximation 𝑓𝑐. The variance of 𝐹𝑟is given
+by
+V(⟨𝐹𝑟⟩) =
+∫
+D
+ 𝑓(𝑥) −𝑓𝑐(𝑥, w)
+𝑝𝑟(𝑥)
+−𝐹𝑟
+2
+𝑝𝑟(𝑥) 𝑑𝑥.
+(13)
+We can derive a numerical one-sample estimator for this variance
+of ⟨𝐹𝑟⟩which is then utilized as a loss function:
+⟨V(⟨𝐹𝑟⟩)⟩≈
+ 𝑓(𝑥) −𝑓𝑐(𝑥, w)
+𝑝𝑟(𝑥)
+−𝐹𝑟
+2 𝑝𝑟(𝑥)
+𝑞𝑟(𝑥) .
+(14)
+Here, 𝑞𝑟(𝑥) denotes the probability density function of the sam-
+pling points used for estimating the variance. We employ the same
+sampling methods for estimating the variance in Equation (14) as
+well as for estimating the residual error in Equation (5), leading to
+𝑞𝑟= 𝑝𝑟. This results in the final variance-based loss function:
+⟨LV(𝑓, 𝑓𝑐, w)⟩≈
+ 𝑓(𝑥) −𝑓𝑐(𝑥, w)
+𝑝𝑟(𝑥)
+−𝐹𝑟
+2
+.
+(15)
+We observe that we essentially obtain a squared distance between
+the cache and ground truth function, offset by the residual error’s
+expectation. This suggests the optimization problem has potentially
+many solutions for any possible shift value.
+Empirical experiments shown in Figure 5 highlight the adverse
+impact of integrating the residual error’s expectation into the opti-
+mization point, justifying our reliance on the basic squared differ-
+ence loss function:
+⟨L2(𝑓, 𝑓𝑐, w)⟩= (𝑓(𝑥) −𝑓𝑐(𝑥, w))2
+𝑝𝑟(𝑥)
+(16)
+Considering the high dynamic range of the data we divide the
+metric by the squared 𝑓(𝑥) to ensure higher gradient weights for
+dark regions of a rendering scene as in [Lehtinen et al. 2018]:
+⟨L2
+𝑟𝑒𝑙(𝑓, 𝑓𝑐, w)⟩=
+(𝑓(𝑥) −𝑓𝑐(𝑥, w))2
+𝑝𝑟(𝑥)(𝑠𝑔(𝑓𝑐(𝑥, w)2) + 𝜖)
+(17)
+
+
+===== ntmc-2024 | page 6/17 =====
+
+, ,
+Dereviannykh et al.
+Where 𝜖safeguards against division by zero and 𝑠𝑔(𝑧) denotes
+that gradient computations for operation 𝑧are not propagated.
+4.3
+Cache application
+Our algorithm follows the megakernel path tracing approach. For
+each vertex 𝑥𝑗, we generate 𝑁𝑗
+𝑐incident vectors 𝜔𝑖, where 𝑁𝑗
+𝑐de-
+notes the number of samples of the NIRC at each vertex 𝑥𝑗, to
+estimate the cached radiance term 𝐿𝑐. This process requires col-
+lecting all per-surface parameters and incident vectors 𝜔𝑖. These
+values are used for both cache estimation and for calculating the ad-
+ditional terms in Equation (11) for 𝜔𝑖. To estimate the residual error
+Equation (12), we need a set of directions 𝜔which are uncorrelated
+to the directions used to compute Equation (11).
+We use independent sampling of 𝜔𝑖according to the surface
+BSDF for both 𝐿𝑐and 𝐿𝑟. Alternative sampling strategies like path
+guiding for residual integral estimation have been explored in other
+studies [Müller et al. 2020]. To keep our study focused, we only
+employ basic importance sampling here. While we can show an
+improvement over baseline methods with this approach already, it
+would be an interesting future extension to perform direction sam-
+pling by incident radiance here (for instance by rejection sampling
+with the NIRC).
+After the ray tracing pass, the collected parameters are encoded,
+aggregated, and utilized in the NIRC inference. The results from the
+inference are combined with the remaining terms in Equation (11)
+to compute the final rendered image.
+For the training of our cache, we follow the algorithm of the
+original Neural Radiance Cache [Müller et al. 2021]. A significant
+modification is that we use a separate rendering pass for training.
+This decision is based on the following observation: using training
+paths derived directly from the main path tracing paths leads to
+performance issues in our implementation. Training requires us
+to trace paths of unbounded length to remain unbiased (by using
+Russian roulette). Since the main rendering paths are considerably
+shorter in our biased version, this results in thread divergence. We
+found that executing a separate path tracing pass for training paths
+not only simplifies the process but also slightly improves perfor-
+mance. While there will still be thread divergence due to differing
+path lengths, given that we only use about 2-3% the number of
+training paths as compared to the number of pixels, this additional
+pass does not incur substantial overhead. This method ensures ef-
+ficient training of the cache while maintaining the integrity and
+performance of the main rendering process.
+4.4
+Path Termination Heuristics
+The original NRC uses the Spread Angle Heuristic (SPH) for path
+termination, which almost always results in path termination after
+the first bounce, as shown in Figure 12. This suggests that we can
+leverage our cache instantly at the primary bounce without the
+need for this intermediate bounce since our cache predicts incident
+radiance directly.
+The NRC path termination heuristic is defined as follows:
+𝑎(𝑥1 · · ·𝑥𝑛) = ©­
+«
+𝑛
+Ö
+𝑖=2
+∥𝑥𝑖−1 −𝑥𝑖∥
+𝑝(𝜔𝑖|𝑥𝑖−1,𝜔) cos𝜃𝑖
+ª®
+¬
+2
+,
+(18)
+𝑎0 = ∥𝑥0 −𝑥1∥2
+4𝜋cos𝜃1
+,
+(19)
+where 𝑝(𝜔𝑖) is the BSDF sampling PDF and 𝜃𝑖is the angle between
+𝜔𝑖and the surface normal at 𝑥𝑖. Paths are terminated if:
+𝑎(𝑥1 · · ·𝑥𝑛) > 𝑐· 𝑎0,
+(20)
+where 𝑐is a hyperparameter equal to 0.01.
+This heuristic is not directly applicable in our setting since we
+want the ability to terminate on the first directly visible path vertex.
+We propose a new criterion inspired by the balance heuristic [Veach
+and Guibas 1995], which we call the Balanced Termination Heuristic
+(BTH). The BTH leverages the strengths of NIRC while acknowl-
+edging its limitations, particularly with glossy details. It essentially
+computes the MIS weight of BRDF sampling vs. a virtual diffuse
+sampling scheme with 𝑁𝑐samples. We calculate the continuation
+probability 𝑃𝑠as:
+𝑃𝑠=
+𝑝(𝜔𝑖)
+𝑝(𝜔𝑖) + 𝑁𝑐
+𝜋
+,
+(21)
+where 𝑝(𝜔𝑖) is the pdf of the sampled scattering direction, and
+𝑁𝑐is the number of neural samples. The path termination criteria
+are as follows:
+𝑖= 1 :
+stop if 𝜉> 𝑃𝑠,
+𝑖> 1 :
+stop if 𝜉> 𝑃𝑠or 𝑎(𝑥1 · · ·𝑥𝑖) > 𝑐· 𝑎0,
+(22)
+where 𝜉∈[0, 1) is a uniformly distributed random variable. If ter-
+minated, the current surface is shaded using 𝑁𝑐directions sampled
+according to the surface BRDF, incorporating direct lighting with
+Monte Carlo integration using Multiple Importance Sampling (MIS)
+and Next Event Estimation (NEE). Delta reflections automatically
+continue tracing without termination. For a fair comparison with
+NRC, we use its heuristic for all surfaces 𝑥𝑖where 𝑖> 1, ensuring
+that paths are not terminated later than they would be with NRC.
+5
+NEURAL VISIBILITY CACHE
+In the previous section, we addressed the computation of incident
+illumination from other surfaces. While this approach works for
+the special case of lighting from an environment map, this type of
+illumination is important enough to warrant special treatment to
+improve efficiency. In particular, for environment map lighting we
+know that the incident radiance is the product of visibility𝑉and en-
+vironment illumination 𝐿𝑖: 𝑉(𝑥𝑖,𝑥𝑖+1)𝐿𝑖(𝑥𝑖,𝜔𝑖). Since 𝐿𝑖is known
+from the scene definition we only have to find 𝑉. For that purpose,
+we propose a specialized Neural Visibility Cache (NVC) which is
+trained to only estimate the visibility term instead of the final radi-
+ance signal. 𝑉takes on values between zero and one (potentially
+including partial visibility due to transparency or transmittance in
+volumes), so we use a sigmoidal activation function on the output
+neurons of the NVC. Further details and empirical observations
+related to this approach are discussed in Section 6.2.
+
+
+===== ntmc-2024 | page 7/17 =====
+
+Neural Two-Level Monte Carlo Real-Time Rendering
+, ,
+First Level Monte Carlo
+Control Variates
+GT Integrand
+NIRC
+SS NIRC
+NCV
+SH
+VMF
+EMA V𝑟𝑒𝑙(⟨𝐹𝑟⟩) vs Frame Number
+VRAM:
+20MB + 50KB
+68.2MB + 55KB
+20MB + 2MB
+69.1MB
+71MB
+Cornell Box
+V𝑟𝑒𝑙(⟨𝐹𝑟⟩):
+1.13
+1.43
+1.35
+2614
+3.39
+Bistro Exterior
+V𝑟𝑒𝑙(⟨𝐹𝑟⟩):
+9.2
+8.8
+10.12
+828.3
+30.0
+Country Kitchen
+V𝑟𝑒𝑙(⟨𝐹𝑟⟩):
+34.096
+89.90
+44.87
+1548
+118630
+Figure 6: Equal-memory footprint comparison between SHs, vMF mixtures, Neural Control Variates [Müller et al. 2020] and two
+our neural caches: NIRC with world space multi-level hash encodings and screen space latent features (SS NIRC). This figure
+presents shading integrand values in selected surfaces with different materials in a set of scenes, displayed as tone-mapped
+latitude-longitude images. NCV, SHs and vMFs serve as control variates for analytical integral computations. NIRC focuses
+only on incident radiance on surfaces for use in MLMC estimators. SHs generally struggle with ringing and fail to capture
+high-frequency signals for specular surfaces. Although vMFs can theoretically adapt to any frequency, the stepwise EM
+algorithm can fail to optimize all lobes efficiently with limited noisy radiance samples. Neural Control Variates can evaluate
+integrals in closed form, but, as evidenced, the expressive power of NIRC demonstrates higher capacity. The average relative
+variance of the residual error estimator V𝑟𝑒𝑙(⟨𝐹𝑟⟩) per each scene and method is presented under the images. The plots on the
+right show estimated V𝑟𝑒𝑙(⟨𝐹𝑟⟩) using Exponential Moving Average (EMA) per training frame for the both neural models. As
+illustrated the NIRC requires significantly fewer training frames to achieve even lower V𝑟𝑒𝑙(⟨𝐹𝑟⟩) than the NCV.
+6
+RESULTS
+6.1
+Multi-level Monte Carlo vs. control variates
+To assess the expressiveness of our proposed neural cache, we com-
+pare it to other analytical models, in particular Spherical Harmonics
+(SH) and mixtures of von Mises-Fisher lobes (vMF). These models
+serve as a basis in control variates (CV) approaches because they
+can be integrated analytically and have been used in previous work
+[Pantaleoni 2020]. To conduct a meaningful comparison, we allo-
+cate each pixel its own set of model parameters in a framebuffer at
+720p, ensuring that every pixel holds the same amount of memory
+supporting the models. We chose 720p because we implemented
+this experiment in PyTorch [Paszke et al. 2019] using Falcor 7 [Kall-
+weit et al. 2022] and PyTorch Tiny CUDA NN bindings [Müller
+2021]. This setup facilitates debugging and correct fitting of vMF
+and SH coefficients but limits the performance. We are planning to
+publish the source code for reproducing the experiments after the
+publication.
+In our experiments, the vMF mixture model holds 11 lobes per
+pixel, requiring 7 coefficients per lobe. This model is similar to the
+Spherical Gaussian mixture model, which has been previously used
+as a basis for CV [Pantaleoni 2020]
+We initialized the vMF lobes directions using a spherical Fi-
+bonacci lattice for optimal sphere coverage and optimized the lobes
+parameters using the stepwise-EM [Vorba et al. 2014] [Pantaleoni
+2020]. The batch size for the stepwise EM was set in a range from
+15 to 40 samples, depending on the noise level of a scene.
+We introduce Screen Space NIRC (SS NIRC), a version of NIRC
+that accepts one latent vector per pixel instead of the multires-
+olution hash encoding for a fair comparison with the vMFs and
+SHs models. The neural network additionally stores the network
+weights in a global buffer with less than 55kB and allocates 68.2 MB
+for the screen space latent features. The world-space NIRC requires
+only 20MB for its latent representation and 50kB for the weights
+respectively. We set both NIRC models to have 6 layers to assess
+their expressive power at full capacity.
+We selected the number of vMF lobes to be 11, SH bands to be
+5, and 74 latent vectors for SS NIRC to ensure a similar memory
+footprint of approximately 75 floats per pixel. We also limit the
+
+
+===== ntmc-2024 | page 8/17 =====
+
+, ,
+Dereviannykh et al.
+number of frames for optimization up to 4000 due to our target
+application goal of real-time rendering.
+We estimate the relative variance of the residual error integral
+estimator V𝑟𝑒𝑙(⟨𝐹𝑟⟩) for both control variates (vMFs, SH) and two-
+level Monte Carlo estimators (NIRC and SS NIRC) per each surface
+in the frame buffer and average them. We also provide visualizations
+of the computed integrand values by all four models for a set of
+selected surfaces. It is important to highlight that SHs and vMFs
+are trained to memorize not only the incident lighting signal as the
+NIRC and SS NIRC do but the whole integrand, including the BRDF
+term, so they can be used as control variates.
+As seen in Figure 6, the neural models achieve lower variance
+for all scenes, preserving geometrical edges and reconstructing
+high-frequency illumination details. The standard NIRC with mul-
+tiresolution hash encoding often reaches even better metrics by
+consuming less memory, as it effectively redistributes the limited
+latent features between surfaces by resolving hash collisions using
+gradient descent.
+As shown earlier, analytical models like SH and vMF don’t fully
+capture the complexity of the scenes and struggle to reconstruct the
+integrated illumination with reasonable accuracy. This motivated
+us to conduct further experiments with neural models, specifically
+implementing a model similar to Neural Control Variates (NCV)
+[Müller et al. 2020]. This model is based on a Normalizing Flow
+using the Piecewise-Quadratic Coupling Transform from Neural
+Importance Sampling (NIS) [Müller et al. 2019]. We utilized an
+open-source NIS implementation as the foundation for the warps
+with the invertible coupling transformations [?], and developed
+the rest of the components ourselves, as the original works did
+not release any public code [Müller et al. 2019][Müller et al. 2020].
+Inspired by NCV, our NCV model utilizes one blob encoding for
+latent variables with 32 bins. The coupling transforms consist of 64
+bins and 2 repetitions as in the original work. To ensure fair equal-
+memory comparison, we use the same encodings and the number
+of hash levels for the optional features (per-surface parameters) as
+for the NIRC. Our implementation of NCV optimizes the shape of
+the control variates using a 6-layer MLP with 64 neurons to predict
+the coupling matrices, similar to the NIRC. Directions are encoded
+using the cylindrical transformation. For the sake of simplicity, we
+instantiate an independent flow for each colour channel. While
+potentially increasing computation time, it demonstrates accuracy
+improvements as shown in [Müller et al. 2020].
+Neural Control Variates also require CV integral optimization, so
+we employed the NRC [Müller et al. 2022] to predict the CV integral,
+using the same hash encoding layer for both models, ensuring a
+fair comparison. Additionally, we conducted experiments using a
+pre-estimated CV integral instead of employing a unified network
+for both tasks, but this approach did not yield any significant im-
+provements in the overall performance metrics. Unlike NIRC, NCV
+needs a larger batch size (57,600 vs. 14,400) due to convergence
+issues, which is why we perform only 1 gradient descent step per
+frame for NCV compared to 4 for NIRC.
+To compare the performance of NCV and NIRC, we track the
+relative variance per frame using an exponential moving average
+(𝛼= 0.95). The results are shown in figure 6 (right). NCV comes
+close to the NRC metrics after a thousand frames, while the NIRC
+requires only a few hundred. Additionally, NIRC achieves in 1.1-
+1.32× lower relative variance for the residual error estimator as
+compared to the NCV.
+Our experiments in Figure 6 indicate that the additional accuracy
+gained by numerically estimating the integral for MLMC can offset
+the benefits of an analytical solution for the first-level integral for
+CVs. Another advantage is that NIRC does not require the neural
+network to approximate the BSDF, as is necessary for the NCV,
+uses less compute, and does not require a CV integral prediction
+network. While it is not easy to assess the precise compute time
+for NCV inference, as it can strongly depend on the final optimized
+CUDA kernels, we estimate that our NCV model requires 18 MLP
+inferences compared to just one for NIRC alongside the coupling
+transformation.
+6.2
+Evaluation
+We implemented all components of our NIRC and the required
+rendering infrastructure for it using CUDA, based on an already
+released framework for training and inferencing fully-fused neural
+networks [Müller et al. 2021], and Direct3D 12 with the hardware
+accelerated ray tracing leveraging the Falcor 4.4 engine [Kallweit
+et al. 2022].
+In order to achieve reasonable performance without a significant
+cache quality sacrifice we suggest using neural networks with 4
+hidden layers and 64-neuron width. For the training, we follow the
+same strategy as was suggested for NRC [Müller et al. 2021] but
+without using the self-training strategy for our NIRC, because we
+did not observe any benefits from it. Also, we perform 4 gradient
+descent steps per frame using the Adam optimizer [Kingma and Ba
+2017] with a learning rate equal to 0.01. ReLU activation is used as
+a nonlinear block for the MLP. For the NRC we use just one cache
+query at a final surface 𝑥𝑡for each light transport path (render
+sample) in all experiments. The cache-based Monte Carlo estimator
+Equation (11) is applied only in combination with the NIRC (see
+Figure 2).
+The main experiments were conducted on an RTX 3080 GPU
+and an i7-12700k CPU with 32GB of RAM, rendering at 1920×1080
+resolution. For the sake of fair judgments, we performed equal-
+performance comparisons involving computations of Mean Relative
+Squared Error (MRSE) and the perceptual
+F
+LIP-metric [Andersson
+et al. 2020]. The rendering is performed by a unidirectional path
+tracing algorithm combined with Next-Event Estimation (NEE) and
+Multiple Importance Sampling (MIS) [Veach and Guibas 1995] for di-
+rect lighting estimation. Lights are sampled by a light BVH [Moreau
+et al. 2019]. The path-tracer uses Russian roulette with a termination
+probability of 0.1.
+Biased and unbiased variants. We examine two possible ways
+of using NIRCs to accelerate rendering: We achieve an unbiased
+estimator by combining NIRCs and MLMC. For this, we estimate
+the outgoing radiance for the first three vertices of a path using a
+predefined number of neural samples (manually adjusted per scene),
+as well as full path tracing samples to estimate 𝐿𝑟. We obtain a
+biased estimator when instead using the Spread Angle Heuristic
+criteria for the NRC and the Balanced Termination Heuristic for the
+NIRC. Here we compute the shading integral using only the neural
+approximation of the incident lighting for truncated paths instead
+
+
+===== ntmc-2024 | page 9/17 =====
+
+Neural Two-Level Monte Carlo Real-Time Rendering
+, ,
+New Sponza
+Reference
+PT 2 spp
+Ours [Unbiased]
+PT 1 spp
+NRC [Biased]
+Ours [Biased]
+F
+LIP/MRSE:
+0.34/40.52
+0.29/9.34
+0.39/47.21
+0.35/33.03
+0.21/14.87
+Compute Time:
+87.1ms
+86.7ms
+42.13ms
+35.1ms
+35.2ms
+Country Kitchen
+F
+LIP/MRSE:
+0.43/86.52
+0.27/19.82
+0.48/114.5
+0.27/9.31
+0.22/5.61
+Compute Time:
+54.2ms
+55.2ms
+24.93ms
+25.9ms
+25.8ms
+Bistro Exterior
+F
+LIP/MRSE:
+0.5/88.23
+0.4/25.81
+0.57/121.23
+0.47/68.23
+0.37/29.32
+Compute Time:
+83.2ms
+82.1ms
+40.1ms
+37.2ms
+37.7ms
+White Room
+F
+LIP/MRSE:
+0.32/41.52
+0.29/13.81
+0.35/55.75
+0.26/12.93
+0.19/4.42
+Compute Time:
+56.2ms
+56.4ms
+24.9ms
+25.1ms
+25.2ms
+San Miguel
+F
+LIP/MRSE:
+0.53/101.1
+0.34/18.02
+0.6/119.2
+0.47/62.3
+0.31/25
+Compute Time:
+73.2ms
+73.7ms
+35.9ms
+33.2ms
+33.3ms
+Figure 7: We show different scenes rendered at 1080p on an RTX 3080. The experiments highlight the benefits of our Neural
+Incident Radiance Cache (NIRC) in combination with the Multi-Level Monte Carlo (MLMC) approach. For an equal-time
+comparison, the number of neural samples per light path is manually adjusted per scene within the range of 15 to 25 for
+our unbiased estimator to match the run time of 2 spp path tracing. We compare our biased estimator, which is explicitly
+designed to bypass the computation of the residual error integral, with 1 spp path tracing and the Neural Radiance Cache
+(NRC) algorithm. One key difference is that NIRC demands fewer computational resources and does not require casting any
+rays. This allows for 3 to 7 neural samples compared to the single sample of NRC. Our results indicate a decrease in the Mean
+Relative Squared Error (MRSE) of path tracing by 1 to 2 orders of magnitude and a 1.5 to 2.5 times reduction in
+F
+LIP relative to
+conventional path tracing. Moreover, even the efficiency comparison between NIRC and NRC based biased estimators leads to a
+2× to 3× reduction in MRSE and a 1.2× to 1.5× decrease in
+F
+LIP in favor of our method.
+of performing path tracing; this results in better performance, but
+introduces bias. The only difference to the NRC biased estimator
+is that we can afford to compute the shading integral with more
+than 1 cache sample as our cache does not require casting any rays.
+As can be seen in Figure 7, our unbiased estimator reduces the
+MRSE by a factor of 3 to 5× and
+F
+LIP by 10-38% compared to path
+tracing. Our biased estimator reduces MRSE by 3.17 to 20.40×, and
+achieves a 35-54% reduction for the FLIP metric. Compared to the
+NRC estimator, our biased algorithm also demonstrates significant
+
+
+===== ntmc-2024 | page 10/17 =====
+
+, ,
+Dereviannykh et al.
+Reference
+PT 1spp
+NRC [Biased]
+Ours [Biased]
+F
+LIP/MRSE:
+0.55/112.4
+0.45/82.5
+0.37/68.3
+Compute Time:
+39.4ms
+37.0ms
+37.4ms
+Figure 8: We present a comparative analysis of the perfor-
+mance between our Neural Incident Radiance Cache (NIRC)
+and the standard Neural Radiance Cache (NRC) when render-
+ing the Bistro scene with environment lighting disabled on
+a RTX 3080 and path tracing (PT). It ensures a fair compari-
+son since the standard NRC does not mitigate the variance
+caused by sky illumination estimation. The performance of
+both techniques is evaluated based on two metrics: Mean
+Relative Squared Error (MRSE) and
+F
+LIP. It is evident from
+the results that despite its inherent bias, our NIRC estimator
+consistently outperforms the NRC in the provided scenario.
+variance reduction in the same computation time:
+F
+LIP decreases
+up to 34% and MRSE is reduced by 1.66 up to 2.92×.
+Environment map lighting. Our cache includes special support
+for environment map lighting. This approach improves our method
+and thus Figure 7 does not compare the pure approximation power
+of the NIRC and NRC, since NRC does not decrease the variance
+caused by direct environmental lighting at the primarily visible
+surfaces. Figure 8 shows a balanced comparison with the NRC.
+Even when the influence of sky lighting is eliminated, our biased
+estimator exhibits outperforms the NRC.
+Distribution of neural samples in a light path. Our approach can
+be used for estimating the outgoing radiance at each vertex along
+a light path. In our experiments, we limit the NIRC usage to the
+first three non-specular vertices of a path for the sake of simplicity,
+although it is obvious that a light path’s variance may be affected
+by other vertices. This decision is also influenced by the need to
+predefine the number of vertices that can sample NIRC, which is
+critical for managing corresponding memory allocations discussed
+in the following paragraph. Additionally, our experiments do not
+show substantial improvements when increasing the number of
+vertices beyond three. Figure 9 shows experiments on the distribu-
+tion of the neural samples within a light path. Ideally, the amount
+of variance introduced at each vertex should be taken into account
+to determine the number of neural samples; we believe this is an
+interesting aspect for future work.
+Memory consumption. The memory consumption for NIRC in-
+ference is mainly determined by the number of surfaces where the
+NIRC is queried and the number of requests per surface. Our im-
+plementation includes several buffers: the surface parameter buffer,
+which requires 9 floats (36 bytes per surface), the encoded parameter
+buffer, utilizing 39 half floats or 78 bytes per surface and an addi-
+tional 4 bytes for each direction, where a neural sample is requested,
+are stored in the directional request buffer. The unit direction vector
+is mapped to an octahedron, stored as 32 bits as in previous works
+[Cigolle et al. 2014; Meyer et al. 2010]. In our experiments, the NIRC
+operates on up to 3 non-specular vertices per light path, with a
+total of 25 neural samples. This results in memory usage of 223.9
+MB for the surface parameter buffer, 448.2 MB for the encoded
+parameter buffer, and 207 MB for the directional request buffer
+for 1080p resolution. We discuss potential memory optimization
+strategies in Section 7.
+Dynamic scenes. Our method demonstrates good performance
+even in non-static scenarios such as the Bistro Exterior scene with
+dynamic objects and a moving camera (Figure 10). We compare our
+real-time rendering using online trainable NIRCs in combination
+with the MLMC estimator to ground truth images computed using
+an offline renderer with 1000 samples per pixel (spp) for each frame.
+As visible in the plots, our method starts to outperform the stan-
+dard Monte Carlo approach with the same compute budget after
+approximately 20 frames.
+Note that our model is trained in an online fashion and is defined
+in world space. This means that with each new frame, the model
+can improve the quality of subsequent renders and show good gen-
+eralization rather than an overfit to generated paths from previous
+frames. We encourage readers to also watch the accompanying
+videos in the supplementary materials.
+Neural Visibility Cache (NVC). Our results demonstrate that in-
+ferencing the visibility term instead of the final radiance value
+(Figure 11) outperforms basic path tracing as well as the generic
+NIRC. The benefits are particularly apparent when comparing the
+reconstructed hemispherical maps of incoming radiance for shading
+points. Focusing on learning the visibility term only also signifi-
+cantly simplifies the training process, and as demonstrated by the
+corresponding plot, NVCs converge more rapidly and provide more
+stable training compared to NIRCs. However, it is important to note
+that the NVC requires higher bandwidth due to the required sam-
+pling of the environment map; this is also illustrated in Figure 11.
+6.3
+Cache Analysis
+To assess the effectiveness of the NIRC in comparison to the NRC,
+we investigated their influence on bias, variance, path length, and
+render time.
+While the NIRC allows us to achieve lower image errors within
+a limited sample budget by invoking it multiple times and saving
+bounces (Figure 4), it remains to be shown that this cache can
+approximate the incident radiance precisely enough to achieve con-
+verged renders. Moreover, our new heuristic may negatively impact
+
+
+===== ntmc-2024 | page 11/17 =====
+
+Neural Two-Level Monte Carlo Real-Time Rendering
+, ,
+Reference
+Path Tracing 2 spp
+Our 𝑁1𝑐= 25, 𝑁2𝑐= 0
+Our 𝑁1𝑐= 20, 𝑁2𝑐= 5
+Our 𝑁1𝑐= 15, 𝑁2𝑐= 10
+F
+LIP/MRSE:
+0.45/76.05
+0.33/11.81
+0.34/12.42
+0.34/13.66
+F
+LIP/MRSE:
+0.30/75.26
+0.28/26.49
+0.30/22.61
+0.31/21.49
+Compute Time:
+108.8ms
+104.9ms
+109.8ms
+107.6ms
+Reference
+Path Tracing 2 spp
+Our 𝑁1𝑐= 15, 𝑁2𝑐= 0
+Our 𝑁1𝑐= 10, 𝑁2𝑐= 5
+Our 𝑁1𝑐= 5, 𝑁2𝑐= 10
+F
+LIP/MRSE:
+0.37/42.64
+0.36/20.61
+0.34/17.69
+0.37/19.26
+F
+LIP/MRSE:
+0.41/47.03
+0.39/32.92
+0.37/28.16
+0.36/35.01
+Compute Time:
+50.2ms
+51.1ms
+55.3ms
+54.3ms
+Figure 9: We explore the effect of redistribution of the number of neural samples between the first and second vertex of a light
+path, denoted as 𝑁1𝑐and 𝑁2𝑐, respectively. The experiments show the Sponza and Country Kitchen scenes rendered with up to 5
+vertices in a light path without Russian roulette in order to match the render time. We observe that the optimal allocation of
+neural samples between the first and second vertex is highly scene-dependent, influenced by, for example, material properties
+and illumination.
+the final render by causing most paths to terminate at the first ver-
+tex. This saves performance but can introduce bias. Therefore, we
+aim to answer several questions:
+• How do different caches (the NIRC vs. the NRC) influence the
+bias and variance of the final estimator?
+• Which cache produces more accurate renders for real-time ren-
+dering within limited compute time?
+• How does the decision to stop earlier or later impact the bias vs.
+variance trade-off and render time?
+To investigate these questions, we conducted a comprehensive
+analysis on a set of scenes using an RTX 4080, 32GB RAM, and an
+i7-12700K. For the NIRC, we only considered the task of capturing
+indirect light, excluding NCV and direct lighting estimation from
+an environment map for a fair comparison. We trained the caches
+for 2000 frames with 4 epochs to ensure their convergence.
+As shown in Figure 12, relying on the Spread Angle Heuristic
+(SPH) for NIRC results in a lower Relative Squared Bias (rBias2) of
+the final estimator by up to 4.12× compared with the NRC. How-
+ever, this approach increases noise due to the need to integrate
+over the cache and estimate direct lighting, sometimes resulting
+in higher image-based error within a limited sample budget with
+just one sample per pixel. Conversely, our Balanced Termination
+Heuristic (BTH) demonstrates less noisy results for real-time ren-
+dering purposes and reduces the number of light bounces required
+for estimating indirect lighting by up to 3.54×, though this comes
+at the cost of increased bias in our estimator.
+Our analysis shows that while invoking the NIRC at the same
+location as the NRC can lead to superior bias reduction, it degrades
+other metrics because we need to stochastically estimate the outgo-
+ing radiance from there, incorporating indirect lighting based on
+random samples of the cache along with direct lighting estimation.
+To gain theoretical insight, we explore an adaptive strategy for
+applying NIRC and NRC caches during rendering to analyze overall
+performance and a range of characteristics.
+The experiment is set up as follows: We estimate the relative
+bias per pixel and decide whether to query the cache at the first
+visible path vertex based on this. If the relative bias of the converged
+render terminating the path at the cache compared to the ground
+truth is less than 𝜀, the cache is used. By iterating over a set of 𝜀
+values, specifically {0.05, 0.1, 0.15, 0.20, 0.25, 0.30, 0.35,...,1.0}, we
+collected a comprehensive set of metrics: MRSE,
+F
+LIP, compute time
+for one-sample renders, (rBias2), relative variance (rVar), and the
+average index of a vertex at which the cache is invoked (this is either
+the first or the second path vertex). We calculated at least 5,000
+samples per pixel up to 50,000 to achieve fully converged ground
+truth renders and error maps. This was done for both the NIRC and
+the NRC. We excluded NIRC usage at 𝑣1 for delta scattering rays
+and the NRC if the roughness is less than 0.0625 due to extreme
+glossiness. The NRC authors suggest a similar heuristic to invoke
+the cache only at the first "non-specular vertex" [Müller et al. 2021]
+as motivation for the SPH. For 𝑣𝑖where 𝑖> 1, if the error pass fails
+or the first interaction is "too glossy", we always follow the Spread
+Angle Heuristic for both cases. The algorithm uses the screen space
+error estimation approach for maximum precision, understanding
+that this approach limits the ability to guide the termination policy
+for the second and further bounces. However, it remains the most
+accurate method for the initial termination decision.
+
+
+===== ntmc-2024 | page 12/17 =====
+
+, ,
+Dereviannykh et al.
+250
+Frame’s № in the animated sequence
+500
+750
+1000
+0
+MRSE
+.25
+.35
+.65
+.50
+F
+LIP
+...
+1st Frame
+Ours 
+[Unbiased]
+Ours 
+[Biased]
+PT 2spp
+PT 1spp
+1250
+1500
+1750
+400th Frame
+800th Frame
+1200th Frame
+...
+1600th Frame
+2000th Frame
+...
+...
+...
+...
+250
+500
+750
+1000
+0
+1250
+1500
+1750
+0
+50
+200
+100
+150
+NRC
+[Biased]
+Figure 10: To illustrate the dynamic adaptation of the Neural
+Incident Radiance Cache (NIRC) in a changing environment,
+we conducted experiments using the animated Bistro Exte-
+rior scene with moving objects. The figure demonstrates a
+quick reduction in both Mean Related Squared Error (MSE)
+and
+F
+LIP metrics, reaching levels better than the conven-
+tional Monte Carlo estimator within a span of 10-20 frames.
+The compute time for path tracing (PT) with one sample
+per pixel (spp) and the biased estimators based on NIRC and
+NRC, as well as PT with two spp and our unbiased estimator,
+are comparable, respectively.
+As shown in Figure 13, we introduced a new metric, % Indirect
+Radiance (IR) Bounces, representing the averaged index of a vertex
+at which the path was invoked minus one. Our results show that we
+can achieve up to 130.5× fewer IR bounces for estimating indirect
+illumination while maintaining a similar bias in the final estimator
+as for the NRC. Furthermore, we consistently achieved lower bias
+for any % IR bounces and lower variance in all cases where NRC can
+achieve the same bias. In the other cases, NRC is simply not able
+to provide a precise approximation high enough to have the same
+bias level as NIRC without delaying further the path termination
+decision. Moreover, it can be seen that a set of experiments leads to
+a significant saving in the number of IR bounces up to 28.99-396×
+compared to the NRC depending on the scene when we consider
+equal-error comparisons based on
+F
+LIP with just 1 spp. We may
+want to emphasize that these extreme numbers are produced when
+NIRC leads to allocating IR bounces only to less than 0.2% of pixels
+while the NRC needs to trace further in more than 10% of pixels to
+achieve the same
+F
+LIP metric or the rBias2 of the final estimator.
+Despite not exploiting the main architecture feature of the NIRC
+and allocating only 1 neural request per path for the NRC as well,
+we focused on more fundamental metrics regardless of the final
+0
+900
+450
+.27
+.30
+.50
+.45
+.38
+F
+LIP
+№ Frame
+.36
+.34
+PT 4SPP
+PT 5SPP
+PT 6SPP
+NVC Unbiased
+23.9ms
+PT   4/5/6 spp
+15.8/18.8/22 ms
+PT
+NVC
+PT
+NIRC
+NVC Biased
+17.5ms
+NIRC Unbiased
+22.6ms
+NIRC Biased
+17.5ms
+NVC
+NIRC
+Figure 11: We assess the effectiveness of the Neural Incident
+Radiance Cache (NIRC) and Neural Visibility Cache (NVC)
+to decrease the variance of the direct illumination estimator
+utilizing our MLMC estimator with 𝑁𝑐= 7 in the San Miguel
+scene. Despite using more memory bandwidth, the NVC ex-
+hibits better reconstruction quality and training stability
+than the NIRC. Since the baseline path tracing estimator is
+very fast in this setting, we limited the MLPs to 2 layers for
+both NIRC and NVC to achieve comparable timings.
+compute time. We were also interested in applied cases for real-
+time applications. This is why we introduced the NIRC Equal Time
+Samples plot in Figure 13. We suggested maximizing the number
+of allocated neural samples for the NIRC per pixel where the cache
+is invoked at the 𝑣1 until we match the compute time of the corre-
+sponding render with the closest rBias2 based on the NRC (within
+a 1ms epsilon). By having more neural samples, we managed to
+achieve FLIP: 1.05-1.14× decrease, MRSE: 0.93-6.67× improvement,
+Variance: 1.11-1.82× improvement over the constant 1 neural sam-
+ple. This improvement lets us achieve superior MRSE and rVar
+compared to the NRCs almost in all cases with equal bias. So, even
+considering the need to trace direct light rays and the associated
+costs, efficient adaptive usage combined with cheaper neural sam-
+ples dominate over these costs.
+This adaptive error-based algorithm requires a lot of precompu-
+tations and cannot be used in real-time applications. We discuss it
+to demonstrate potential theoretically; in reality, a classical hash
+table based data structure could be used to estimate the error grad-
+ually. Alternatively, very cheap Bayesian uncertainty estimation
+[Durasov et al. 2024] does not require any additional infrastructure
+and could be theoretically used to estimate the bias.
+7
+DISCUSSION AND FUTURE WORK
+Examining the quality of NIRC. The decision to store incident
+radiance in our cache, as opposed to outgoing radiance in Neural
+Radiance Caching (NRC), is an inherent challenge for the model as
+it effectively has to learn the geometrical structure of a scene. As we
+discussed earlier this can lead to missed local reflection effects and
+impact performance with highly specular surfaces. When compar-
+ing converged renders using the biased estimators based on NRC
+
+
+===== ntmc-2024 | page 13/17 =====
+
+Neural Two-Level Monte Carlo Real-Time Rendering
+, ,
+Heuristics Based Comparison
+Approx. Equal Bias Comparison
+Reference
+NIRC Ours BTH
+NIRC Ours + SPH
+NRC SPH
+NIRC Adaptive
+NRC Adaptive
+1 neural sample
+[Müller et al. 2021]
+1 neural sample
+1-5 neural samples
+[Müller et al. 2021]
+Bistro Exterior
+1pp
+F
+LIP/MRSE/Time:
+0.468/36.84/15.6ms
+0.517/52.80/19.82ms
+0.480/27.53/18.79ms
+0.392/16.35/20.41ms
+0.468/25.89/19.98ms
+1spp rBias2 / rVar:
+1.19e-02/1.95
+9.81e-04/2.87
+3.12e-03/2.49
+2.87e-03/1.69
+3.08e-03/2.41
+Average Path Length:
+1.22
+1.77
+1.78
+1.19
+1.74
+Glossy Sponza
+1pp
+F
+LIP/MRSE/Time:
+0.278/6.69/14.48ms
+0.337/10.98/17.16ms
+0.307/4.75/17.06ms
+0.249/4.46/18.11ms
+0.302/4.65/18.14ms
+rBias2 / rVar:
+9.21e-03/2.38
+5.41e-03/5.68
+6.40e-03/2.63
+6.35e-03/1.61
+6.34e-03/2.57
+Average Path Length:
+1.38
+1.94
+1.94
+1.40
+1.92
+Country Kitchen
+1pp
+F
+LIP/MRSE/Time:
+0.241/1.96/14.76ms
+0.283/2.96/17.08ms
+0.236/1.17/16.61ms
+0.213/0.88/17.99ms
+0.235/1.16/17.73ms
+rBias2 / rVar:
+1.86e-03/0.85
+4.37e-04/1.28
+1.49e-03/0.73
+1.11e-03/0.69
+1.47e-03/0.73
+Average Path Length:
+1.43
+1.98
+1.99
+1.24
+1.99
+The White Room
+1spp
+F
+LIP/MRSE/Time:
+0.308/6.81/14.45ms
+0.351/8.83/17.52ms
+0.293/4.11/16.43ms
+0.269/0.54/17.04ms
+0.201/1.98/17.60ms
+1spp rBias2 / rVar:
+1.50e-03/0.67
+7.73e-04/0.89
+3.19e-03/0.57
+1.54e-03/0.50
+2.90e-03/0.33
+Average Path Length:
+1.40
+1.96
+1.99
+1.05
+1.56
+Figure 12: Comparison of the Neural Incident Radiance Cache (NIRC) and the Neural Radiance Cache (NRC) using different
+heuristics and adaptive methods rendered on an RTX 4080 on a set of scenes at 1080p with biased estimators. The left part of
+the figure provides a heuristics-based comparison, showing our NIRC with the Balanced Termination Heuristic (BTH) and the
+Spread Angle Heuristic (SPH) against NRC SPH, each using 1 neural sample. The NIRC achieves the lowest bias in all scenes with
+SPH and even when the paths are terminated at the 1st visible surface in Bistro and The White Room. The right comparison
+provides a fair representation of the performance of the algorithms with closely similar bias based on the per-pixel adaptive
+path termination policy. The figure shows that our NIRC method reduces the Mean Relative Squared Error (MRSE) and
+F
+LIP
+metrics in scenes with a high influence of indirect lighting on the final variance while terminating the paths earlier and using
+limited computational resources more efficiently than NRC.
+and NIRC, the latter tends to produce renders of lower accuracy
+(the unbiased estimator does not share these difficulties). A venue
+for future research might be to enhance the quality of NIRC in the
+angular domain or to explore ways to combine NIRCs and NRCs
+to mitigate their limitations and achieve a better balance between
+performance and quality of biased renders.
+MLMC Adaptivity. MLMC removes the bias from the estimator
+but can increase variance. This is evident from Figure 14 where
+NIRC struggles to accurately represent incident light patterns for
+complex geometry like trees and bushes. We believe it is worth-
+while to explore ways to improve MLMC’s adaptivity. Müller et
+al. [Müller et al. 2019] have demonstrated the advantages of using a
+separate neural network to calculate the probability of relying on a
+trained neural guiding model instead of a regular sampling routine.
+Similar strategies might be used to restrict the use of MLMC to
+configurations where the cache quality is high.
+Quality of caches. Undesirable results may emerge, particularly
+in regions with high variance of radiance estimates, as the training
+of neural networks can become unstable due to noisy gradients.
+We believe that the use of techniques such as ReSTIR [Bitterli et al.
+2020] might lead to better cache quality and reduce the occurrence
+of undesirable patterns in the render.
+Dynamic adaptivity. Although our algorithm typically performs
+well in dynamic scenes, the neural network might reach a local
+minimum and cease further adaptation. This can also be observed
+
+
+===== ntmc-2024 | page 14/17 =====
+
+, ,
+Dereviannykh et al.
+Bistro Exterior
+The White Room
+Sponza Specular
+Country Kitchen
+Bistro Exterior
+The White Room
+Sponza Specular
+Country Kitchen
+rBias2
+F
+LIP
+IR Bounces
+IR Bounces
+IR Bounces
+IR Bounces
+IR Bounces
+IR Bounces
+IR Bounces
+IR Bounces
+rVar
+MRSE
+rBias2
+rBias2
+rBias2
+rBias2
+rBias2
+rBias2
+rBias2
+rBias2
+Figure 13: For each scene, we analyze the performance of the Neural Incident Radiance Cache (NIRC) and the Neural Radiance
+Cache (NRC), highlighting the significant reduction in Indirect Radiance (IR) bounces and improvements in Mean Relative
+Squared Error (MRSE) and
+F
+LIP based on the per-pixel adaptive path termination policy. The results show that in most scenes the
+NIRC curves (in red and brown) are consistently below the NRC curves (in red), indicating superior performance. Additionally,
+we include a comparison of the NIRC with equal compute time to NRC (brown) that maximizes the number of allocated
+neural samples per path for the NIRC, demonstrating the accuracy gains and variance reduction achieved by our algorithm.
+In particular, plots show a significant reduction in IR Bounces over the NRC for achieving closely similar bias and
+F
+LIP, as
+highlighted by the green dashed lines in extreme cases with up to 396x difference. These improvements suggest that NIRC
+achieves lower error and variance at a similar computational cost to NRC.
+Figure 14: This image shows a tone-mapped visualization of
+signed squared differences between the standard deviation of
+the original Monte Carlo and our multi-level Monte Carlo es-
+timator for direct illumination only. Negative outcomes (red)
+indicate that our approach increases variance and positive
+outcomes (green) signify variance reduction. Our method
+works best in smooth regions and can fail near complex geo-
+metric occlusion such as in trees and bushes.
+even when stochastic gradient descent [Ruder 2016] is used without
+adaptive estimation of the gradient’s momentum. We believe this
+deserves further work in the future.
+More than two-levels Monte Carlo. In our work, we have studied
+a two-level Monte Carlo method. The experiments in Figure 15
+indicate that often 2-layer MLPs reproduce the original signals
+quite well. Therefore, it might be beneficial to use such MLPs as a
+first level, and further MLPs, possibly with varying reconstruction
+qualities, in higher levels of MLMC.
+Negative values. The rendering equation does not yield negative
+values, ensuring that our NIRC model consistently predicts positive
+values, making it well-suited for our applications. However, when
+considering the residual error integral in our two-level Monte Carlo
+estimator, we encounter the possibility of negative values. Unlike
+other works [Müller et al. 2019, 2020], we do not employ path guid-
+ing, as it is considered orthogonal research. This absence of path
+guiding might result in slower convergence due to sign-based vari-
+ance. While techniques like the positivisation method [Owen and
+Zhou 2000] could potentially mitigate this issue by addressing the
+negative values, implementing such techniques would necessitate
+learning distributions, fitting Control Variates or path resampling.
+
+
+===== ntmc-2024 | page 15/17 =====
+
+Neural Two-Level Monte Carlo Real-Time Rendering
+, ,
+MSE:
+0.14
+0.27
+0.56
+MSE:
+0.13
+0.21
+0.23
+Reference
+Ours, 𝐷= 6
+Ours, 𝐷= 4
+Ours, 𝐷= 2
+1.64ms
+1.24ms
+0.84ms
+MSE:
+1.52
+1.83
+2.15
+MSE:
+0.94
+0.98
+1.02
+Reference
+Ours, 𝐷= 6
+Ours, 𝐷= 4
+Ours, 𝐷= 2
+1.64ms
+1.24ms
+0.84ms
+MSE:
+0.77
+0.79
+0.78
+MSE:
+0.97
+0.97
+1.13
+Reference
+Ours, 𝐷= 6
+Ours, 𝐷= 4
+Ours, 𝐷= 2
+1.64ms
+1.24ms
+0.84ms
+Figure 15: In this figure, we examine the impact of varying the number of hidden layers 𝐷within our Neural Incident Radiance
+Cache (NIRC) on the precision of the reconstructed radiance signal for multiple scenes, arranged from left to right: Cornel
+Box, New Sponza, and White Room. The HDR cache is showcased for a certain set of points using octahedral projection,
+and we calculate the Mean Squared Error (MSE) between it and the corresponding ground truth reference renders. For better
+visualization, we convert HDR values to LDR using the ACES tone mapper. Our cache does not store lighting information from
+emissive surfaces. Additionally, we present the computation time for each additional neural sample per neural architecture,
+aimed to illustrate scalability and the balance between performance and quality. As observed, a greater number of hidden layers
+typically result in a substantial improvement in the reconstruction capabilities of the NIRC, although this is not consistently
+the case across all scenarios.
+The latter would involve tracing multiple paths from a vertex where
+we invoke the cache, complicating the approach and degrading the
+performance of the whole algorithm. Therefore, we acknowledge
+this as an important area for future research.
+Challenges in Optimization. Our experiments showed that using
+L2 differences as a loss function does not consistently lead to the
+best outcomes. Taking into account tone mapping, or even percep-
+tual metrics, might be beneficial, however, non-linear functions
+lead to biased gradients due to the interference of noisy radiance
+estimators. Previous work [Chang et al. 2023; Nicolet et al. 2023]
+proposes to decrease the variance of estimators, which in turn re-
+duces the bias of the gradients. We believe that this is an interesting
+direction for research.
+In Place Execution. Our inference pipeline temporarily stores
+all neural network requests in buffers, a topic we discuss in detail
+in Section 6.2 concerning memory consumption. This approach
+not only requires substantial memory but also increases the con-
+sumption of memory bandwidth, which may lead to performance
+degradation. Keeping CUDA and Direct3D in sync within our im-
+plementation adds an overhead of 2-3 milliseconds. Implementing
+encoding evaluations and neural network inference directly in the
+path tracing kernel might eliminate this overhead and reduce the
+overall implementation complexity and memory consumption.
+8
+CONCLUSION
+In this paper, we presented a two-level Monte Carlo estimator for
+real-time global illumination rendering. We train and evaluate tiny
+neural networks on the fly to approximate incident radiance, as
+the first level of the estimator. A second level is used to create an
+unbiased estimator in the context of multi-level Monte Carlo. We
+also present a biased variant which can reduce the residual error
+further in the same rendering time. Both variants produce lower
+errors in equal time comparisons in most experiments than pre-
+viously published work on neural radiance caching [Müller et al.
+2021]. In addition, our experiments revealed that combining the
+MLMC framework with NIRC can offset integration costs while
+achieving superior variance reduction of the residual error estima-
+tor compared to Control Variates. Our key insights to achieving this
+are a data representation that stores incident radiance (avoiding a
+costly ray trace to determine visibility when querying the cache), a
+carefully selected set of inputs to the neural network (producing
+more accurate output to support this new storage), and a tightly
+coupled implementation that avoids round trips to global memory
+where possible. Our comprehensive cache analysis further demon-
+strated that we can significantly reduce the number of rays traced
+for indirect illumination by leveraging our cache, leading to more
+efficient rendering without significantly sacrificing quality.
+We found that the allocation of sample counts for path vertices
+along a transport path influences the final variance significantly
+and should be investigated in more detail. This concept aligns with
+
+
+===== ntmc-2024 | page 16/17 =====
+
+, ,
+Dereviannykh et al.
+principles previously explored in classical light transport simula-
+tions, as demonstrated in the previous works [Rath et al. 2022]
+[Vorba and Křivánek 2016].
+We only experimented with dynamic scene content but did not
+specifically optimize the cache to quickly react to drastic changes.
+For instance, distributing the training workload more into regions of
+the cache that have low quality might improve the results. Utilizing
+hierarchical caches has the potential to more quickly distribute
+information about light sources in the scenes, and could provide
+interesting interplay with the multi-level Monte Carlo paradigm.
+We believe that research in this area promises to be applicable for
+real-time and offline rendering.
+REFERENCES
+Pontus Andersson, Jim Nilsson, Tomas Akenine-Möller, Magnus Oskarsson, Kalle
+Åström, and Mark D. Fairchild. 2020. FLIP: A Difference Evaluator for Alternating
+Images. Proceedings of the ACM on Computer Graphics and Interactive Techniques 3,
+2 (2020), 15:1–15:23. https://doi.org/10.1145/3406183
+Nikolaus Binder, Sascha Fricke, and Alexander Keller. 2018. Fast Path Space Filtering
+by Jittered Spatial Hashing. In ACM SIGGRAPH 2018 Talks (Vancouver, British
+Columbia, Canada) (SIGGRAPH ’18). Association for Computing Machinery, New
+York, NY, USA, Article 71, 2 pages. https://doi.org/10.1145/3214745.3214806
+Benedikt Bitterli, Chris Wyman, Matt Pharr, Peter Shirley, Aaron Lefohn, and Wojciech
+Jarosz. 2020. Spatiotemporal reservoir resampling for real-time ray tracing with
+dynamic direct lighting. ACM Trans. Graph. 39, 4 (July 2020). https://doi.org/10/
+gg8xc7
+Guillaume Boissé, Sylvain Meunier, Heloise de Dinechin, Pieterjan Bartels, Alexan-
+der Veselov, Kenta Eto, and Takahiro Harada. 2023.
+GI-1.0: A Fast and Scal-
+able Two-level Radiance Caching Scheme for Real-time Global Illumination.
+arXiv:2310.19855 [cs.GR]
+Wesley Chang, Venkataram Sivaram, Derek Nowrouzezahrai, Toshiya Hachisuka, Ravi
+Ramamoorthi, and Tzu-Mao Li. 2023. Parameter-space ReSTIR for Differentiable and
+Inverse Rendering. In ACM SIGGRAPH 2023 Conference Proceedings (Los Angeles,
+CA, USA) (SIGGRAPH ’23). Association for Computing Machinery, New York, NY,
+USA, 10 pages. https://doi.org/10.1145/3588432.3591512
+Zina H. Cigolle, Sam Donow, Daniel Evangelakos, Michael Mara, Morgan McGuire,
+and Quirin Meyer. 2014. A Survey of Efficient Representations for Independent
+Unit Vectors. Journal of Computer Graphics Techniques (JCGT) 3, 2 (17 April 2014),
+1–30. http://jcgt.org/published/0003/02/01/
+Stavros Diolatzis, Julien Philip, and George Drettakis. 2022. Active Exploration for
+Neural Global Illumination of Variable Scenes. ACM Trans. Graph. 41, 5, Article
+171 (may 2022), 18 pages. https://doi.org/10.1145/3522735
+Renaud Adrien Dubouchet, Laurent Belcour, and Derek Nowrouzezahrai. 2017. Fre-
+quency Based Radiance Cache for Rendering Animations. In Eurographics Sympo-
+sium on Rendering - Experimental Ideas & Implementations, Matthias Zwicker and
+Pedro Sander (Eds.). The Eurographics Association. https://doi.org/10.2312/sre.
+20171193
+Nikita Durasov, Nik Dorndorf, Hieu Le, and Pascal Fua. 2024. ZigZag: Universal
+Sampling-free Uncertainty Estimation Through Two-Step Inference. Transactions
+on Machine Learning Research (2024).
+Shin Fujieda, Chih-Chen Kao, and Takahiro Harada. 2023. Neural Intersection Function.
+arXiv:2306.07191 [cs.GR]
+Vaclav Gassenbauer, Jaroslav Krivanek, and Kadi Bouatouch. 2009. Spatial Directional
+Radiance Caching. Computer Graphics Forum (2009). https://doi.org/10.1111/j.1467-
+8659.2009.01496.x
+Iliyan Georgiev, Jaroslav Křivánek, Tomáš Davidovič, and Philipp Slusallek. 2012. Light
+transport simulation with vertex connection and merging. ACM Trans. Graph. 31,
+6, Article 192 (nov 2012), 10 pages. https://doi.org/10.1145/2366145.2366211
+Michael B. Giles. 2008. Multilevel Monte Carlo Path Simulation. Operations Research
+56 (06 2008), 607–617. https://doi.org/10.1287/opre.1070.0496
+Michael B. Giles. 2015. Multilevel Monte Carlo methods. Acta Numerica 24 (2015),
+259–328. https://doi.org/10.1017/S096249291500001X
+G. Greger, P. Shirley, P.M. Hubbard, and D.P. Greenberg. 1998. The irradiance volume.
+IEEE Computer Graphics and Applications 18, 2 (1998), 32–43. https://doi.org/10.
+1109/38.656788
+Toshiya Hachisuka, Shinji Ogaki, and Henrik Wann Jensen. 2008. Progressive photon
+mapping. ACM Trans. Graph. 27, 5, Article 130 (dec 2008), 8 pages. https://doi.org/
+10.1145/1409060.1409083
+Saeed Hadadan, Shuhong Chen, and Matthias Zwicker. 2021. Neural radiosity. ACM
+Trans. Graph. 40, 6 (dec 2021), 1–11. https://doi.org/10.1145/3478513.3480569
+Simon Haykin. 1994. Neural networks: a comprehensive foundation. Prentice Hall PTR.
+Henrik Wann Jensen. 1996. Global Illumination using Photon Maps. In Rendering
+Techniques ’96, Xavier Pueyo and Peter Schröder (Eds.). Springer Vienna, Vienna,
+21–30.
+James T. Kajiya. 1986.
+The Rendering Equation. In Proceedings of the 13th An-
+nual Conference on Computer Graphics and Interactive Techniques (SIGGRAPH
+’86). Association for Computing Machinery, New York, NY, USA, 143–150. https:
+//doi.org/10.1145/15922.15902
+Simon Kallweit, Petrik Clarberg, Craig Kolb, Tom’aš Davidovič, Kai-Hwa Yao, Theresa
+Foley, Yong He, Lifan Wu, Lucy Chen, Tomas Akenine-Möller, Chris Wyman,
+Cyril Crassin, and Nir Benty. 2022. The Falcor Rendering Framework.
+https:
+//github.com/NVIDIAGameWorks/Falcor
+Diederik P. Kingma and Jimmy Ba. 2017. Adam: A Method for Stochastic Optimization.
+arXiv:1412.6980 [cs.LG]
+J. Krivanek, P. Gautron, S. Pattanaik, and K. Bouatouch. 2005. Radiance caching for
+efficient global illumination computation. IEEE Transactions on Visualization and
+Computer Graphics 11, 5 (2005), 550–561. https://doi.org/10.1109/TVCG.2005.83
+Jaakko Lehtinen, Jacob Munkberg, Jon Hasselgren, Samuli Laine, Tero Karras, Miika
+Aittala, and Timo Aila. 2018. Noise2Noise: Learning Image Restoration without
+Clean Data. In Proceedings of the 35th International Conference on Machine Learning
+(Proceedings of Machine Learning Research, Vol. 80), Jennifer Dy and Andreas Krause
+(Eds.). PMLR, 2965–2974.
+Zander Majercik, Jean-Philippe Guertin, Derek Nowrouzezahrai, and Morgan McGuire.
+2019. Dynamic Diffuse Global Illumination with Ray-Traced Irradiance Fields.
+Journal of Computer Graphics Techniques (JCGT) 8, 2 (5 June 2019), 1–30.
+http:
+//jcgt.org/published/0008/02/01/
+Julio Marco, Adrian Jarabo, Wojciech Jarosz, and Diego Gutierrez. 2018. Second-Order
+Occlusion-Aware Volumetric Radiance Caching. ACM Trans. Graph. 37, 2, Article
+20 (jul 2018), 14 pages. https://doi.org/10.1145/3185225
+Quirin Meyer, Jochen Süßmuth, Gerd Sußner, Marc Stamminger, and Günther
+Greiner. 2010.
+On Floating-Point Normal Vectors.
+Computer Graphics Fo-
+rum 29, 4 (2010), 1405–1409.
+https://doi.org/10.1111/j.1467-8659.2010.01737.x
+arXiv:https://onlinelibrary.wiley.com/doi/pdf/10.1111/j.1467-8659.2010.01737.x
+Ben Mildenhall, Pratul P. Srinivasan, Matthew Tancik, Jonathan T. Barron, Ravi Ra-
+mamoorthi, and Ren Ng. 2020. NeRF: Representing Scenes as Neural Radiance
+Fields for View Synthesis. In ECCV.
+Don P. Mitchell. 1987. Generating Antialiased Images at Low Sampling Densities. In
+Proceedings of the 14th Annual Conference on Computer Graphics and Interactive
+Techniques (SIGGRAPH ’87). Association for Computing Machinery, New York, NY,
+USA, 65–72. https://doi.org/10.1145/37401.37410
+Pierre Moreau, Matt Pharr, and Petrik Clarberg. 2019. Dynamic Many-Light Sampling
+for Real-Time Ray Tracing. In High-Performance Graphics - Short Papers, Markus
+Steinberger and Tim Foley (Eds.). The Eurographics Association. https://doi.org/
+10.2312/hpg.20191191
+Thomas Müller. 2021. tiny-cuda-nn. https://github.com/NVlabs/tiny-cuda-nn
+Thomas Müller, Alex Evans, Christoph Schied, and Alexander Keller. 2022. Instant
+Neural Graphics Primitives with a Multiresolution Hash Encoding. ACM Trans.
+Graph. 41, 4, Article 102 (July 2022), 15 pages.
+https://doi.org/10.1145/3528223.
+3530127
+Thomas Müller, Brian McWilliams, Fabrice Rousselle, Markus Gross, and Jan Novák.
+2019. Neural Importance Sampling. ACM Trans. Graph. 38, 5, Article 145 (Oct.
+2019), 19 pages. https://doi.org/10.1145/3341156
+Thomas Müller, Fabrice Rousselle, Alexander Keller, and Jan Novák. 2020. Neural
+Control Variates. ACM Trans. Graph. 39, 6, Article 243 (Nov. 2020), 19 pages.
+https://doi.org/10.1145/3414685.3417804
+Thomas Müller, Fabrice Rousselle, Jan Novák, and Alexander Keller. 2021. Real-time
+Neural Radiance Caching for Path Tracing. ACM Trans. Graph. 40, 4, Article 36
+(Aug. 2021), 36:1–36:16 pages. https://doi.org/10.1145/3450626.3459812
+Baptiste Nicolet, Fabrice Rousselle, Jan Novák, Alexander Keller, Wenzel Jakob, and
+Thomas Müller. 2023. Recursive Control Variates for Inverse Rendering. ACM
+Trans. Graph. 42, 4 (Aug. 2023). https://doi.org/10.1145/3592139
+Art B. Owen and Yi Zhou. 2000. Safe and Effective Importance Sampling. J. Amer. Statist.
+Assoc. 95 (2000), 135 – 143. https://api.semanticscholar.org/CorpusID:119761472
+Jacopo Pantaleoni. 2020.
+Online path sampling control with progressive spatio-
+temporal filtering. arXiv:2005.07547 [cs.GR]
+Adam Paszke, Sam Gross, Francisco Massa, Adam Lerer, James Bradbury, Gregory
+Chanan, Trevor Killeen, Zeming Lin, Natalia Gimelshein, Luca Antiga, Alban Des-
+maison, Andreas Köpf, Edward Yang, Zach DeVito, Martin Raison, Alykhan Tejani,
+Sasank Chilamkurthy, Benoit Steiner, Lu Fang, Junjie Bai, and Soumith Chintala.
+2019. PyTorch: An Imperative Style, High-Performance Deep Learning Library.
+arXiv:1912.01703 [cs.LG]
+Gilles Rainer, Adrien Bousseau, Tobias Ritschel, and George Drettakis. 2022. Neural
+Precomputed Radiance Transfer. Computer Graphics Forum (Proceedings of the
+Eurographics conference) 41, 2 (April 2022).
+Alexander Rath, Pascal Grittmann, Sebastian Herholz, Philippe Weier, and Philipp
+Slusallek. 2022. EARS: efficiency-aware russian roulette and splitting. ACM Trans.
+Graph. 41, 4, Article 81 (jul 2022), 14 pages. https://doi.org/10.1145/3528223.3530168
+
+
+===== ntmc-2024 | page 17/17 =====
+
+Neural Two-Level Monte Carlo Real-Time Rendering
+, ,
+Hauke Rehfeld, Tobias Zirr, and Carsten Dachsbacher. 2014. Clustered Pre-convolved
+Radiance Caching. In Eurographics Symposium on Parallel Graphics and Visualiza-
+tion, Margarita Amor and Markus Hadwiger (Eds.). The Eurographics Association.
+https://doi.org/10.2312/pgv.20141081
+Carlos Rodriguez-Pardo, Javier Fabre, Elena Garces, and Jorge Lopez-Moreno.
+2023.
+NEnv: Neural Environment Maps for Global Illumination.
+Com-
+puter Graphics Forum 42, 4 (2023), e14883.
+https://doi.org/10.1111/cgf.14883
+arXiv:https://onlinelibrary.wiley.com/doi/pdf/10.1111/cgf.14883
+Sebastian Ruder. 2016. An overview of gradient descent optimization algorithms. arXiv
+preprint arXiv:1609.04747 (2016).
+Daniel Scherzer, Chuong H. Nguyen, Tobias Ritschel, and Hans-Peter Seidel. 2012.
+Pre-convolved Radiance Caching. Computer Graphics Forum 31, 4 (2012), 1391–1397.
+https://doi.org/10.1111/j.1467-8659.2012.03134.x
+Ari Silvennoinen and Jaakko Lehtinen. 2017. Real-Time Global Illumination by Pre-
+computed Local Reconstruction from Sparse Radiance Probes. ACM Trans. Graph.
+36, 6, Article 230 (nov 2017), 13 pages. https://doi.org/10.1145/3130800.3130852
+Kostas Vardis, Georgios Papaioannou, and Anastasios Gkaravelis. 2014. Real-time
+Radiance Caching using Chrominance Compression. Journal of Computer Graphics
+Techniques (JCGT) 3, 4 (16 December 2014), 111–131. http://jcgt.org/published/
+0003/04/06/
+Eric Veach and Leonidas J. Guibas. 1995. Optimally Combining Sampling Techniques for
+Monte Carlo Rendering. In Proceedings of the 22nd Annual Conference on Computer
+Graphics and Interactive Techniques (SIGGRAPH ’95). Association for Computing
+Machinery, New York, NY, USA, 419–428. https://doi.org/10.1145/218380.218498
+Dor Verbin, Peter Hedman, Ben Mildenhall, Todd Zickler, Jonathan T. Barron, and
+Pratul P. Srinivasan. 2022. Ref-NeRF: Structured View-Dependent Appearance for
+Neural Radiance Fields. CVPR (2022).
+Delio Vicini, Vladlen Koltun, and Wenzel Jakob. 2019. A Learned Shape-Adaptive
+Subsurface Scattering Model. ACM Trans. Graph. 38, 4 (July 2019), 15.
+https:
+//doi.org/10.1145/3306346.3322974
+Jiří Vorba, Johannes Hanika, Sebastian Herholz, Thomas Müller, Jaroslav Křivánek, and
+Alexander Keller. 2019. Path Guiding in Production. In ACM SIGGRAPH 2019 Courses
+(Los Angeles, California) (SIGGRAPH ’19). ACM, New York, NY, USA, Article 18,
+77 pages. https://doi.org/10.1145/3305366.3328091
+Jiří Vorba, Ondřej Karlík, Martin Šik, Tobias Ritschel, and Jaroslav Křivánek. 2014.
+On-line Learning of Parametric Mixture Models for Light Transport Simulation.
+ACM Transactions on Graphics (Proceedings of SIGGRAPH 2014) 33, 4 (aug 2014).
+Jiří Vorba and Jaroslav Křivánek. 2016. Adjoint-driven Russian roulette and splitting in
+light transport simulation. ACM Trans. Graph. 35, 4, Article 42 (jul 2016), 11 pages.
+https://doi.org/10.1145/2897824.2925912
+Gregory J. Ward, Francis M. Rubinstein, and Robert D. Clear. 1988. A Ray Tracing
+Solution for Diffuse Interreflection. In Proceedings of the 15th Annual Conference
+on Computer Graphics and Interactive Techniques (SIGGRAPH ’88). Association for
+Computing Machinery, New York, NY, USA, 85–92. https://doi.org/10.1145/54852.
+378490
+Yiheng Xie, Towaki Takikawa, Shunsuke Saito, Or Litany, Shiqin Yan, Numair Khan,
+Federico Tombari, James Tompkin, Vincent Sitzmann, and Srinath Sridhar. 2022.
+Neural Fields in Visual Computing and Beyond. Computer Graphics Forum (2022).
+https://doi.org/10.1111/cgf.14505
+Tizian Zeltner, Fabrice Rousselle, Andrea Weidlich, Petrik Clarberg, Jan Novák,
+Benedikt Bitterli, Alex Evans, Tomáš Davidovič, Simon Kallweit, and Aaron Lefohn.
+2023. Real-Time Neural Appearance Models. arXiv:2305.02678 [cs.GR]
+Yangyang Zhao, Laurent Belcour, and Derek Nowrouzezahrai. 2019. View-dependent
+Radiance Caching. In Proceedings of Graphics Interface 2019 (Kingston, Ontario) (GI
+2019). Canadian Information Processing Society, 9 pages. https://doi.org/10.20380/
+GI2019.22
+Shilin Zhu, Zexiang Xu, Tiancheng Sun, Alexandr Kuznetsov, Mark Meyer, Hen-
+rik Wann Jensen, Hao Su, and Ravi Ramamoorthi. 2021. Photon-Driven Neural
+Reconstruction for Path Guiding. ACM Trans. Graph. 41, 1, Article 7 (nov 2021),
+15 pages. https://doi.org/10.1145/3476828

@@ -1,0 +1,425 @@
+{
+  "nrc-2021": {
+    "query": "neural radiance caching",
+    "status": "ok",
+    "repos": [
+      {
+        "full_name": "NVIDIA-RTX/RTXGI",
+        "stars": 372,
+        "pushed_at": "2026-10-13",
+        "desc": "RTXGI v2.0 Update including Neural Radiance Cache and Spatial Hash Radiance Cache ",
+        "url": "https://github.com/NVIDIA-RTX/RTXGI"
+      },
+      {
+        "full_name": "NVIDIA-RTX/NRC",
+        "stars": 55,
+        "pushed_at": "2026-10-03",
+        "desc": "Neural Radiance Cache (NRC) Library",
+        "url": "https://github.com/NVIDIA-RTX/NRC"
+      },
+      {
+        "full_name": "AdamYuan/VkNRC",
+        "stars": 43,
+        "pushed_at": "2024-09-10",
+        "desc": "Vulkan Implementation of NVIDIA's paper Real-time Neural Radiance Caching for Path Tracing.",
+        "url": "https://github.com/AdamYuan/VkNRC"
+      },
+      {
+        "full_name": "benattal/neural-radiance-caching",
+        "stars": 27,
+        "pushed_at": "2026-01-26",
+        "desc": "Code for projects on inverse rendering via radiance caching, at ECCV 2024 and CVPR 2025",
+        "url": "https://github.com/benattal/neural-radiance-caching"
+      }
+    ]
+  },
+  "ntmc-2024": {
+    "query": "neural two-level monte carlo",
+    "status": "ok",
+    "repos": [
+      {
+        "full_name": "Mishok43/IVD_NIRC",
+        "stars": 4,
+        "pushed_at": "2026-01-20",
+        "desc": "Neural Two-Level Monte Carlo Real-Time Rendering",
+        "url": "https://github.com/Mishok43/IVD_NIRC"
+      }
+    ]
+  },
+  "specular-prefilter-2026": {
+    "query": "prefiltered radiance neural caching",
+    "status": "ok",
+    "repos": []
+  },
+  "neural-visibility-cache-2025": {
+    "query": "neural visibility cache",
+    "status": "ok",
+    "repos": []
+  },
+  "lt3d-embedding-2025": {
+    "query": "light transport embedding",
+    "status": "ok",
+    "repos": [
+      {
+        "full_name": "bing-xu-graphics/light_transformer",
+        "stars": 16,
+        "pushed_at": "2026-10-16",
+        "desc": "Code release for 2026 SIGGRAPH paper A Generalizable Light Transport 3D Embedding for Global Illumination",
+        "url": "https://github.com/bing-xu-graphics/light_transformer"
+      },
+      {
+        "full_name": "DeeplearningBILAB/MCML_EO",
+        "stars": 1,
+        "pushed_at": "2022-04-12",
+        "desc": "Monte Carlo Simulation for Light Transport in Multilayered Tissue with Embedded Objects (MCML-EO)",
+        "url": "https://github.com/DeeplearningBILAB/MCML_EO"
+      },
+      {
+        "full_name": "nandini2307/Home-automation",
+        "stars": 1,
+        "pushed_at": "2020-03-05",
+        "desc": "Home automation is a new buzz now a day...there are so many open source hardware available to build your own home automa",
+        "url": "https://github.com/nandini2307/Home-automation"
+      },
+      {
+        "full_name": "shivanarayan/Automotive-Embedded-Systems-Services-In-India",
+        "stars": 1,
+        "pushed_at": "2020-04-23",
+        "desc": "From an installed programming specialist's perspective, a vehicle has become a versatile box brimming with implanted fra",
+        "url": "https://github.com/shivanarayan/Automotive-Embedded-Systems-Services-In-India"
+      }
+    ]
+  },
+  "restir-mcmc-2022": {
+    "query": "restir mcmc",
+    "status": "ok",
+    "repos": []
+  },
+  "tof-restir-2026": {
+    "query": "tof restir",
+    "status": "ok",
+    "repos": []
+  },
+  "ddgi-resampling-2021": {
+    "query": "ddgi resampling",
+    "status": "ok",
+    "repos": []
+  },
+  "renderformer-2025": {
+    "query": "renderformer",
+    "status": "ok",
+    "repos": [
+      {
+        "full_name": "microsoft/renderformer",
+        "stars": 984,
+        "pushed_at": "2026-10-13",
+        "desc": "Official Code Release for [SIGGRAPH 2025] RenderFormer: Transformer-based Neural Rendering of Triangle Meshes with Globa",
+        "url": "https://github.com/microsoft/renderformer"
+      },
+      {
+        "full_name": "iamNCJ/RenderFormer-Studio",
+        "stars": 44,
+        "pushed_at": "2026-09-09",
+        "desc": "Official data, training, and inference code for RenderFormer (SIGGRAPH2025) and RenderFormer-V2 (ECCV2026)",
+        "url": "https://github.com/iamNCJ/RenderFormer-Studio"
+      },
+      {
+        "full_name": "iamNCJ/renderformer-blender-extension",
+        "stars": 21,
+        "pushed_at": "2025-05-28",
+        "desc": "Blender Extension for RenderFormer Demo",
+        "url": "https://github.com/iamNCJ/renderformer-blender-extension"
+      },
+      {
+        "full_name": "BANANASJIM/renderformer-cuda",
+        "stars": 2,
+        "pushed_at": "2026-02-26",
+        "desc": "Standalone CUDA/C++20 inference engine for RenderFormer (SIGGRAPH 2025). 8.3× faster than PyTorch, near real-time at 320",
+        "url": "https://github.com/BANANASJIM/renderformer-cuda"
+      }
+    ]
+  },
+  "renderformer-v2-2026": {
+    "query": "renderformer",
+    "status": "ok",
+    "repos": [
+      {
+        "full_name": "microsoft/renderformer",
+        "stars": 984,
+        "pushed_at": "2026-10-13",
+        "desc": "Official Code Release for [SIGGRAPH 2025] RenderFormer: Transformer-based Neural Rendering of Triangle Meshes with Globa",
+        "url": "https://github.com/microsoft/renderformer"
+      },
+      {
+        "full_name": "iamNCJ/RenderFormer-Studio",
+        "stars": 44,
+        "pushed_at": "2026-09-09",
+        "desc": "Official data, training, and inference code for RenderFormer (SIGGRAPH2025) and RenderFormer-V2 (ECCV2026)",
+        "url": "https://github.com/iamNCJ/RenderFormer-Studio"
+      },
+      {
+        "full_name": "iamNCJ/renderformer-blender-extension",
+        "stars": 21,
+        "pushed_at": "2025-05-28",
+        "desc": "Blender Extension for RenderFormer Demo",
+        "url": "https://github.com/iamNCJ/renderformer-blender-extension"
+      },
+      {
+        "full_name": "BANANASJIM/renderformer-cuda",
+        "stars": 2,
+        "pushed_at": "2026-02-26",
+        "desc": "Standalone CUDA/C++20 inference engine for RenderFormer (SIGGRAPH 2025). 8.3× faster than PyTorch, near real-time at 320",
+        "url": "https://github.com/BANANASJIM/renderformer-cuda"
+      }
+    ]
+  },
+  "renderformer-plus-2026": {
+    "query": "renderformer",
+    "status": "ok",
+    "repos": [
+      {
+        "full_name": "microsoft/renderformer",
+        "stars": 984,
+        "pushed_at": "2026-10-13",
+        "desc": "Official Code Release for [SIGGRAPH 2025] RenderFormer: Transformer-based Neural Rendering of Triangle Meshes with Globa",
+        "url": "https://github.com/microsoft/renderformer"
+      },
+      {
+        "full_name": "iamNCJ/RenderFormer-Studio",
+        "stars": 44,
+        "pushed_at": "2026-09-09",
+        "desc": "Official data, training, and inference code for RenderFormer (SIGGRAPH2025) and RenderFormer-V2 (ECCV2026)",
+        "url": "https://github.com/iamNCJ/RenderFormer-Studio"
+      },
+      {
+        "full_name": "iamNCJ/renderformer-blender-extension",
+        "stars": 21,
+        "pushed_at": "2025-05-28",
+        "desc": "Blender Extension for RenderFormer Demo",
+        "url": "https://github.com/iamNCJ/renderformer-blender-extension"
+      },
+      {
+        "full_name": "BANANASJIM/renderformer-cuda",
+        "stars": 2,
+        "pushed_at": "2026-02-26",
+        "desc": "Standalone CUDA/C++20 inference engine for RenderFormer (SIGGRAPH 2025). 8.3× faster than PyTorch, near real-time at 320",
+        "url": "https://github.com/BANANASJIM/renderformer-cuda"
+      }
+    ]
+  },
+  "let-there-be-light-2026": {
+    "query": "neural operator light transport",
+    "status": "ok",
+    "repos": []
+  },
+  "caustic-surface-light-2025": {
+    "query": "caustic design",
+    "status": "ok",
+    "repos": [
+      {
+        "full_name": "dylanmsu/fast_caustic_design",
+        "stars": 247,
+        "pushed_at": "2026-05-19",
+        "desc": "Code to quickly compute the shape of a transparent surface such that it casts an image if light passes through it.",
+        "url": "https://github.com/dylanmsu/fast_caustic_design"
+      },
+      {
+        "full_name": "cboillet/Caustic-Design",
+        "stars": 56,
+        "pushed_at": "2015-10-06",
+        "desc": "",
+        "url": "https://github.com/cboillet/Caustic-Design"
+      },
+      {
+        "full_name": "dylanmsu/poisson_caustic_design",
+        "stars": 42,
+        "pushed_at": "2025-12-10",
+        "desc": "Portable C++ code that computes the shape of a transparant surface to cast an image as a shadow eg caustic design",
+        "url": "https://github.com/dylanmsu/poisson_caustic_design"
+      },
+      {
+        "full_name": "nickloomis/computational-caustics",
+        "stars": 3,
+        "pushed_at": "2019-01-13",
+        "desc": "Computational Caustics: design surfaces which reproduce images using caustics",
+        "url": "https://github.com/nickloomis/computational-caustics"
+      }
+    ]
+  },
+  "active-caustics-2023": {
+    "query": "active caustics",
+    "status": "ok",
+    "repos": []
+  },
+  "double-freeform-2026": {
+    "query": "freeform lens design",
+    "status": "ok",
+    "repos": [
+      {
+        "full_name": "Carasun0409/Freeform-Lens-Design-MVP",
+        "stars": 0,
+        "pushed_at": "2026-01-05",
+        "desc": "my test mvp",
+        "url": "https://github.com/Carasun0409/Freeform-Lens-Design-MVP"
+      },
+      {
+        "full_name": "YighenUltraPrecision/Freeform-lens-manufacturing",
+        "stars": 0,
+        "pushed_at": "2025-06-11",
+        "desc": " Freeform lens manufacturing has become a cornerstone of modern optics. At Yighen Ultra Precision, innovation doesn’t st",
+        "url": "https://github.com/YighenUltraPrecision/Freeform-lens-manufacturing"
+      }
+    ]
+  },
+  "plateau-diffpt-2022": {
+    "query": "differentiable path tracing plateau",
+    "status": "ok",
+    "repos": [
+      {
+        "full_name": "mfischer-ucl/prdpt",
+        "stars": 18,
+        "pushed_at": "2023-06-06",
+        "desc": "Code repository for our CVPR2023 paper \"Plateau-Reduced Differentiable Path Tracing\"",
+        "url": "https://github.com/mfischer-ucl/prdpt"
+      }
+    ]
+  },
+  "diff-light-tracing-2026": {
+    "query": "differentiable light tracing",
+    "status": "ok",
+    "repos": [
+      {
+        "full_name": "ragyabraham/differentiable-pet-simulator",
+        "stars": 0,
+        "pushed_at": "2026-10-10",
+        "desc": "This is a differentiable simulator for PET scintillators that, using ray tracing, wil compute the light pattern distribu",
+        "url": "https://github.com/ragyabraham/differentiable-pet-simulator"
+      }
+    ]
+  },
+  "wave-ray-2023": {
+    "query": "wave optics rendering",
+    "status": "ok",
+    "repos": [
+      {
+        "full_name": "ssteinberg/wave_tracer",
+        "stars": 194,
+        "pushed_at": "2026-09-30",
+        "desc": "A wave-optical path tracer",
+        "url": "https://github.com/ssteinberg/wave_tracer"
+      },
+      {
+        "full_name": "lingqi/WaveOpticsBrdf",
+        "stars": 44,
+        "pushed_at": "2019-03-14",
+        "desc": "This code implements the key ideas of the paper: Rendering Specular Microgeometry with Wave Optics, by Ling-Qi Yan, Milo",
+        "url": "https://github.com/lingqi/WaveOpticsBrdf"
+      },
+      {
+        "full_name": "mandyxmq/WaveOpticsFiberRendering",
+        "stars": 12,
+        "pushed_at": "2021-09-19",
+        "desc": "",
+        "url": "https://github.com/mandyxmq/WaveOpticsFiberRendering"
+      },
+      {
+        "full_name": "Remyuu/WaveOpticsHairRendering",
+        "stars": 1,
+        "pushed_at": "2025-04-20",
+        "desc": "Not finish yet.",
+        "url": "https://github.com/Remyuu/WaveOpticsHairRendering"
+      }
+    ]
+  },
+  "wave-tracing-2025": {
+    "query": "wave tracing path integral",
+    "status": "ok",
+    "repos": []
+  },
+  "gratnet-2025": {
+    "query": "gratnet diffractive",
+    "status": "ok",
+    "repos": []
+  },
+  "photon-guiding-caustics-2024": {
+    "query": "photon guiding caustics",
+    "status": "ok",
+    "repos": []
+  },
+  "sobolev-2017": {
+    "query": "sobolev training",
+    "status": "ok",
+    "repos": [
+      {
+        "full_name": "megvii-research/Sobolev_INRs",
+        "stars": 32,
+        "pushed_at": "2022-07-22",
+        "desc": "[ECCV 2022] The official experimental code of \"Sobolev Training for Implicit Neural Representations with Approximated Im",
+        "url": "https://github.com/megvii-research/Sobolev_INRs"
+      },
+      {
+        "full_name": "FuhgJan/SobolevPytorch",
+        "stars": 11,
+        "pushed_at": "2020-12-19",
+        "desc": "An implementation of a neural network training routine using derivative information in Pytorch.",
+        "url": "https://github.com/FuhgJan/SobolevPytorch"
+      },
+      {
+        "full_name": "mcneela/Sobolev",
+        "stars": 11,
+        "pushed_at": "2018-04-02",
+        "desc": "Implementation of DeepMind's \"Sobolev Training for Neural Networks\"",
+        "url": "https://github.com/mcneela/Sobolev"
+      },
+      {
+        "full_name": "seba-1511/sobolev.pth",
+        "stars": 7,
+        "pushed_at": "2017-10-11",
+        "desc": "Small scale replication of Sobolev Training for NNs",
+        "url": "https://github.com/seba-1511/sobolev.pth"
+      }
+    ]
+  },
+  "neural-integral-operators-2025": {
+    "query": "neural integral operator parametric integration",
+    "status": "ok",
+    "repos": []
+  },
+  "npm-path-guiding-2025": {
+    "query": "neural parametric mixtures path guiding",
+    "status": "ok",
+    "repos": []
+  },
+  "plasmonic-stiffness-2021": {
+    "query": "optical trap stiffness",
+    "status": "ok",
+    "repos": [
+      {
+        "full_name": "harmanbrar7/Optical-Physics",
+        "stars": 0,
+        "pushed_at": "2023-09-09",
+        "desc": "Investigating Optical Traps: Stiffness Determination and Correlations in Space and Time",
+        "url": "https://github.com/harmanbrar7/Optical-Physics"
+      },
+      {
+        "full_name": "mjorgeivan1808-pixel/optical-trap-stiffness-vs-height",
+        "stars": 0,
+        "pushed_at": "2026-06-27",
+        "desc": "Gráfica experimental de la rigidez (kx, ky) de una trampa óptica en función de la altura de la partícula, con datos en p",
+        "url": "https://github.com/mjorgeivan1808-pixel/optical-trap-stiffness-vs-height"
+      },
+      {
+        "full_name": "VarunSunderRajan/On-Optical-Trapping-A-Deep-Dive-into-the-Hidden-Relation-Between-Classical-Laws-Laser-Power",
+        "stars": 0,
+        "pushed_at": "2023-11-20",
+        "desc": "Investigating Optical Traps: Stiffness Determination and Correlations in Space and Time",
+        "url": "https://github.com/VarunSunderRajan/On-Optical-Trapping-A-Deep-Dive-into-the-Hidden-Relation-Between-Classical-Laws-Laser-Power"
+      }
+    ]
+  },
+  "stiffness-polarization-2015": {
+    "query": "optical tweezers stiffness polarization",
+    "status": "ok",
+    "repos": []
+  }
+}

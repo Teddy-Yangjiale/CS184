@@ -1,0 +1,887 @@
+
+
+===== neural-integral-operators-2025 | page 1/16 =====
+
+Parametric Integration with Neural Integral Operators
+Christoph Schied1 and Alexander Keller2
+1 cschied@nvidia.com
+2 akeller@nvidia.com
+NVIDIA, Fasanenstr. 81, 10623 Berlin, Germany
+Abstract. Real-time rendering imposes strict limitations on the sampling budget
+for light transport simulation, often resulting in noisy images. However, denoisers
+have demonstrated that it is possible to produce noise-free images through filter-
+ing. We enhance image quality by removing noise before material shading, rather
+than filtering already shaded noisy images. This approach allows for material-
+agnostic denoising (MAD) and leverages machine learning by approximating the
+light transport integral operator with a neural network, effectively performing
+parametric integration with neural operators. Our method operates in real-time,
+requires data from only a single frame, seamlessly integrates with existing denois-
+ers and temporal anti-aliasing techniques, and is efficient to train. Additionally, it
+is straightforward to incorporate with physically based rendering algorithms.
+Keywords: Parametric Integration, Neural Networks, Monte Carlo and quasi-
+Monte Carlo Methods, Light Transport Simulation
+1
+Introduction
+Light transport for photo-realistic image synthesis is efficiently simulated by accumu-
+lating the contributions of sampled light transport paths that connect cameras to light
+sources [18]. However, in real-time rendering, practical compute budgets severely limit
+the number of light transport paths, leading to images that may exhibit noticeable noise
+due to insufficient sampling.
+Interestingly, a human observer easily understands noisy images. Based on the
+observation that a noisy image still contains a sufficient amount of information to recover
+it from noise, filtering techniques [3,20,1] have been devised. While early denoisers are
+based on classic image processing, advanced algorithms build on neural networks.
+We present a machine-learning-driven algorithm that filters noise prior to shading,
+addressing the issue that post-shading filtering often blurs essential material details and
+obscures fine geometric features. To achieve this, we project the incident radiance onto
+a higher-dimensional function space and train a neural integral operator acting on that
+space to approximate the original parametric integral.
+Projections of the incident radiance are known to be much smoother than the para-
+metric integral we aim to compute [10]. Therefore, denoising the incident radiance –
+effectively filtering the integrand before parametric integration – instead of the shaded
+image, helps preserve crucial scene features and renders crisper, more accurate images.
+By training the integral operator, we eliminate the need for handcrafted heuristics.
+arXiv:2507.17440v1  [cs.GR]  23 Jul 2025
+
+
+===== neural-integral-operators-2025 | page 2/16 =====
+
+2
+Christoph Schied and Alexander Keller
+2
+Neural Shading Pipeline
+Given a point 𝑥on a surface and a direction 𝜔𝑟of observation, we strive to approximate
+the parametric integral representing the reflected radiance
+𝐿𝑟(𝑥, 𝜔𝑟) =
+∫
+S2+ (𝑥)
+𝑓(𝑥, 𝜔, 𝜔𝑟)𝐿𝑖(𝑥, 𝜔) cos 𝜗𝑑𝜔
+P
+L
+Camera
+(1)
+≈𝑀𝜃(𝑥, 𝜔𝑟,
+∫
+S2+ (𝑥)
+𝑬(𝜔, 𝜔𝑟)𝐿𝑖(𝑥, 𝜔) cos 𝜗𝑑𝜔
+|                                       {z                                       }
+projected irradiance 𝜇∗
+)
+(2)
+by a machine learned function 𝑀𝜃. The operator acts on the projected irradiance 𝜇∗,
+which is the integral that projects the incident radiance 𝐿𝑖(𝑥, 𝜔) onto the vector-valued
+function 𝑬(𝜔, 𝜔𝑟). The unit hemisphere S2
++(𝑥) around 𝑥is oriented by the surface
+normal in 𝑥and 𝜗is the angle between the surface normal in 𝑥and the direction
+𝜔. The integral kernel 𝑓is the bidirectional scattering distribution function (BSDF)
+characterizing the optical properties of a surface when interacting with light.
+Algorithm Overview: In order to compute an image, light transport paths are sampled
+for each pixel, starting with a ray traced from a virtual camera to find the closest
+intersection 𝑥with the scene surface. Simultaneously for all 𝑥, our neural shading
+pipeline then approximates the parametric integral (1) in real-time in three steps: First,
+the incident radiance is projected onto 𝑬(𝜔, 𝜔𝑟) (Sect. 2.1). Second, the noise is filtered
+(Sect. 2.2) in the space spanned by the vector-valued function 𝑬(𝜔, 𝜔𝑟). Third, the
+material decoder 𝑀𝜃determines the shading (Sect. 2.3) using the filtered irradiance.
+Exemplary results are shown in Sect. 2.4.
+The efficient training of 𝑀𝜃and appropriate loss functions are explained in Sect. 3,
+followed by a discussion of our algorithm in Sect. 4. The details of light transport
+simulation by path tracing [18] are beyond the scope of the manuscript, but most
+interesting to study. For our context, a compact primer is the prior work by Nalbach et
+al. [17] on applying neural networks to image synthesis.
+2.1
+Irradiance Projection
+The components of the vector-valued function 𝑬(𝜔, 𝜔𝑟) ∈R𝑑span a 𝑑-dimensionally,
+directionally dependent space to represent irradiance. Its dependence on pairs of di-
+rections in the view-aligned tangent space differentiates 𝑬(𝜔, 𝜔𝑟) from classic vectors
+of basis functions. Note that 𝑬is independent of spatial location, as neighborhood is
+implicit across the image plane.
+The bidirectional scattering distribution function (BSDF) 𝑓in (1) usually is modeled
+as linear combination of a constant function and a mixture of transformed spherical
+Gaussians [14]. Accordingly, selecting the first component as constant 𝐸0(𝜔, 𝜔𝑟) = 1
+
+
+===== neural-integral-operators-2025 | page 3/16 =====
+
+Parametric Integration with Neural Integral Operators
+3
+𝐸0
+𝐸1
+𝐸2
+𝐸3
+𝐸4
+𝜇at 1spp
+denoised 𝜇′
+reference 𝜇∗
+Fig. 1. Comparison of the components of the projected irradiance 𝜇at 1 sample per pixel (1
+spp), the denoised projected irradiance 𝜇′, and the ground truth reference 𝜇∗. Note that the first
+component (top row) actually is the classic irradiance. The geometry is recognizable as the cos 𝜗𝑟
+term and next event estimation are included in the estimates. Next event estimation contributes
+shadows from visibility and quadratic attenuation with distance. The denoiser is trained to take
+advantage of the geometry clues while filtering. Note that the color variations of 𝜇′ as compared to
+𝜇and 𝜇∗are a consequence of how color channel scale is learned by the denoiser and compensated
+in the material decoder.
+
+
+===== neural-integral-operators-2025 | page 4/16 =====
+
+4
+Christoph Schied and Alexander Keller
+allows for representing averages. The remaining 𝑑−1 components are linearly indepen-
+dent Gaussian lobes created from the Disney principled BSDF model (Sect. A.1). This
+construction principle for 𝑬(𝜔, 𝜔𝑟) can be used with any other BSDF model, too.
+The projected irradiance integral in (2) is evaluated by Monte Carlo or quasi-Monte
+Carlo integration [18]. Summing the contributions (𝑅𝑖, 𝐺𝑖, 𝐵𝑖) of the 𝑖-th path space
+sample according to (1), we accumulate a concatenated vector
+𝜇:=
+"
+1
+𝑛
+𝑛−1
+∑︁
+𝑖=0
+𝑬(𝜔𝑖, 𝜔𝑟)𝑅𝑖
+
+1
+𝑛
+𝑛−1
+∑︁
+𝑖=0
+𝑬(𝜔𝑖, 𝜔𝑟)𝐺𝑖
+
+1
+𝑛
+𝑛−1
+∑︁
+𝑖=0
+𝑬(𝜔𝑖, 𝜔𝑟)𝐵𝑖
+#
+∈R3𝑑
+(3)
+for each color channel without weighing by the BSDF 𝑓, also known as ”BSDF steal-
+ing” [4]. In our notation, the path space sample contributions (𝑅𝑗, 𝐺𝑗, 𝐵𝑗) are already
+divided by their respective probability. Furthermore, all weights of sampling techniques
+like multiple importance sampling [18] for sampling over the hemisphere and next event
+estimation are included. As 𝐸0(𝜔, 𝜔𝑟) = 1, the components
+(𝜇𝑅,0, 𝜇𝐺,0, 𝜇𝐵,0)
+(4)
+accumulate the diffuse irradiance [24], which is essential for normalizing purposes later
+on.
+The irradiance projection is illustrated in Fig. 1. We sample 𝑛= 1 path that scatters
+at the primary hitpoint as seen from the viewpoint and in the same location sample the
+light sources for next event estimation. Both contributions are summed up using their
+respective multiple importance sampling weights while omitting the BSDF factor as
+mentioned before.
+Learning from Machine Learning. Especially in computer graphics, many functions
+can be visualized and hence understood quickly. This provides a new way of discovery:
+Understanding what the neural networks are really approximating. In fact, we explored
+representing 𝑬by a ResNet 𝑬𝜃with 6 ResNet blocks [6] of 16 neurons each. Visu-
+alizations after training revealed that one component remains mostly constant, while
+the remaining components approximate the lobes of a BSDF, very similar to a mix-
+ture of spherical Gaussians. As a consequence, modeling 𝑬analytically as described
+above (Sect. A.1) avoids training an additional neural network, resulting in a more ef-
+ficient and robust algorithm. Besides, projecting onto functions from the BSDF makes
+mathematical sense.
+2.2
+Denoising the Projected Irradiance
+In order to overcome blur due to filtering shaded images, we filter noise in projected
+irradiance space before shading. Then, shading after filtering (Sect. 2.3) adds texture
+detail. This approach results in crisper images, because detail is not masked by noise.
+In principle, the variance of the parametric projected irradiance 𝜇in (3) is reduced by
+applying a U-Net 𝑈𝜃[20] (see Fig. 3) with the objective (Sect. 3) to make it a better
+estimate of the projected irradiance integral in (2).
+Previous denoising work in graphics [1,11] teaches that neural networks do not cope
+well with high dynamic range input like the projected irradiance estimate 𝜇. We address
+
+
+===== neural-integral-operators-2025 | page 5/16 =====
+
+Parametric Integration with Neural Integral Operators
+5
+irradiance
+normal ˆ𝑛
+depth ˆ𝑑
+(𝜇𝑅,0, 𝜇𝐺,0, 𝜇𝐵,0)
+blurred irradiance
+scale removed
+compressed range
+( ˆ𝜇𝑅,0, ˆ𝜇𝐺,0, ˆ𝜇𝐵,0)
+𝜇𝑅,0
+max{ ˆ𝜇𝑅,0,𝜖}
+log
+
+1 +
+𝜇𝑅,0
+max{ ˆ𝜇𝑅,0,𝜖}
+
+Fig. 2. Visualization of the denoiser inputs irradiance (𝜇𝑅,0, 𝜇𝐺,0, 𝜇𝐺,0), normals, depth, and the
+the blurred irradiance ( ˆ𝜇𝑅,0, ˆ𝜇𝐺,0, ˆ𝜇𝐺,0) that is practically noise-free. Dividing the irradiance
+by the blurred irradiance normalizes scale, yielding almost gray images. The remaining high
+dynamic range noise is compressed by applying a logarithm. Note that black components remain
+black after the transformation.
+ReLU
+U-Net Block
+5 levels deep
+in total
+3x3 convolution
+U-Net Block
+1x1 convolution
+Concatenate
+U-Net Block
+Upsampling
+Concatenate
+U-Net Block
+Upsampling
+Max-pool
+U-Net Block
+Max-pool
+ReLU
+3x3 convolution
+3x3 convolution
+1x1 convolution
+U-Net Block
++
+ReLU
+Fig. 3. As compared to the original U-Net [20], we only use one convolution per layer and
+ResNets [6] for the stacked 1x1 convolutions, resulting in a more efficient architecture. The
+network has about 9 million weights.
+
+
+===== neural-integral-operators-2025 | page 6/16 =====
+
+6
+Christoph Schied and Alexander Keller
+this issue by two subsequent, invertible transformations: First, we remove the scale from
+the irradiance by dividing it by a local average of the irradiance. While then free of scale,
+the remaining noise still may have a high dynamic range and hence is compressed using
+a logarithm [1, Sect. 4.3]. Note that opposite to division by the average, subtracting the
+average would not remove the scale.
+Ideally, we would normalize 𝜇using the true irradiance from 𝜇∗, which would
+perfectly remove scale, but obviously is not available. However, scaling 𝜇with the
+reciprocal local estimate of the average irradiance is feasible. Since the same estimate
+must be used to restore brightness after the non-linear denoising operation, it needs
+to be practically noise-free. Applying a wide Gaussian filter approximated by `a-trous
+wavelets [7] to the sampled irradiance yields the desired local averages to remove the
+scale. To efficiently compute the noise-free blurred irradiances ( ˆ𝜇𝑅,0, ˆ𝜇𝐺,0, ˆ𝜇𝐵,0), the
+irradiances (𝜇𝑅,0, 𝜇𝐺,0, 𝜇𝐵,0) are blurred by simply iterating an `a-trous filter [7] with
+a 5 × 5 Gaussian filter kernel 6 times to rapidly achieve a sufficiently large blur radius.
+We do not apply common edge stopping heuristics [3], as otherwise fine geometry may
+become masked by noise.
+The implementation starts by normalizing the projected irradiance vectors by their
+respective accumulated irradiances (4). Concatenated across the color channels, we have
+normalize(𝜇)
+:=
+ (𝜇𝑅,0, . . . , 𝜇𝑅,𝑑−1)
+max{𝜇𝑅,0, 𝜖}
+
+(𝜇𝐺,0, . . . , 𝜇𝐺,𝑑−1)
+max{𝜇𝐺,0, 𝜖}
+
+(𝜇𝐵,0, . . . , 𝜇𝐵,𝑑−1)
+max{𝜇𝐵,0, 𝜖}
+
+,
+(5)
+where a small 𝜖avoids numerical issues in very dark regions, especially divisions by
+zero. Note that whenever a component of (𝜇𝑅,0, 𝜇𝐺,0, 𝜇𝐵,0) is larger or equal to 𝜖, its
+normalization is one, and smaller otherwise. Zero components, which are quite common
+among colors, remain zero. The normalization removes the brightness and hence color
+from the components, leaving vectors of ratios of the components. This is necessary,
+as the color and hence brightness later on is restored using the blurred irradiance ˆ𝜇.
+Exemplary for the red channel, the denoiser input then is
+𝜇𝑐
+𝑅= (𝜇𝑅,0, . . . , 𝜇𝑅,𝑑−1)
+max{𝜇𝑅,0, 𝜖}
+· log
+
+1 +
+𝜇𝑅,0
+max{ ˆ𝜇𝑅,0, 𝜖}
+
+(6)
+and Fig. 2 visualizes the input transformation that consists of scale removal and com-
+pression. Note that the logarithmic factor is zero whenever the irradiance is zero.
+To help the U-Net 𝑈𝜃[20] (see Fig. 3) gather information across pixels, we add
+geometric cues. The normal ˆ𝑛in 𝑥is transformed into view space in which it becomes
+independent of camera pose, allowing the U-Net to consider changing normals, for
+example, as present around edges. Information beyond the one provided by normals,
+may be revealed in the depth buffer. The range of depth values is highly scene dependent
+and a high dynamic range may not work nicely with a trained denoiser. Hence, instead
+of mapping the values by scene-dependent scales or using minimum and maximum
+values of the depth buffer, the input to the neural network is prepared in a way similar
+to the irradiance compression: The distance from the view point to 𝑥is blurred by
+iterating the aforementioned `a-trous filter for 3 times. Each distance then is divided by
+its corresponding blurred depth, centered at zero by subtracting one, and clamped to
+
+
+===== neural-integral-operators-2025 | page 7/16 =====
+
+Parametric Integration with Neural Integral Operators
+7
+the range of [-1,1] yielding the range compressed depth buffer ˆ𝑑. Hence, for a constant,
+non-zero depth, where the depth equals the blurred depth, the range compressed depth
+buffer is zero. Otherwise, the sign indicates the direction of gradients in depth to the
+network.
+The denoiser as a convolutional neural network locally fixes brightness and hierar-
+chically computes weighted averages across neighbors. Its output
+𝜇′ = ( ˆ𝜇𝑅,0, ˆ𝜇𝐺,0, ˆ𝜇𝐵,0) ⊙𝑈𝜃
+
+𝜇𝑐, ˆ𝑛, ˆ𝑑
+
+(7)
+is the output of the U-Net𝑈𝜃scaled by the blurred irradiance to restore the dynamic range
+and color. Here ⊙denotes the multiplication of each color component (similar to (5))
+by its respective blurred irradiance. Note that the blurred irradiance is practically noise-
+free, while a multiplication with the sampled irradiances (3) would add back the noise.
+Similar to Bako et al. [1], the neural network is trained to invert the logarithmic term
+in (6). Reconstructing the image brightness is possible, because the `a-trous transform
+preserves the average image brightness (the integral).
+Intuition: To understand the model, let us assume that 𝜇∗= 𝜇= 𝜇′, meaning that the
+projected irradiance is already denoised and hence
+𝜇𝑅= ˆ𝜇𝑅,0 · 𝑈𝜃
+
+𝜇𝑅
+max{𝜇𝑅,0, 𝜖} · log
+
+1 +
+𝜇𝑅,0
+max{ ˆ𝜇𝑅,0, 𝜖}
+
+, ˆ𝑛, ˆ𝑑
+
+.
+Looking at the first component 𝜇𝑅,0, for 𝜖→0 in the limit we then have
+𝜇𝑅,0 = ˆ𝜇𝑅,0 · 𝑈𝜃
+
+log
+
+1 + 𝜇𝑅,0
+ˆ𝜇𝑅,0
+
+, ˆ𝑛, ˆ𝑑
+
+,
+meaning that for 𝜇𝑅,0 > 0 the denoiser 𝑈𝜃learns to invert the logarithm and the
+addition, while the multiplication by the average ˆ𝜇𝑅,0 is explicitly modeled. For the case
+ˆ𝜇𝑅,0 > 0 of a non-zero average and 𝜇𝑅,0 = 0, the logarithm returns zero resulting in
+a zero output for a scale-invariant U-Net. Finally, if ˆ𝜇𝑅,0 = 0, 𝜇𝑅,0 must be zero, too,
+because otherwise the average cannot be zero. In that case we programmatically define
+that the factor ˆ𝜇𝑅,0 = 0 zeroes out the result of the U-Net. Note that using a function
+like tanh or a tone mapping operator like
+𝑥
+1+𝑥[19] instead of the logarithm results in
+worse performance, because these functions reach their asymptotes so quickly that their
+inversion becomes a numerical issue.
+2.3
+Material Decoder
+Now that the incident radiance is practically noise-free in projected irradiance space, the
+shading is computed. More precisely, the material decoder 𝑀𝜃acts as a neural integral
+operator on the projected irradiance (7) and approximates 𝐿𝑟(𝑥, 𝜔𝑟) by (2) according to
+the material evaluated in 𝑥and viewing direction 𝜔𝑟.
+For the same reasons as before in (5), the denoised projected space components are
+normalized
+𝜇′′ = normalize(𝜇′) :=
+"
+𝜇′
+𝑅,1...𝑑−1
+max{𝜇′
+𝑅,0, 𝜖}
+
+𝜇′
+𝐺,1...𝑑−1
+max{𝜇′
+𝐺,0, 𝜖}
+
+𝜇′
+𝐵,1...𝑑−1
+max{𝜇′
+𝐵,0, 𝜖}
+#
+(8)
+
+
+===== neural-integral-operators-2025 | page 8/16 =====
+
+8
+Christoph Schied and Alexander Keller
+in order to decouple them from brightness, because it increases the efficiency of neural
+network processing. Given the shading parameters 𝑃(𝑥, 𝜔𝑟), the neural network
+𝑚𝜃(𝜇′′, 𝑃(𝑥, 𝜔𝑟)) →( ˆ𝑤𝑅, ˆ𝑤𝐺, ˆ𝑤𝐵, 𝐼) ∈R3×3+1,
+(9)
+computes three sets of three weights and an intensity 𝐼. The shading parameters 𝑃(𝑥, 𝜔)
+consist of the material parameters and the cos 𝜗𝑟specified by the angle 𝜗𝑟between the
+viewing direction 𝜔𝑟and the surface normal ˆ𝑛, all evaluated in 𝑥. While the material
+base color 𝜌is normalized by its 𝐿2-norm, the other material parameters like roughness,
+specularity, and metallicity are mapped to the range [−1, 1] from their respective ranges
+for improved neural network performance. Then, each set of three weights is normalized
+by a softmax function
+(𝑤𝑅, 𝑤𝐺, 𝑤𝐵) = (softmax( ˆ𝑤𝑅), softmax( ˆ𝑤𝐺), softmax( ˆ𝑤𝐵))
+(10)
+such that weights per color channel sum up to one. Exemplary for the red component,
+the material decoder
+𝑀𝜃,𝑅(𝑥, 𝜔𝑟, 𝜇′
+𝑅) := 𝜇′
+𝑅,0 · 𝐼· (
+black
+z  }|  {
+0 · 𝑤𝑅,0 +
+base color
+z     }|     {
+𝑤𝑅,1 · 𝜌𝑅+
+white
+z  }|  {
+1 · 𝑤𝑅,2)
+= 𝜇′
+𝑅,0 · 𝐼· (𝑤𝑅,1 · 𝜌𝑅+ 𝑤𝑅,2
+|               {z               }
+∈[0,1]
+).
+(11)
+is modeled as a convex combination of black (= 0), the material base color 𝜌≡𝜌(𝑥) ∈
+[0, 1]3 (albedo, this time not normalized) evaluated in the shading point 𝑥, and white
+(= 1) that is scaled by an intensity 𝐼and the filtered irradiance 𝜇′
+𝑅,0 from (7) as depicted
+in Fig. 4. The convex combination allows for representing any color in the RGB unit
+cube, where black and white can be mixed into the base color of the material. The
+intensity 𝐼is shared across color channels, while the filtered irradiance restores the
+range per color channel. This explains why the components (𝜇′
+𝑅,0, 𝜇′
+𝐺,0, 𝜇′
+𝐵,0) were
+excluded from normalization in (8). Modeling the products explicitly avoids teaching
+multiplication to neural networks.
+The neural network 𝑚𝜃in (9) is implemented as a ResNet [6]. Its input consists of 𝜇′′
+with 3 × 5 dimensions and the 7-dimensional shading parameters 𝑃(𝑥, 𝜔𝑟), amounting
+to a total of 22 dimensions. The shading parameters include the one-dimensional view-
+ing direction, represented in tangent space as aforementioned, and a six-dimensional
+material specification based on the Disney principled BSDF parameters [14] – specif-
+ically roughness, specularity, metallicity, and RGB base color 𝜌. The network itself is
+composed of six ResNet blocks, each containing 16 neurons per layer. Bias terms are
+included in all layers, and fully connected layers at both the input and output serve as
+dimension adapters for the network. All activation functions are exponential linear units
+ELU(𝑥) :=
+(
+𝑥
+𝑥≥0
+𝛼(𝑒𝑥−1)
+𝑥< 0
+(12)
+with 𝛼= 1. The network has about 3754 weights.
+
+
+===== neural-integral-operators-2025 | page 9/16 =====
+
+Parametric Integration with Neural Integral Operators
+9
+black
+base color
+white
+reference
+material
+𝐼
+ˆ𝑤𝑅,0
+ˆ𝑤𝑅,1
+ˆ𝑤𝑅,2
+decoder
+Fig. 4. The image produced by the material decoder 𝑀𝜃,𝑅in (11) is quite close to the reference.
+For illustration, we show a false color visualization of the normalized outputs and the intensity 𝐼
+of the material decoder neural network (10) as used in the convex combination (11) (exemplary
+for the red channel 𝑅only).
+2.4
+Results
+After training the material decoder and denoiser (Sect. 3), the neural shading pipeline
+(Sect. 2) runs in real-time. Fig. 5 compares the original BSDF as used to compute (1) to
+the result of the machine learned neural integral operator in (2).
+Avoiding Division by Zero. To avoid numerical issues caused by the division by small
+numbers 𝑥, a too small divisor may be avoided by max{𝑥, 𝜖} or by adding the small
+number 𝜖> 0, i.e. dividing by 𝑥+ 𝜖. The former yields the actually desired result for
+𝑥> 𝜖, the latter smoothly compresses the signal towards zero and hence always is a tiny
+bit off the desired fraction. While the observable differences in normalization in (6) and
+(8) are subtle at least, restoring the scale in (7) and (11) is best with the original divisor
+without 𝜖.
+3
+Training the Neural Networks
+The neural networks are trained in two separate passes: First, the material decoder 𝑀𝜃is
+trained without the denoiser in the loop. Then, the denoiser is trained using the already
+trained material decoder. Note that in light transport simulation infinite sequences of
+unique, unbiased training pairs can be generated on the fly just by sampling.
+3.1
+Training the Material Decoder
+The material decoder 𝑀𝜃is trained using procedurally generated examples without any
+ray tracing. The approximation (2) only depends on (𝑥, 𝜔𝑟) and hence is independent
+of statistics across pixels, which simplifies training. Therefore, instead of evaluating the
+BSDF parameters in a specific location 𝑥, material parameters are uniformly randomly
+sampled from their respective ranges (Sect. 2.3) for each training example.
+Four uniformly distributed directions of incident radiance are sampled, alongside
+a uniformly randomly sampled outgoing direction 𝜔𝑟. The reference is computed by
+evaluating the material implementation (Sect. A.1). Each light sample has a random RGB
+radiance uniformly sampled within [0, 16]3. Note that the range is a free parameter since
+the intensity is decoupled from the neural network inputs, as explained in Sect. 2.3.
+
+
+===== neural-integral-operators-2025 | page 10/16 =====
+
+10
+Christoph Schied and Alexander Keller
+a) 𝑀𝜃(𝑥, 𝜔𝑟, 𝜇), 1spp
+𝑀𝜃(𝑥, 𝜔𝑟, 𝜇), 2048 spp
+𝑀𝜃(𝑥, 𝜔𝑟, 𝜇∗), 2048 spp
+b) Unreal Engine BSDF, 1spp
+2048 spp
+c) material agnostic denoising (MAD), 1spp
+Fig. 5. Comparison of a) using the trained material decoder 𝑀𝜃in (2) for shading at 1 and averaged
+2048 samples per pixel (spp), and to the projected irradiance 𝜇∗, approximated by 2048 spp, b)
+the reference as provided by the Unreal Engine BSDF, and c) material agnostic denoising (MAD).
+
+
+===== neural-integral-operators-2025 | page 11/16 =====
+
+Parametric Integration with Neural Integral Operators
+11
+Loss Function. The loss function is crucial for learning a visual appearance that matches
+the original material. Using an 𝐿1-loss function makes the approximation work well in
+the darker regions of the BSDF, whereas the 𝐿2-loss focusses accuracy on the highlights.
+Instead, we are using a relative MSE based on the pixel loss function
+L(𝑥, 𝜔𝑟, 𝜇) = (𝑀𝜃(𝑥, 𝜔𝑟, 𝜇) −𝐿𝑟(𝑥, 𝜔𝑟))2
+max{𝐿2𝑟(𝑥, 𝜔𝑟), 𝜖}
+that computes an error that is relative to the magnitude of the function and hence
+maintains the visual appearance across all regions of the BSDF. The parameters for the
+optimizer are provided in Sect. A.2.
+Material simplifications: For specific choices of parameters, an analytic BSDF model
+may degenerate to a Dirac delta function. Representing such functions accurately would
+require a very large network capacity and hurt training convergence. We therefore both
+limit the roughness of the material to a minimum of 0.1 and restrict the output range of
+the BSDF to assume a maximum value of 16.0.
+Importance sampling of highlights: The accuracy of the model depends on the training
+data set and is improved by explicitly sampling respective parts of the BSDF model.
+With a probability of 95% we perform uniform sampling for the light source directions.
+For the remaining samples, we use the importance sampling routine of the underlying
+BSDF to focus samples onto the highlights (Sect. A.1). In the importance sampling we
+clamp the roughness to a minimum of 0.5 which ensures good coverage over the entire
+highlight instead of just the portions with the highest throughput.
+3.2
+Dependent Training of the Denoiser
+Given the trained material decoder, the denoiser convolutional U-Net [20] is trained
+noise-to-noise [11] on randomly selected screen tiles. Since the range compression (6)
+is based on a wide blur, we use large tiles of 512 × 512 pixels, which also ensures
+that the boundary handling of the tiles does not dominate the gradients. Using real
+scene geometry and one sample per pixel, the locations 𝑥, the normals ˆ𝑛, and the
+depth buffer 𝑑are rendered. For each pixel BSDF parameters are sampled uniformly
+in order to train independently from the actual scene materials. Sharing this data,
+two independently sampled projected space representations 𝜇𝐴und 𝜇𝐵(Sect. 2.1) are
+generated that obviously exhibit identically distributed noise level statistics across the
+pixels. A random position is sampled on the light source and visibility is computed using
+ray tracing. These training examples are shaded using the neural BSDF, instead of the
+reference BSDF. This way differences between the neural BSDF and reference BSDF
+do not influence the training process. Generating the training set takes about a minute
+and 16GB of memory.
+Loss Functions. Our primary loss function is a relative MSE loss function such that
+each training example and each region of a training example is uniformly weighted in
+the optimization procedure. As in the Noise2Noise [11] scenario the reference is not
+
+
+===== neural-integral-operators-2025 | page 12/16 =====
+
+12
+Christoph Schied and Alexander Keller
+available for normalizing the loss, the loss is normalized by the denoised result. By
+disabling (detach) the gradient flow for the denominator of the loss, the loss remains
+unbiased:
+L(𝜇𝑐
+𝐴, 𝜇𝑐
+𝐵) =
+(𝑀𝜃(𝑈𝜃(𝜇𝑐
+𝐴)) −𝑀𝜃(𝜇𝑐
+𝐵))2
+max{0.5 ∗𝑀𝜃(𝑈detach
+𝜃
+(𝜇𝑐
+𝐴))2 + 0.5 ∗𝑀𝜃(𝑈detach
+𝜃
+(𝜇𝑐
+𝐵))2, 𝜖}
+where 𝜖= 0.00001. The superscript 𝑐is the shorthand for the compressed projected
+irradiance as in (6). As reported by Lehtinen et al. [11], the stability of optimization is
+improved by normalizing by the average of the squares of the denoiser outputs both for
+the input and the reference. Furthermore, we clamp the minimum allowed value instead
+of the summation as described in [11] since this otherwise warps the normalization.
+We propose an additional loss that we call consistency constraint that is particularly
+helpful for low numbers of samples per pixel (spp) in Noise2Noise training. The concept
+of the loss function is that for two realizations of samples for the same frame, the
+denoiser should be producing identical output. We use the same relative MSE loss as
+above, however the loss now measures the error between the two denoised images:
+L(𝜇𝑐
+𝐴, 𝜇𝑐
+𝐵) =
+(𝑀𝜃(𝑈𝜃(𝜇𝑐
+𝐴)) −𝑀𝜃(𝑈detach
+𝜃
+(𝜇𝑐
+𝐵)))2
+max{0.5 ∗𝑀𝜃(𝑈detach
+𝜃
+(𝜇𝑐
+𝐴))2 + 0.5 ∗𝑀𝜃(𝑈detach
+𝜃
+(𝜇𝑐
+𝐵))2, 𝜖}
+As before, the gradient flow is only enabled for the prediction. Swapping the roles
+of the 𝜇𝐴used for prediction and 𝜇𝐵used for the reference provide an efficient data
+augmentation. The parameters for the optimizer are provided in Sect. A.2.
+Theoretically, we may fully randomize the material parameters that are passed to
+the shading network instead of sharing the data per pixel. This would have the benefit
+of increasing the training data. However, we found that this negatively impacts the
+training results. Similarly, formulating the loss function in the projected space instead
+of evaluating the full shading function with a loss formulated in RGB did not yield
+usable results. The training is augmented by randomly permuting the RGB channels and
+randomly zeroing out one color channel in order to prevent the denoiser from mixing
+colors across channels and yet taking advantage of the shared geometry information.
+3.3
+Independent Training of the Denoiser
+Alternatively, the denoiser can be trained Noise2Noise independent of the material de-
+coder. The simplified training procedure then just independently samples two projected
+space representations 𝜇𝐴und 𝜇𝐵(Sect. 2.1) as in the previous section.
+Then, the relative MSE loss function amounts to
+L(𝜇𝑐
+𝐴, 𝜇𝑐
+𝐵) =
+(𝑈𝜃(𝜇𝑐
+𝐴) −𝜇𝑐
+𝐵)2
+max{0.5 ∗𝑈detach
+𝜃
+(𝜇𝑐
+𝐴)2 + 0.5 ∗𝑈detach
+𝜃
+(𝜇𝑐
+𝐵)2, 𝜖}
+and the consistency constraint becomes
+L(𝜇𝑐
+𝐴, 𝜇𝑐
+𝐵) =
+(𝑈𝜃(𝜇𝑐
+𝐴) −𝑈detach
+𝜃
+(𝜇𝑐
+𝐵))2
+max{0.5 ∗𝑈detach
+𝜃
+(𝜇𝑐
+𝐴)2 + 0.5 ∗𝑈detach
+𝜃
+(𝜇𝑐
+𝐵)2, 𝜖} .
+
+
+===== neural-integral-operators-2025 | page 13/16 =====
+
+Parametric Integration with Neural Integral Operators
+13
+4
+Discussion
+The idea of filtering irradiance in world space before shading and the higher-dimensional
+structure of irradiance gradients has been received early [23]. On the one hand, an entire
+body of work [10] culminates in the neural radiance cache [16] that stores radiance using
+a multiresolution hash encoding [15] and trains in real-time using temporal accumula-
+tion across frames. On the other hand, the neural shading pipeline requires data from
+only a single frame and overcomes imperfectly hand-crafted edge stopping heuristics
+[23,8,3,9,2] simply by machine learning.
+As synthetic data generation (SDG) is intrinsic to light transport simulation, it is ideal
+to explore neural network architectures for approximating operators [13,12,5]. We hence
+found that the U-Net 𝑈𝜃(see Fig. 3) used for denoising in (7) may be realized using only
+the rectified linear unit (ReLU) activation function 𝜎(𝑥) := max{0, 𝑥} without any bias
+terms and normalizations. Such a U-Net is invariant to scaling the input by a positive
+real number 𝛼∈R+
+0, because 𝜎(𝛼𝑥) = max{0, 𝛼𝑥} = 𝛼𝜎(𝑥).
+While not using any normalization, the material decoder requires bias terms. Fur-
+thermore, the continuously differentiable ELU activation function in (12) reduces visible
+segmentation artifacts due geometric discontinuities that the discontinuous ReLU acti-
+vation function does not hide well.
+4.1
+Subsampling
+The algorithm is amenable to subsampling. For example, light transport paths may be
+sampled once in every 2x2 pixel block. The denoiser then fills in the information for the
+pixels not sampled before shading.
+4.2
+Temporal Anti-Aliasing (TAA)
+As the neural shading pipeline works with any sampling method and both rasterization
+and ray tracing, temporal anti-aliasing is straightforward to add. Interestingly, scintil-
+lation artifacts across frames are observed when sampling with real-time algorithms
+like ReSTIR [25], whose efficiency relies on temporally correlated path reuse. The phe-
+nomenon is known since the early days of irradiance interpolation [10] and still subject
+of active research. To a certain extend this is to be expected, when the denoiser does not
+perfectly reconstruct the brightness of the parametric integral (1) due to extremely low
+sampling rates.
+Scintillation is caused by rare event bright samples, too. These so-called fireflies
+offset averages a lot, but appear rarely and incoherently across frames and pixels, causing
+transient temporal artifacts. This is still an issue of sampling algorithms that only partially
+can be handled by multiple importance sampling. In practice, samples may be clipped
+by a firefly filter to attenuate the artifacts.
+4.3
+Future Work
+Our algorithm does neither consider depth of field nor motion blur, and is restricted
+to isotropic BSDFs. In fact, our material decoder is trained to match one specific
+
+
+===== neural-integral-operators-2025 | page 14/16 =====
+
+14
+Christoph Schied and Alexander Keller
+BSDF model. Anisotropic BSDFs require the rotation of BSDF lobes and potentially
+an extension of the projected space representation. The extension to support multiple
+BSDF models and shader baking by multiple sets of weights for the material decoder is
+an avenue of future work.
+As the material decoder is trained independently from scene geometry and separately
+from the denoiser, there is an opportunity to explore the feasibility of real-time training
+the material decoder as a cache for complex appearances. Furthermore, the parameters
+for the material decoder may be provided by neural textures [21], and the material
+decoder itself may be trained to represent appearance [26].
+Our method works with any noise filter and while we train a U-Net for that purpose,
+there is ample opportunity for optimization by replacing at least parts of the neural
+network filters by analytic components [22]. In a similar way, the parameters of the
+linear material decoder model in (11) may be directly provided by the neural network
+𝑚𝜃without the need of the softmax-normalization in (10).
+5
+Conclusion
+We introduce the neural shading pipeline as an efficient real-time rendering method
+for extremely low sampling rates. Our algorithm is straightforward to implement, op-
+erating on data from only a single frame without the need for temporal information
+such as motion vectors. Additionally, we propose an efficient training procedure that is
+independent of the actual material parameters of the content to be rendered. Beyond
+computer graphics, we expect this approach to be applicable to the general computation
+of functionals of the solution of integral equations.
+Dedication
+This article is dedicated to Jerome Spanier, the pioneering gentleman of MCQMC.
+References
+1. Bako, S., Vogels, T., McWilliams, B., Meyer, M., Nov´ak, J., Harvill, A., Sen, P., DeRose, T.,
+Rousselle, F.: Kernel-predicting convolutional networks for denoising Monte Carlo render-
+ings. ACM Transactions on Graphics (Proceedings of SIGGRAPH 2017) 36(4) (2017)
+2. Binder, N., Fricke, S., Keller, A.: Massively parallel path space filtering. In: A. Keller (ed.)
+Monte Carlo and Quasi-Monte Carlo Methods, MCQMC 2020, Oxford, United Kingdom,
+August 10–14, pp. 149–168. Springer (2022)
+3. Dammertz, H., Sewtz, D., Hanika, J., Lensch, H.P.A.: Edge-avoiding `a-trous wavelet trans-
+form for fast global illumination filtering. In: Proceedings of the Conference on High Perfor-
+mance Graphics, HPG ’10, pp. 67–75. Eurographics Association (2010)
+4. Deligiannis, J., Schmid, J.: ”It Just Works: Ray-Traced Reflections in ’Battlefield V’.
+Game Developers Conference. (2019).
+URL https://www.gdcvault.com/play/1026282/
+It-Just-Works-Ray-Traced
+5. Guibas, J., Mardani, M., Li, Z., Tao, A., Anandkumar, A., Catanzaro, B.: Efficient token
+mixing for transformers via adaptive Fourier neural operators. In: International Conference
+on Learning Representations (2022). URL https://openreview.net/forum?id=EXHG-A3jlM
+
+
+===== neural-integral-operators-2025 | page 15/16 =====
+
+Parametric Integration with Neural Integral Operators
+15
+6. He, K., Zhang, X., Ren, S., Sun, J.: Identity mappings in deep residual networks. In: B. Leibe,
+J. Matas, N. Sebe, M. Welling (eds.) Computer Vision – ECCV 2016, pp. 630–645. Springer
+International Publishing, Cham (2016)
+7. Holschneider, M., Kronland-Martinet, R., Morlet, J., Tchamitchian, P.: A real-time algorithm
+for signal analysis with the help of the wavelet transform. In: J. Combes, A. Grossmann,
+P. Tchamitchian (eds.) Wavelets - Time-Frequency Methods and Phase Space, pp. 286–297.
+Springer (1989). DOI 10.1007/978-3-642-75988-8 28
+8. Keller, A.: Quasi-Monte Carlo Methods for Photorealistic Image Synthesis. Ph.D. thesis,
+University of Kaiserslautern, Germany (1998)
+9. Keller, A., Dahm, K., Binder, N.: Path space filtering. In: R. Cools, D. Nuyens (eds.) Monte
+Carlo and Quasi-Monte Carlo Methods 2014, pp. 423–436. Springer (2016)
+10. Kˇriv´anek, J., Gautron, P.: Practical Global Illumination with Irradiance Caching. Synthesis
+lectures in computer graphics and animation. Morgan & Claypool (2009)
+11. Lehtinen, J., Munkberg, J., Hasselgren, J., Laine, S., Karras, T., Aittala, M., Aila, T.:
+Noise2Noise: Learning image restoration without clean data. Proc. International Confer-
+ence on Machine Learning (ICML) (2018)
+12. Li, Z., Kovachki, N.B., Azizzadenesheli, K., liu, B., Bhattacharya, K., Stuart, A., Anandkumar,
+A.: Fourier neural operator for parametric partial differential equations. In: International
+Conference on Learning Representations (2021).
+URL https://openreview.net/forum?id=
+c8P9NQVtmnO
+13. Lu, L., Jin, P., Pang, G., Zhang, Z., Karniadakis, G.E.: Learning nonlinear operators via
+DeepONet based on the universal approximation theorem of operators. Nature Machine
+Intelligence 3(3), 218–229 (2021). DOI 10.1038/s42256-021-00302-5. URL https://doi.org/
+10.1038/s42256-021-00302-5
+14. McAuley, S., Hill, S., Hoffman, N., Gotanda, Y., Smits, B., Burley, B., Martinez, A.: Practical
+physically-based shading in film and game production. In: ACM SIGGRAPH 2012 Courses,
+SIGGRAPH ’12 (2012). DOI 10.1145/2343483.2343493
+15. M¨uller, T., Evans, A., Schied, C., Keller, A.: Instant neural graphics primitives with a mul-
+tiresolution hash encoding. ACM Transactions on Graphics 41(4), 102:1–102:15 (2022).
+DOI 10.1145/3528223.3530127
+16. M¨uller, T., Rousselle, F., Nov´ak, J., Keller, A.: Real-time neural radiance caching for path
+tracing. ACM Transactions on Graphics (SIGGRAPH) 40(4), 36:1–36:16 (2021). DOI
+10.1145/3450626.3459812
+17. Nalbach, O., Arabadzhiyska, E., Mehta, D., Seidel, H.P., Ritschel, T.: Deep shading: Convo-
+lutional neural networks for screen space shading. Computer Graphics Forum 36(4), 65–78
+(2017). DOI 10.1111/cgf.13225
+18. Pharr, M., Jacob, W., Humphreys, G.: Physically Based Rendering - From Theory to Imple-
+mentation. Morgan Kaufmann, fourth edition (2023)
+19. Reinhard, E., Stark, M., Shirley, P., Ferwerda, J.: Photographic tone reproduction for digital
+images. ACM Transactions on Graphics 21(3), 267–276 (2002)
+20. Ronneberger, O., Fischer, P., Brox, T.: U-Net: Convolutional networks for biomedical image
+segmentation. In: N. Navab, J. Hornegger, W.M. Wells, A.F. Frangi (eds.) Medical Image
+Computing and Computer-Assisted Intervention – MICCAI 2015, pp. 234–241. Springer
+International Publishing, Cham (2015)
+21. Vaidyanathan, K., Salvi, M., Wronski, B., Akenine-M¨oller, T., Ebelin, P., Lefohn, A.: Random-
+access neural compression of material textures. ACM Transactions on Graphics 42(4) (2023).
+DOI 10.1145/3592407
+22. Van keirsbilck, M., Keller, A.: Conformer without convolutions. In: Interspeech 2024, pp.
+3475–3479 (2024). DOI 10.21437/Interspeech.2024-445
+23. Ward, G., Heckbert, P.: Irradiance gradients. In: 3rd Eurographics Workshop on Rendering.
+Bristol, United Kingdom (1992)
+
+
+===== neural-integral-operators-2025 | page 16/16 =====
+
+16
+Christoph Schied and Alexander Keller
+24. Wikipedia: Irradiance (2025). URL https://en.wikipedia.org/wiki/Irradiance
+25. Wyman, C., Kettunen, M., Lin, D., Bitterli, B., Yuksel, C., Jarosz, W., Kozlowski, P.: A
+gentle introduction to ReSTIR path reuse in real-time. In: ACM SIGGRAPH 2023 Courses,
+SIGGRAPH ’23 (2023). DOI 10.1145/3587423.3595511
+26. Zeltner, T., Rousselle, F., Weidlich, A., Clarberg, P., Nov´ak, J., Bitterli, B., Evans, A., Davi-
+doviˇc, T., Kallweit, S., Lefohn, A.: Real-time neural appearance models. ACM Transactions
+on Graphics 43(3) (2024). DOI 10.1145/3659577
+A
+Appendix
+A.1
+Disney Principled BSDF Model
+For the integral kernel 𝑓, we employ the isotropic Disney principled bidirectional
+scattering distribution function (BSDF) [14] without clear coat as implemented by the
+DefaultLitMaterial in the Unreal Engine 4. For a white base color (=1), we select
+the BSDF parameters as
+metallic specular roughness
+𝐸1
+0.5
+0.5
+0.1
+𝐸2
+1.0
+0.0
+0.1
+𝐸3
+0.0
+1.0
+0.1
+𝐸4
+1.0
+1.0
+0.6
+and 𝐸0(𝜔, 𝜔𝑟) := 1, amounting to 𝑑= 5, to define the components (Sect. 2.1) of
+𝑬(𝜔, 𝜔𝑟) :=
+
+1,
+,
+, . . .
+
+, where, for illustration,
+𝑓(𝑥, 𝜔, 𝜔𝑟) = 𝜌𝑑(𝑥) ·
++ 𝜌𝑔(𝑥) ·
++ 𝜌𝑠(𝑥) ·
+.
+A.2
+Training Parameters
+We use the AdamW optimizer with the PyTorch default parameters (betas = (0.9,
+0.999), eps = 1e-08, weight decay = 0.01, amsgrad = False).
+The material decoder in Sect. 3.1 is trained with a learning rate of 1e-3 and a
+batch size of 218. For training stability we employ clamping of the gradient 𝐿2-norm
+to a maximum of 1. This helps with training convergence and avoids situations where
+exploding gradients would derail the optimization process. The denoiser in Sect. 3.2 is
+trained with a learning rate of 1e-3 and a batch size of 4.

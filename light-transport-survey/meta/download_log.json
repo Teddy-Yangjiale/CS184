@@ -1,0 +1,262 @@
+[
+  {
+    "slug": "nrc-2021",
+    "arxiv": "2106.12372",
+    "cluster": "C1_realtime_cache",
+    "note": "Real-time Neural Radiance Caching (SIGGRAPH 2021)",
+    "url": "https://arxiv.org/pdf/2106.12372",
+    "ok": true,
+    "detail": "pages=16 bytes=20713308",
+    "bytes": 20713308
+  },
+  {
+    "slug": "ntmc-2024",
+    "arxiv": "2412.04634",
+    "cluster": "C1_realtime_cache",
+    "note": "Neural Two-Level Monte Carlo Real-Time Rendering",
+    "url": "https://arxiv.org/pdf/2412.04634",
+    "ok": true,
+    "detail": "pages=17 bytes=42653494",
+    "bytes": 42653494
+  },
+  {
+    "slug": "specular-prefilter-2026",
+    "arxiv": "2610.11702",
+    "cluster": "C1_realtime_cache",
+    "note": "Neural Caching of Prefiltered Radiance for Specular Lighting",
+    "url": "https://arxiv.org/pdf/2610.11702",
+    "ok": true,
+    "detail": "pages=5 bytes=3964456",
+    "bytes": 3964456
+  },
+  {
+    "slug": "neural-visibility-cache-2025",
+    "arxiv": "2506.05930",
+    "cluster": "C1_realtime_cache",
+    "note": "Neural Visibility Cache for Real-Time Light Sampling",
+    "url": "https://arxiv.org/pdf/2506.05930",
+    "ok": true,
+    "detail": "pages=19 bytes=59589360",
+    "bytes": 59589360
+  },
+  {
+    "slug": "lt3d-embedding-2025",
+    "arxiv": "2510.18189",
+    "cluster": "C1_realtime_cache",
+    "note": "A Generalizable Light Transport 3D Embedding for GI",
+    "url": "https://arxiv.org/pdf/2510.18189",
+    "ok": true,
+    "detail": "pages=18 bytes=47213529",
+    "bytes": 47213529
+  },
+  {
+    "slug": "restir-mcmc-2022",
+    "arxiv": "2211.00166",
+    "cluster": "C1_realtime_cache",
+    "note": "Decorrelating ReSTIR Samplers via MCMC Mutations",
+    "url": "https://arxiv.org/pdf/2211.00166",
+    "ok": true,
+    "detail": "pages=14 bytes=46103744",
+    "bytes": 46103744
+  },
+  {
+    "slug": "tof-restir-2026",
+    "arxiv": "2605.11536",
+    "cluster": "C1_realtime_cache",
+    "note": "ToF ReSTIR",
+    "url": "https://arxiv.org/pdf/2605.11536",
+    "ok": true,
+    "detail": "pages=19 bytes=10393341",
+    "bytes": 10393341
+  },
+  {
+    "slug": "ddgi-resampling-2021",
+    "arxiv": "2108.05263",
+    "cluster": "C1_realtime_cache",
+    "note": "Dynamic Diffuse Global Illumination Resampling",
+    "url": "https://arxiv.org/pdf/2108.05263",
+    "ok": true,
+    "detail": "pages=13 bytes=18916714",
+    "bytes": 18916714
+  },
+  {
+    "slug": "renderformer-2025",
+    "arxiv": "2505.21925",
+    "cluster": "C2_feedforward",
+    "note": "RenderFormer (SIGGRAPH 2025)",
+    "url": "https://arxiv.org/pdf/2505.21925",
+    "ok": true,
+    "detail": "pages=11 bytes=15840060",
+    "bytes": 15840060
+  },
+  {
+    "slug": "renderformer-v2-2026",
+    "arxiv": "2609.05738",
+    "cluster": "C2_feedforward",
+    "note": "RenderFormer-V2",
+    "url": "https://arxiv.org/pdf/2609.05738",
+    "ok": true,
+    "detail": "pages=28 bytes=41180137",
+    "bytes": 41180137
+  },
+  {
+    "slug": "renderformer-plus-2026",
+    "arxiv": "2606.30380",
+    "cluster": "C2_feedforward",
+    "note": "RenderFormer++",
+    "url": "https://arxiv.org/pdf/2606.30380",
+    "ok": true,
+    "detail": "pages=9 bytes=8472178",
+    "bytes": 8472178
+  },
+  {
+    "slug": "let-there-be-light-2026",
+    "arxiv": "2606.03262",
+    "cluster": "C2_feedforward",
+    "note": "Reflection/Refraction/Scattering for Neural Operators",
+    "url": "https://arxiv.org/pdf/2606.03262",
+    "ok": true,
+    "detail": "pages=24 bytes=2446513",
+    "bytes": 2446513
+  },
+  {
+    "slug": "caustic-surface-light-2025",
+    "arxiv": "2511.09361",
+    "cluster": "C3_diff_caustics",
+    "note": "Computational Caustic Design for Surface Light Source",
+    "url": "https://arxiv.org/pdf/2511.09361",
+    "ok": true,
+    "detail": "pages=17 bytes=18220829",
+    "bytes": 18220829
+  },
+  {
+    "slug": "active-caustics-2023",
+    "arxiv": "2310.01829",
+    "cluster": "C3_diff_caustics",
+    "note": "Active Caustics",
+    "url": "https://arxiv.org/pdf/2310.01829",
+    "ok": true,
+    "detail": "pages=15 bytes=16121119",
+    "bytes": 16121119
+  },
+  {
+    "slug": "double-freeform-2026",
+    "arxiv": "2604.00831",
+    "cluster": "C3_diff_caustics",
+    "note": "Double-Freeform Lens Design for Angular-Spatial Control",
+    "url": "https://arxiv.org/pdf/2604.00831",
+    "ok": true,
+    "detail": "pages=17 bytes=3286283",
+    "bytes": 3286283
+  },
+  {
+    "slug": "plateau-diffpt-2022",
+    "arxiv": "2211.17263",
+    "cluster": "C3_diff_caustics",
+    "note": "Plateau-reduced Differentiable Path Tracing",
+    "url": "https://arxiv.org/pdf/2211.17263",
+    "ok": true,
+    "detail": "pages=13 bytes=13545923",
+    "bytes": 13545923
+  },
+  {
+    "slug": "diff-light-tracing-2026",
+    "arxiv": "2610.10847",
+    "cluster": "C3_diff_caustics",
+    "note": "Constant-Memory Differentiable Light Tracing",
+    "url": "https://arxiv.org/pdf/2610.10847",
+    "ok": true,
+    "detail": "pages=4 bytes=5360315",
+    "bytes": 5360315
+  },
+  {
+    "slug": "wave-ray-2023",
+    "arxiv": "2303.15762",
+    "cluster": "C4_wave",
+    "note": "Generalized Ray Formulation for Wave-Optics Rendering",
+    "url": "https://arxiv.org/pdf/2303.15762",
+    "ok": true,
+    "detail": "pages=20 bytes=8295241",
+    "bytes": 8295241
+  },
+  {
+    "slug": "wave-tracing-2025",
+    "arxiv": "2508.17386",
+    "cluster": "C4_wave",
+    "note": "Wave Tracing: Generalizing the Path Integral to Wave Optics",
+    "url": "https://arxiv.org/pdf/2508.17386",
+    "ok": true,
+    "detail": "pages=12 bytes=48090941",
+    "bytes": 48090941
+  },
+  {
+    "slug": "gratnet-2025",
+    "arxiv": "2506.15815",
+    "cluster": "C4_wave",
+    "note": "GratNet: neural shader for diffractive surfaces",
+    "url": "https://arxiv.org/pdf/2506.15815",
+    "ok": true,
+    "detail": "pages=15 bytes=39546477",
+    "bytes": 39546477
+  },
+  {
+    "slug": "photon-guiding-caustics-2024",
+    "arxiv": "2403.03641",
+    "cluster": "C4_wave",
+    "note": "Online Photon Guiding with 3D Gaussians for Caustics",
+    "url": "https://arxiv.org/pdf/2403.03641",
+    "ok": true,
+    "detail": "pages=17 bytes=35504061",
+    "bytes": 35504061
+  },
+  {
+    "slug": "sobolev-2017",
+    "arxiv": "1706.04859",
+    "cluster": "C5_method",
+    "note": "Sobolev Training for Neural Networks",
+    "url": "https://arxiv.org/pdf/1706.04859",
+    "ok": true,
+    "detail": "pages=19 bytes=6430649",
+    "bytes": 6430649
+  },
+  {
+    "slug": "neural-integral-operators-2025",
+    "arxiv": "2507.17440",
+    "cluster": "C5_method",
+    "note": "Parametric Integration with Neural Integral Operators",
+    "url": "https://arxiv.org/pdf/2507.17440",
+    "ok": true,
+    "detail": "pages=16 bytes=23116379",
+    "bytes": 23116379
+  },
+  {
+    "slug": "npm-path-guiding-2025",
+    "arxiv": "2504.04315",
+    "cluster": "C5_method",
+    "note": "Neural Parametric Mixtures for Path Guiding",
+    "url": "https://arxiv.org/pdf/2504.04315",
+    "ok": true,
+    "detail": "pages=10 bytes=20104383",
+    "bytes": 20104383
+  },
+  {
+    "slug": "plasmonic-stiffness-2021",
+    "arxiv": "2102.05381",
+    "cluster": "C6_tweezers",
+    "note": "Plasmonic nano-optical trap stiffness",
+    "url": "https://arxiv.org/pdf/2102.05381",
+    "ok": true,
+    "detail": "pages=17 bytes=831993",
+    "bytes": 831993
+  },
+  {
+    "slug": "stiffness-polarization-2015",
+    "arxiv": "1509.05908",
+    "cluster": "C6_tweezers",
+    "note": "Tuning stiffness asymmetry via polarization control",
+    "url": "https://arxiv.org/pdf/1509.05908",
+    "ok": true,
+    "detail": "pages=5 bytes=4964830",
+    "bytes": 4964830
+  }
+]

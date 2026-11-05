@@ -1,0 +1,38 @@
+{
+  "clusters": {
+    "C1_realtime_cache": "实时路径追踪 / 重采样 / 神经缓存",
+    "C2_feedforward": "端到端前馈神经渲染",
+    "C3_diff_caustics": "可微渲染与焦散逆设计",
+    "C4_wave": "波动光学渲染与衍射",
+    "C5_method": "方法学基础：梯度/算子监督、采样与代理模型",
+    "C6_tweezers": "光镊物理基础（刚度 / 捕获 / 偏振控制）"
+  },
+  "papers": [
+    {"slug": "nrc-2021", "arxiv": "2106.12372", "cluster": "C1_realtime_cache", "note": "Real-time Neural Radiance Caching (SIGGRAPH 2021)"},
+    {"slug": "ntmc-2024", "arxiv": "2412.04634", "cluster": "C1_realtime_cache", "note": "Neural Two-Level Monte Carlo Real-Time Rendering"},
+    {"slug": "specular-prefilter-2026", "arxiv": "2610.11702", "cluster": "C1_realtime_cache", "note": "Neural Caching of Prefiltered Radiance for Specular Lighting"},
+    {"slug": "neural-visibility-cache-2025", "arxiv": "2506.05930", "cluster": "C1_realtime_cache", "note": "Neural Visibility Cache for Real-Time Light Sampling (JCGT)"},
+    {"slug": "lt3d-embedding-2025", "arxiv": "2510.18189", "cluster": "C1_realtime_cache", "note": "A Generalizable Light Transport 3D Embedding for GI"},
+    {"slug": "restir-mcmc-2022", "arxiv": "2211.00166", "cluster": "C1_realtime_cache", "note": "Decorrelating ReSTIR Samplers via MCMC Mutations"},
+    {"slug": "tof-restir-2026", "arxiv": "2605.11536", "cluster": "C1_realtime_cache", "note": "ToF ReSTIR"},
+    {"slug": "ddgi-resampling-2021", "arxiv": "2108.05263", "cluster": "C1_realtime_cache", "note": "Dynamic Diffuse Global Illumination Resampling"},
+    {"slug": "renderformer-2025", "arxiv": "2505.21925", "cluster": "C2_feedforward", "note": "RenderFormer (SIGGRAPH 2025)"},
+    {"slug": "renderformer-v2-2026", "arxiv": "2609.05738", "cluster": "C2_feedforward", "note": "RenderFormer-V2 (ECCV 2026)"},
+    {"slug": "renderformer-plus-2026", "arxiv": "2606.30380", "cluster": "C2_feedforward", "note": "RenderFormer++"},
+    {"slug": "caustic-surface-light-2025", "arxiv": "2511.09361", "cluster": "C3_diff_caustics", "note": "Computational Caustic Design for Surface Light Source (TVCG)"},
+    {"slug": "dynamic-caustics-2025", "arxiv": "2505.16397", "cluster": "C3_diff_caustics", "note": "Dynamic Caustics by Ultrasonically Modulated Liquid Surface"},
+    {"slug": "double-freeform-2026", "arxiv": "2604.00831", "cluster": "C3_diff_caustics", "note": "Double-Freeform Lens Design for Angular-Spatial Control"},
+    {"slug": "plateau-diffpt-2022", "arxiv": "2211.17263", "cluster": "C3_diff_caustics", "note": "Plateau-reduced Differentiable Path Tracing"},
+    {"slug": "diff-light-tracing-2026", "arxiv": "2610.10847", "cluster": "C3_diff_caustics", "note": "Constant-Memory Differentiable Light Tracing"},
+    {"slug": "wave-ray-2023", "arxiv": "2303.15762", "cluster": "C4_wave", "note": "Generalized Ray Formulation for Wave-Optics Rendering"},
+    {"slug": "wave-tracing-2025", "arxiv": "2508.17386", "cluster": "C4_wave", "note": "Wave Tracing: Generalizing the Path Integral to Wave Optics"},
+    {"slug": "gratnet-2025", "arxiv": "2506.15815", "cluster": "C4_wave", "note": "GratNet: neural shader for diffractive surfaces"},
+    {"slug": "photon-guiding-caustics-2024", "arxiv": "2403.03641", "cluster": "C4_wave", "note": "Online Photon Guiding with 3D Gaussians for Caustics"},
+    {"slug": "sobolev-2017", "arxiv": "1706.04859", "cluster": "C5_method", "note": "Sobolev Training for Neural Networks"},
+    {"slug": "neural-integral-operators-2025", "arxiv": "2507.17440", "cluster": "C5_method", "note": "Parametric Integration with Neural Integral Operators"},
+    {"slug": "npm-path-guiding-2025", "arxiv": "2504.04315", "cluster": "C5_method", "note": "Neural Parametric Mixtures for Path Guiding"},
+    {"slug": "let-there-be-light-2026", "arxiv": "2606.03262", "cluster": "C5_method", "note": "LiNO: light-inspired neural operator for PDEs（非渲染，仅借算子分解）"},
+    {"slug": "plasmonic-stiffness-2021", "arxiv": "2102.05381", "cluster": "C6_tweezers", "note": "Plasmonic nano-optical trap stiffness"},
+    {"slug": "stiffness-polarization-2015", "arxiv": "1509.05908", "cluster": "C6_tweezers", "note": "Tuning stiffness asymmetry via polarization control"}
+  ]
+}

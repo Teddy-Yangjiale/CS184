@@ -1,0 +1,1894 @@
+
+
+===== restir-mcmc-2022 | page 1/14 =====
+
+Decorrelating ReSTIR Samplers via MCMC Mutations
+ROHAN SAWHNEY, Carnegie Mellon University, USA
+DAQI LIN, NVIDIA, USA
+MARKUS KETTUNEN, NVIDIA, Finland
+BENEDIKT BITTERLI, NVIDIA, USA
+RAVI RAMAMOORTHI, UC San Diego and NVIDIA, USA
+CHRIS WYMAN, NVIDIA, USA
+MATT PHARR, NVIDIA, USA
+No mutations 
+Time: 30 ms
+ReSTIR Path Tracing with 
+1 sample and mutation per pixel
+1 mutation 
+Time: 37 ms
+No mutations 
+(denoised)
+1 mutation 
+(denoised)
+Reference
+Fig. 1. A single sample per pixel (spp) comparison of indirect illumination rendered using ReSTIR Path Tracing (PT) [Lin et al. 2022] with and without our
+sample mutations. By performing even a single mutation per sample, our approach can suppress correlation artifacts that may arise within ReSTIR samplers
+due to unchecked spatiotemporal reuse. Mutations improve visual fidelity of both rendered and denoised results (with the OptiX denoiser [NVIDIA 2017])
+while leaving mean squared error unchanged.
+Monte Carlo rendering algorithms often utilize correlations between pixels
+to improve efficiency and enhance image quality. For real-time applications
+in particular, repeated reservoir resampling offers a powerful framework to
+reuse samples both spatially in an image and temporally across multiple
+frames. While such techniques achieve equal-error up to 100× faster for real-
+time direct lighting [Bitterli et al. 2020] and global illumination [Ouyang et al.
+2021; Lin et al. 2021], they are still far from optimal. For instance, unchecked
+spatiotemporal resampling often introduces noticeable correlation artifacts,
+while reservoirs holding more than one sample suffer from impoverishment
+in the form of duplicate samples. We demonstrate how interleaving Markov
+Chain Monte Carlo (MCMC) mutations with reservoir resampling helps
+alleviate these issues, especially in scenes with glossy materials and difficult-
+to-sample lighting. Moreover, our approach does not introduce any bias, and
+in practice we find considerable improvement in image quality with just a
+single mutation per reservoir sample in each frame.
+CCS Concepts: • Computing methodologies →Ray Tracing.
+Additional Key Words and Phrases: real-time rendering, resampled impor-
+tance sampling, weighted reservoir sampling, Markov chain Monte Carlo
+Authors’ addresses: Rohan Sawhney, rohansawhney@cs.cmu.edu, Carnegie Mel-
+lon University, USA; Daqi Lin, daqil@nvidia.com, NVIDIA, USA; Markus Kettunen,
+mkettunen@nvidia.com, NVIDIA, Finland; Benedikt Bitterli, bbitterli@nvidia.com,
+NVIDIA, USA; Ravi Ramamoorthi, ravir@cs.ucsd.edu, UC San Diego and NVIDIA, USA;
+Chris Wyman, cwyman@nvidia.com, NVIDIA, USA; Matt Pharr, mpharr@nvidia.com,
+NVIDIA, USA.
+© 2022 Copyright held by the owner/author(s).
+XXXX-XXXX/2022/11-ART
+https://doi.org/10.1145/nnnnnnn.nnnnnnn
+Reference Format:
+Rohan Sawhney, Daqi Lin, Markus Kettunen, Benedikt Bitterli, Ravi Ra-
+mamoorthi, Chris Wyman, and Matt Pharr. 2022. Decorrelating ReSTIR
+Samplers via MCMC Mutations. arXiv 1, 1 (November 2022), 14 pages.
+https://doi.org/10.1145/nnnnnnn.nnnnnnn
+1
+INTRODUCTION
+The efficiency of rendering algorithms often hinges on their ability
+to effectively evaluate similar integrals by reusing samples across
+pixels [Ward et al. 1988; Lafortune and Willems 1993; Jensen 1996;
+Veach and Guibas 1997]. In real-time path tracing, sample reuse be-
+comes more critical since tracing rays is computationally intensive
+even on high-end consumer GPUs [Kilgariff et al. 2018]. Moreover,
+while existing denoisers drastically improve image quality even at
+low sample counts [Chaitanya et al. 2017; Schied et al. 2017, 2018;
+Kozlowski and Cheblokov 2021; NVIDIA 2022], they are unable to
+reconstruct features missing from their input samples. Thus, sample
+reuse is often the only means to improve sampling quality given
+limited computational budgets. Compared to methods that gener-
+ate independent samples, reuse is also at times the only practical
+approach available to render challenging scenes with caustics and
+tricky lighting [Hachisuka and Jensen 2009; Veach and Guibas 1997].
+Recent sampling algorithms for real-time ray tracing achieve mas-
+sive speedups in scenes with complex illumination by sharing sam-
+ples spatially within an image and temporally across frames [Bitterli
+et al. 2020; Ouyang et al. 2021; Lin et al. 2021, 2022]. These so-called
+arXiv, Vol. 1, No. 1, Article . Publication date: November 2022.
+arXiv:2211.00166v1  [cs.GR]  31 Oct 2022
+
+
+===== restir-mcmc-2022 | page 2/14 =====
+
+2
+•
+Rohan Sawhney, Daqi Lin, Markus Kettunen, Benedikt Bitterli, Ravi Ramamoorthi, Chris Wyman, and Matt Pharr
+Random Replay Shif
+Reconnection Shif
+Hybrid (Random Replay + Reconnection) Shif
+Fig. 2. Glossy scenes with difficult-to-sample lighting rendered using Re-
+STIR PT often contain correlation artifacts irrespective of the selected shift
+mapping strategy [Lin et al. 2022, Section 7]. Artifacts result from subop-
+timal importance sampling and over-enthusiastically sharing a few high-
+contribution samples between pixels.
+ReSTIR1 based techniques select 𝑁high-contribution samples from
+a larger streamed candidate pool of size 𝑀. They do so by refor-
+mulating resampled importance sampling (RIS) [Talbot et al. 2005]
+in terms of weighted reservoir sampling (WRS) [Chao 1982]. While
+RIS effectively importance samples candidates in proportion to an
+arbitrary target function (e.g., the integrand of the rendering equa-
+tion), WRS makes resampling efficient by reducing storage costs
+from 𝑂(𝑀) to 𝑂(𝑁). Repeated resampling across pixels then helps
+distribute important samples over several frames for estimation.
+Though ReSTIR derives impressive efficiency gains from corre-
+lated sampling, the benefits of repeated resampling are not indefinite.
+When only a few high-contribution samples have been identified,
+iterative spatial reuse creates blotchy artifacts as several pixels reuse
+the same sample (Figures 2 and 3). Such undersampling artifacts
+eventually fade away with temporal reuse over several frames, using
+a parameter to balance between minimizing pixel error and corre-
+lations via greater sample reuse (Figure 4). However, emphasizing
+error reduction adds lag under camera movement with dynamically
+changing lighting and geometry (Section 2.4), and introduces dis-
+tracting low-frequency artifacts akin to those in photon mapping
+[Hachisuka and Jensen 2009], Metropolis Light Transport (MLT)
+[Veach and Guibas 1997] and Virtual Point Light (VPL) methods
+[Dachsbacher et al. 2014].
+As spatiotemporal correlations are difficult to quantify, resolving
+artifacts is challenging. For instance, popular denoisers that com-
+pute first- and second-order moments (e.g., Schied et al. [2017]) are
+less effective given imprecise variance estimates with correlated
+samples. For ReSTIR, trying to reduce such artifacts by increasing
+1acronym for Reservoir-based Spatio-Temporal Importance Resampling
+sample impoverishment 
+0
+357
+Fig. 3. Reservoir resampling suffers from sample impoverishment as it be-
+comes more difficult to sample light-carrying paths. Top row, left to right: The
+Veach Ajar scene rendered using ReSTIR PT (random replay shift) at 1 spp
+with the door’s angle decreasing. Bottom row: Heat maps visualize duplicate
+samples in 20 × 20 pixel neighborhoods. Black represents no duplicates,
+while white indicates the number of identical samples in a neighborhood.
+the reservoir size 𝑁is also ineffective, as resampling with replace-
+ment [Chao 1982] produces duplicate samples in the presence of
+strong correlations (see Wyman and Panteleev [2021, Figure 19]).
+Inspired by work on Sequential Monte Carlo (SMC) [Doucet et al.
+2001] and Population Monte Carlo (PMC) [Cappé et al. 2004], we
+demonstrate that interleaving MCMC mutations with reservoir
+resampling (Section 3) helps alleviate correlations and impover-
+ishment, especially in scenes with glossy materials and difficult
+lighting. Unlike MLT where mutations drive information sharing
+across pixels, our mutations instead help mitigate artifacts caused
+by spatiotemporal reuse. Similar to blue-noise sampling [Mitchell
+1987; Georgiev and Fajardo 2016; Heitz and Belcour 2019], these
+mutations produce images with better visual fidelity without neces-
+sarily reducing error (Figures 9 and 11). Our approach highlights
+the complementary strengths of resampling and mutations for real-
+time rendering: resampling reuses samples with large contributions
+proportional to a pixel’s target distribution, while mutations di-
+versify the resampled population by locally perturbing samples in
+proportion to the same target distribution. Furthermore, like Veach
+and Guibas [1997]’s bias elimination strategy for MLT, we show
+that resampling eliminates the need for any burn-in period with
+Metropolis–Hastings (MH) mutations [Metropolis et al. 1953; Hast-
+ings 1970] (Section 2.5, Appendix A). This drives considerable image
+quality improvements from even a single mutation per frame for
+each reservoir sample (Figures 7, 9 and 10).
+From an implementation perspective, our approach requires only
+simple additions to existing ReSTIR algorithms (see Algorithm 3)—
+we mutate reservoir samples using Metropolis–Hastings and an
+appropriate target function every frame after temporal reuse. This
+is immediately followed by an adjustment to each mutated sample’s
+contribution weight to maintain detailed balance and ensure unbiased
+estimation. Overall, our contributions include:
+• Demonstrating how to incorporate MCMC mutations within
+ReSTIR to address the pitfalls of unchecked spatiotemporal
+sample reuse with resampling.
+arXiv, Vol. 1, No. 1, Article . Publication date: November 2022.
+
+
+===== restir-mcmc-2022 | page 3/14 =====
+
+Decorrelating ReSTIR Samplers via MCMC Mutations
+•
+3
+• Showing how to correctly adjust the RIS weight of mutated
+samples in an unbiased fashion for further resampling.
+• Situating ReSTIR in the broader paradigm of techniques that
+jointly apply resampling and mutations to sampling problems,
+such as MLT, SMC and PMC (see Table 2).
+We start with the key building blocks of our approach in the next
+section, and postpone discussion about related work to Section 6
+for better context when comparing with our method.
+2
+BACKGROUND
+The rendering equation [Kajiya 1986] gives the outgoing radiance
+𝐿out leaving a point 𝑦in the direction 𝜔. Expressed as an integral
+over directions, it is
+𝐿out(𝑦,𝜔) = 𝐿e(𝑦,𝜔) +
+∫
+𝑆2 𝐿in(𝑦,𝜔𝑖) 𝜌(𝑦,𝜔,𝜔𝑖) |cos 𝜃𝑖| d𝜔𝑖. (1)
+Here 𝐿e is the emitted radiance, 𝐿in(𝑦,𝜔𝑖) is the incoming radiance
+from the direction 𝜔𝑖, 𝜌(𝑦,𝜔,𝜔𝑖) is the BSDF and 𝜃𝑖is the angle
+between 𝜔𝑖and the surface normal at 𝑦. Absent participating me-
+dia, the incident radiance 𝐿in is defined recursively as 𝐿in(𝑦,𝜔𝑖) =
+𝐿out(𝑡(𝑦,𝜔𝑖), −𝜔𝑖); the function 𝑡(𝑦,𝜔𝑖) returns the point on the
+closest surface from 𝑦in direction 𝜔𝑖. Integrating over the sphere
+of directions 𝑆2 then gives the total radiance scattered towards 𝜔;
+this integral can be estimated with Monte Carlo as
+1
+𝑁
+𝑁
+∑︁
+𝑖=1
+𝐿in(𝑦,𝜔𝑖) 𝜌(𝑦,𝜔,𝜔𝑖) |cos 𝜃𝑖|
+𝑝(𝜔𝑖)
+,
+(2)
+where 𝑝(𝜔𝑖) is the probability density function (PDF) with respect
+to solid angle used to sample the incident directions 𝜔𝑖.
+As in Kajiya’s formulation, sometimes it is more convenient to re-
+formulate Equation 1 over surfaces. To keep the discussion indepen-
+dent of the choice of formulation, we use
+∫
+Ω 𝑓(𝑥) d𝑥to generically
+represent the integral we want to evaluate with Ω as its domain.
+This integral can likewise be estimated using
+b𝐼MC := 1
+𝑁
+𝑁
+∑︁
+𝑖=1
+𝑓(𝑥𝑖)
+𝑝(𝑥𝑖) ,
+(3)
+where 𝑥𝑖are independent random samples drawn from any source
+PDF 𝑝that is non-zero on the support of 𝑓. In rendering, one often
+draws samples proportional to individual terms of the rendering
+equation to reduce variance (e.g., the BSDF 𝜌). To perform even bet-
+ter importance sampling, ReSTIR instead uses RIS to draw samples
+approximately proportional to the product of multiple terms in the
+integrand (e.g., 𝐿in · 𝜌· |cos 𝜃|).
+We review RIS and generalized RIS next (Sections 2.1 and 2.2);
+Section 2.3 discusses a streaming RIS implementation via reservoir
+sampling. Section 2.4 then describes how correlations arise within
+ReSTIR due to resampling. Section 2.5 discusses the Metropolis–
+Hastings algorithm we use in Section 3 to resolve correlation arti-
+facts.
+2.1
+Resampled Importance Sampling (RIS)
+RIS [Talbot et al. 2005; Lin et al. 2022] enables unbiased estimation
+and sample generation from a non-negative target function ˆ𝑝(𝑥)
+with an unknown normalization factor
+∫
+Ω ˆ𝑝(𝑦) d𝑦. It does so by
+rewriting the standard Monte Carlo estimator from Equation 3 as
+1
+𝑁
+𝑁
+∑︁
+𝑖=1
+𝑓(𝑥𝑖)
+ˆ𝑝(𝑥𝑖)
+∫
+Ω
+ˆ𝑝(𝑦) d𝑦
+
+.
+(4)
+The normalization factor is estimated by generating 𝑀≥1 candi-
+date samples y = {𝑦1, . . . ,𝑦𝑀} from a source PDF 𝑞that may be
+suboptimal but easy to sample from (e.g., 𝑞∝𝜌), yielding
+1
+𝑁
+𝑁
+∑︁
+𝑖=1
+𝑓(𝑥𝑖)
+ˆ𝑝(𝑥𝑖)
+©­
+«
+1
+𝑀
+𝑀
+∑︁
+𝑗=1
+ˆ𝑝(𝑦𝑗)
+𝑞(𝑦𝑗)
+ª®
+¬
+.
+(5)
+The samples x = {𝑥1, . . . ,𝑥𝑁} in turn are selected by randomly
+choosing an index 𝑗∈{1, . . . , 𝑀}, 𝑁times, from the candidate pool
+y with discrete probabilities:
+P(𝑗| y) =
+𝑤(𝑦𝑗)
+Í𝑀
+𝑘=1 𝑤(𝑦𝑘)
+.
+(6)
+Here the resampling weight 𝑤for each candidate 𝑦𝑗is given by
+𝑤(𝑦𝑗) = 1
+𝑀ˆ𝑝(𝑦𝑗)𝑊(𝑦𝑗),
+(7)
+where 𝑊:= 1/𝑞(𝑦𝑗) is called the (unbiased) contribution weight for
+𝑦𝑗. The selected samples 𝑥𝑖are likewise given contribution weights
+𝑊(𝑥𝑖) :=
+1
+ˆ𝑝(𝑥𝑖)
+©­
+«
+𝑀
+∑︁
+𝑗=1
+𝑤(𝑦𝑗)ª®
+¬
+(8)
+that assume the role of a reciprocal PDF, though they are only
+unbiased estimates for elements of the resampled set x. This is
+because the parenthesized term for the normalization factor of ˆ𝑝is
+itself an estimator that has variance. Each 𝑥𝑖∈x is also distributed
+only approximately in proportion to ˆ𝑝(i.e., ˆ𝑝is sampled perfectly
+only in the limit as 𝑀→∞). Since we resample with replacement,
+the set x can contain duplicate samples, which reflects that samples
+are selected in proportion to ˆ𝑝. With this setup, Talbot [2005] shows
+that the RIS estimator
+b𝐼RIS := 1
+𝑁
+𝑁
+∑︁
+𝑖=1
+𝑓(𝑥𝑖)𝑊(𝑥𝑖)
+(9)
+is unbiased as long as ˆ𝑝and 𝑞are non-zero on the support of 𝑓, i.e.,
+E[b𝐼RIS] =
+∫
+Ω
+𝑓(𝑥) d𝑥.
+(10)
+Combining with Multiple Importance Sampling (MIS). There are
+often several reasonable sampling strategies available in rendering,
+e.g., BSDF or light sampling. MIS [Veach and Guibas 1995b] allows
+multiple strategies to be combined robustly within RIS [Talbot 2005].
+When each candidate𝑦𝑗has its own source PDF𝑞𝑗, then MIS weights
+generalize the parenthesized term in Equation 5 with
+𝑀
+∑︁
+𝑗=1
+𝑚𝑗(𝑦𝑗)
+ˆ𝑝(𝑦𝑗)
+𝑞𝑗(𝑦𝑗) .
+(11)
+Here, 𝑚𝑗≥0 is the MIS weight for the 𝑗th sampling technique.
+These weights must form a partition of unity, i.e., Í𝑀
+𝑗=1 𝑚𝑗(𝑦) = 1. A
+common choice is the balance heuristic 𝑚𝑗(𝑦) = 𝑞𝑗(𝑦)/Í𝑀
+𝑘=1 𝑞𝑘(𝑦)
+arXiv, Vol. 1, No. 1, Article . Publication date: November 2022.
+
+
+===== restir-mcmc-2022 | page 4/14 =====
+
+4
+•
+Rohan Sawhney, Daqi Lin, Markus Kettunen, Benedikt Bitterli, Ravi Ramamoorthi, Chris Wyman, and Matt Pharr
+[Veach and Guibas 1995b]. With MIS, the resampling weight in
+Equation 7 becomes:
+𝑤(𝑦𝑗) = 𝑚𝑗(𝑦𝑗) ˆ𝑝(𝑦𝑗)𝑊(𝑦𝑗),
+where
+𝑊(𝑦𝑗) =
+1
+𝑞𝑗(𝑦𝑗) .
+(12)
+Notice we recover 𝑚𝑗= 1/𝑀when source PDFs are the same for
+each sample 𝑦𝑗. MIS weights play an important role in ReSTIR.
+Beyond reducing noise in the resampling weights, they also remove
+bias when the supports of the source and target distributions do not
+match integrand 𝑓’s support (see Section 4 in Bitterli et al. [2020]
+and Section 5 in Lin et al. [2022] for further details).
+In practice, using RIS with the balance heuristic is costly, as all
+sampling strategies (i.e., the source PDFs) must be evaluated for
+each candidate sample 𝑦𝑗. Bitterli [2022, Chapter 9.1.3] provides
+a similarly robust but more efficient heuristic called Pairwise MIS,
+which only requires𝑂(𝑀) PDF evaluations over the entire candidate
+pool. We use pairwise MIS when the number of sampling strategies
+𝑀is greater than 2 (e.g., during spatial resampling in ReSTIR; see
+Section 2.4); otherwise we use the balance heuristic.
+2.2
+Generalized Resampled Importance Sampling (GRIS)
+So far we assumed the resampling inputs 𝑦𝑗∼𝑞𝑗share a common
+integration domain Ω with integrand 𝑓. This assumption may no
+longer hold when reusing spatially or temporally across an image
+(as in ReSTIR), and depends on the integral formulation used for
+the rendering equation. For instance, ReSTIR applied to global il-
+lumination [Ouyang et al. 2021; Lin et al. 2022] generates samples
+from PDFs with respect to solid angle. Reuse across pixels therefore
+requires a change of integration domain, necessitating a correction
+term in the resampling weights [Ouyang et al. 2021, Equation 11].
+ReSTIR for direct lighting [Bitterli et al. 2020] instead integrates
+over the surface of all lights, ensuring Ω is fixed across samples.
+Recent work by Lin et al. [2022] generalizes RIS to use candidate
+samples 𝑦𝑗originating from different domains Ω𝑗. It achieves this
+via shift mapping, i.e., a bijective transformation of samples from
+one pixel to corresponding samples on another pixel [Lehtinen et al.
+2013]. In particular, if Ω denotes the domain of integration for 𝑓, and
+𝑆𝑗: Ω𝑗→Ω are shifts that map 𝑦𝑗∈Ω𝑗to the modified sample
+𝑦′
+𝑗∈Ω, then the resampling weight for 𝑦𝑗becomes
+𝑤(𝑦𝑗) = 𝑚𝑗(𝑦′
+𝑗) ˆ𝑝(𝑦′
+𝑗)𝑊(𝑦𝑗) ·
+
+𝜕𝑦′
+𝑗
+𝜕𝑦𝑗
+,
+(13)
+where the Jacobian determinant |𝜕𝑦′
+𝑗/𝜕𝑦𝑗| accounts for the change
+of integration domain from Ω𝑗to Ω. (Jacobians also appear in MIS
+weights 𝑚𝑗; see Appendix B). The rest of the RIS procedure in Sec-
+tion 2.1 remains unchanged—substituting these resampling weights
+to Equation 8 provides the contribution weight for the selected 𝑦′
+𝑗.
+Various shift mappings have been proposed to maximize the
+similarity between 𝑦′
+𝑗and 𝑦𝑗such that |𝜕𝑦′
+𝑗/𝜕𝑦𝑗| ≈1 [Hua et al.
+2019, Section 3]. We describe the shift mappings we use in Section 4.
+2.3
+Weighted Reservoir Sampling (WRS)
+WRS [Chao 1982] facilitates efficient RIS implementations using
+a single pass over elements in a stream {𝑦1, . . . ,𝑦𝑀} to select a
+ALGORITHM 1: Weighted reservoir sampling (𝑁= 1)
+1: class Reservoir
+2:
+𝑥←∅
+⊲output sample
+3:
+𝑤sum ←0
+⊲sum of resampling weights
+4:
+𝑀←0
+⊲number of samples seen so far
+5:
+𝑊←0
+⊲contribution weight (set in Algorithm 2)
+6:
+function update(𝑦, 𝑤)
+7:
+𝑤sum ←𝑤sum + 𝑤
+8:
+𝑀←𝑀+ 1
+9:
+if rand() < (𝑤/𝑤sum) then
+10:
+𝑥←𝑦
+random sample. As in Section 2.1, each stream element has an asso-
+ciated resampling weight 𝑤. The basic idea is to process the stream
+one element at a time, and to select—from the 𝑚< 𝑀elements
+processed so far—a sample 𝑦𝑗with probability 𝑤(𝑦𝑗)/Í𝑚
+𝑘=1 𝑤(𝑦𝑘).
+The next stream element 𝑦𝑚+1 then replaces 𝑦𝑗with probability
+𝑤(𝑦𝑚+1)/Í𝑚+1
+𝑘=1 𝑤(𝑦𝑘). The stream length 𝑀need not be known
+ahead of time, and WRS can be used to select 𝑁> 1 samples if
+needed [Wyman 2021, Chapter 22.6].
+WRS reduces the storage needed for resampling to 𝑂(𝑁). A light-
+weight data structure called a reservoir is typically used to process
+the stream and store the selected samples, the stream length 𝑀and
+the weight sum Í𝑀
+𝑗=1 𝑤(𝑦𝑗); see Algorithm 1.
+2.4
+Reservoir-based Spatiotemporal Resampling
+ReSTIR applies RIS and WRS in a chained fashion within and across
+pixels of an image. The first key idea is to approximately importance
+sample multiple terms in the rendering equation’s integrand through
+a per-pixel target function ˆ𝑝. The second is to reuse samples from
+neighboring pixels to exploit the similarity between their target
+functions. The algorithm performs four steps every frame:
+(1) (Initial resampling) Select 𝑁samples from a candidate pool
+of 𝑀samples at each pixel. Equations 12 and 8 provide the
+resampling and contribution weights for the candidate and
+selected samples respectively. A reservoir stores the selected
+samples and their contribution weights.
+(2) (Temporal resampling) Use Algorithm 2 to reuse samples
+across two corresponding pixels in consecutive frames 𝑡and
+𝑡−1. The resampling weight for each sample is computed
+using the contribution weight already stored in its reservoir.
+(3) (Spatial resampling) For each pixel, select 𝑘random reservoirs
+from a small spatial neighborhood and merge them into the
+pixel’s reservoir. The is similar to Algorithm 2 and can be
+repeated multiple times; for reference see Bitterli et al. [2020,
+Algorithm 4] and Ouyang et al. [2021, Algorithm 2].
+(4) (Final shading) Use Equation 9 to compute each pixel’s color.
+Spatiotemporal reuse gives each pixel access to a large population
+of samples from its local neighborhood. As a result, ReSTIR quickly
+finds samples that make large contributions to pixels. Nonetheless,
+gains from sharing samples are not indefinite, and correlation arti-
+facts may arise from undersampling, imperfect shift mappings, and
+wrongly set parameters. For instance, performing multiple rounds of
+spatial resampling with too small a pixel radius can lead to blotchy
+arXiv, Vol. 1, No. 1, Article . Publication date: November 2022.
+
+
+===== restir-mcmc-2022 | page 5/14 =====
+
+Decorrelating ReSTIR Samplers via MCMC Mutations
+•
+5
+ALGORITHM 2: Combining two reservoirs for temporal reuse (𝑁= 1)
+Input: Reservoirs for pixels 𝑖and 𝑗from frames 𝑡and 𝑡−1 (resp.), and a
+cap for the latter’s sample count
+Output: A combined reservoir for frame 𝑡
+1: function combineTemporalReservoirs(𝑖, 𝑗, 𝑟𝑖, 𝑟𝑗, 𝑀cap)
+2:
+⊲Cap confidence weight for 𝑟𝑗
+3:
+𝑟𝑗.𝑀←min(𝑟𝑗.𝑀, 𝑀cap)
+4:
+⊲Compute resampling weight for sample in 𝑟𝑖
+5:
+𝑥𝑖←𝑟𝑖.𝑥
+6:
+𝑚𝑖←computeMIS(𝑥𝑖, ˆ𝑝𝑖, 𝑟𝑖.𝑀, ˆ𝑝𝑗, 𝑟𝑗.𝑀)
+⊲Equation 31
+7:
+𝑤𝑖←𝑚𝑖· ˆ𝑝𝑖(𝑥𝑖) · 𝑟𝑖.𝑊
+⊲Equation 12
+8:
+⊲Shift sample in 𝑟𝑗to pixel 𝑖and compute its resampling weight
+9:
+𝑥′
+𝑗, |𝜕𝑥′
+𝑗/𝜕𝑥𝑗| ←shiftMap(𝑟𝑗.𝑥, 𝑗, 𝑖)
+⊲Section 4
+10:
+𝑚𝑗←computeMIS(𝑥′
+𝑗, ˆ𝑝𝑗, 𝑟𝑗.𝑀, ˆ𝑝𝑖, 𝑟𝑖.𝑀)
+⊲Equation 32
+11:
+𝑤𝑗←𝑚𝑗· ˆ𝑝𝑖(𝑥′
+𝑗) · 𝑟𝑗.𝑊· |𝜕𝑥′
+𝑗/𝜕𝑥𝑗|
+⊲Equation 13
+12:
+⊲Combine weighted samples into a single reservoir
+13:
+Reservoir 𝑠
+14:
+𝑠.update(𝑥𝑖, 𝑤𝑖)
+15:
+𝑠.update(𝑥′
+𝑗, 𝑤𝑗)
+16:
+𝑠.𝑀←𝑟𝑖.𝑀+ 𝑟𝑗.𝑀
+17:
+𝑠.𝑊←
+1
+ˆ𝑝𝑖(𝑠.𝑥) 𝑠.𝑤sum
+⊲Equation 8
+18:
+return 𝑠
+VPL-like artifacts. This happens when RIS cannot effectively im-
+portance sample the integrand, e.g., due to difficult-to-sample light-
+ing. Likewise, inadequately designed shift mappings may introduce
+geometric singularities into a sample’s resampling weight via the
+Jacobian determinant, causing the sample to be widely reused.
+During temporal resampling, one must cap the stream length or
+confidence weight 𝑀of a temporally reused sample (Algorithm 2,
+line 3) to guarantee convergence [Lin et al. 2022, Section 6.4]—not
+doing so results in convergence to a wrong result. Unfortunately, the
+ideal 𝑀cap cannot always be determined in a scene-agnostic way—
+small caps inadequately utilize the temporal history and result in
+higher variance (Lin et al. [2022, Figure 9]), while large caps increase
+correlation. In particular, increasing 𝑀cap decreases the relative
+weight and selection probability of newly proposed samples. As a
+result, an outlier sample’s contribution has to decay for it to match
+a pixel’s average value. Unfortunately, the outlier may be spread
+between neighboring pixels before it is eventually replaced. This
+can lead to visible correlation artifacts and sample impoverishment
+over multiple frames (Figure 4). We use the Metropolis-Hastings
+algorithm, described next, to address these issues in ReSTIR.
+2.5
+Metropolis–Hastings (MH)
+Like RIS, the MH [Metropolis et al. 1953; Hastings 1970] algo-
+rithm generates a set of samples distributed proportionally to a
+non-negative and possibly unnormalized target function ˆ𝑝. While
+RIS uses resampling to achieve this goal, MH instead constructs a
+Markov chain that has a stationary distribution proportional to ˆ𝑝’s
+probability density function ˆ𝑝/
+∫
+Ω ˆ𝑝. In more detail, given an initial
+sample 𝑥0 ∈Ω, MH incrementally constructs a sequence of random
+samples 𝑥0,𝑥1,𝑥2, ... as follows:
+more noise
+more correlation artifacts
+Mcap = 5
+Mcap = 50
+Mcap = 20
+RMSE: 0.1432
+RMSE: 0.1185
+RMSE: 0.0964
+Fig. 4. Parameters for ReSTIR sample reuse can be difficult to set in a scene
+agnostic way. For instance, a large 𝑀cap value introduces correlations (right),
+while a small 𝑀cap inadequately exploits prior samples, leading to noise
+(left). Our approach offers greater leeway in setting parameter values that
+trade noise for correlation (see Figure 10).
+(1) Generate a candidate sample 𝑧𝑘by applying a random mu-
+tation to the current sample 𝑥𝑘in the chain, i.e., sample 𝑧𝑘
+from a proposal density 𝑇(𝑥𝑘→𝑧𝑘).
+(2) Compute an acceptance probability for the candidate 𝑧𝑘:
+𝑎(𝑥𝑘→𝑧𝑘) := min
+ 
+1, ˆ𝑝(𝑧𝑘) 𝑇(𝑧𝑘→𝑥𝑘)
+ˆ𝑝(𝑥𝑘) 𝑇(𝑥𝑘→𝑧𝑘)
+!
+.
+(14)
+(3) Set 𝑥𝑘+1 = 𝑧𝑘with probability 𝑎; otherwise set 𝑥𝑘+1 = 𝑥𝑘.
+The acceptance probability 𝑎(𝑥𝑘→𝑧𝑘) ensures that samples
+are distributed proportional to the target function ˆ𝑝. The detailed
+balance condition guarantees the existence of the Markov chain’s
+stationary distribution by requiring the transition density between
+any two sample values to be equal:
+ˆ𝑝(𝑥𝑘)𝑇(𝑥𝑘→𝑧𝑘)𝑎(𝑥𝑘→𝑧𝑘) = ˆ𝑝(𝑧𝑘)𝑇(𝑧𝑘→𝑥𝑘)𝑎(𝑧𝑘→𝑥𝑘).
+(15)
+To generate the correct distribution from all inputs, Markov chains
+must be ergodic. This can be guaranteed easily with mutations that
+always propose candidate samples over the entire support of ˆ𝑝, i.e.,
+𝑇(𝑥𝑘→𝑧𝑘) > 0 for all 𝑥𝑘and 𝑧𝑘where ˆ𝑝(𝑥𝑘) > 0 and ˆ𝑝(𝑧𝑘) > 0.
+Even with this constraint, there is still much freedom in choosing
+mutation strategies—Section 4 describes the strategies we use.
+Unlike RIS, MH does not estimate the value of integrals. It does
+however produce valid samples from its target function which can be
+used by a secondary estimator such as RIS for estimation (Section 3).
+Eliminating start-up bias. MH assumes the initial sample 𝑥0 is
+generated with probability density proportional to ˆ𝑝; using a sample
+not from this distribution results in start-up bias. A typical solution
+runs the Markov chain for numerous iterations until the initial state
+is “forgotten”, i.e., discarding several early samples generated by MH.
+Sadly, determining the length of this burn-in period is tricky, as it
+depends on the initial sample value and its actual distribution. Veach
+[1998, Chapter 11.3.1] instead proposed resampling 𝑥0 from 𝑀can-
+didate samples y = {𝑦1, . . . ,𝑦𝑀} generated using an easy-to-sample
+source PDF (much like Section 2.1). Equations 6 and 7 then provide
+the discrete probabilities and resampling weights (resp.) needed to
+arXiv, Vol. 1, No. 1, Article . Publication date: November 2022.
+
+
+===== restir-mcmc-2022 | page 6/14 =====
+
+6
+•
+Rohan Sawhney, Daqi Lin, Markus Kettunen, Benedikt Bitterli, Ravi Ramamoorthi, Chris Wyman, and Matt Pharr
+RIS,
+pixel i - 1
+RIS,
+pixel i
+RIS,
+pixel i + 1
+Temporal RIS
+Temporal RIS
+Temporal RIS
+Spatial RIS
+over adjacent 
+pixels 
+Final 
+shading
+MH mutations
+MH mutations
+Samples from last frame
+MH mutations
+Optional block
+Fig. 5. Our approach introduces Metropolis-Hastings mutations as an ad-
+ditional block into the larger ReSTIR algorithm for spatiotemporal sample
+reuse. Samples are mutated within each pixel after temporal resampling
+(Algorithm 2) to mitigate correlation artifacts and sample impoverishment.
+select a candidate, i.e., 𝑥0 = 𝑦𝑗for some 𝑗∈{1, . . . , 𝑀}. Finally, con-
+tributions of mutated samples initialized from 𝑥0 are weighted by
+Equation 8 to guarantee unbiased estimation. Our method leverages
+ReSTIR’s built-in resampling to automatically avoid start-up bias
+when performing mutations.
+3
+METHOD
+RIS improves sample selection from a target distribution when given
+a large population of candidate samples. ReSTIR amasses a sizable,
+per-pixel candidate pool for resampling through spatiotemporal
+reuse, helping it quickly identify high-contribution samples via
+RIS. However, at times ReSTIR extensively reuses a few samples
+over multiple frames due to imperfect importance sampling and
+suboptimal parameters, as it has no mechanism to diversify its
+existing sample population.
+Inspired by Sequential and Population Monte Carlo techniques
+(Section 6), we interleave reservoir resampling with MCMC muta-
+tions to mitigate correlations and sample impoverishment caused by
+spatiotemporal reuse. Our key observation is that mutating reservoir
+samples with the same target function as RIS helps to quickly decor-
+relate the resampled population, especially when it contains outliers.
+In Algorithm 3, we use Metropolis-Hastings to locally perturb the
+per-pixel temporal samples selected by Algorithm 2; interleaving
+resampling with mutations diversifies the samples ReSTIR shares be-
+tween pixels. We discuss key aspects of our work next, starting with
+how to modify mutated samples’ contribution weights to guarantee
+unbiased results.
+Modified contribution weights. A contribution weight 𝑊(Equa-
+tion 8) estimates the reciprocal value of the target PDF ˆ𝑝/
+∫
+Ω ˆ𝑝that
+a sample is approximately distributed according to. 𝑊is needed to
+compute resampling weights for combining reservoirs (Algorithm 2,
+lines 7 and 11) and to estimate per-pixel shading (Equation 9).
+Contribution weights are sample dependent. Thus, a sample that
+undergoes mutation cannot reuse the weight associated with its
+original state, i.e., a mutated sample’s contribution weight should
+provide an unbiased estimate for the sample’s reciprocal target
+PDF. Our key contribution is to show that the unbiased contribution
+weight for any mutated sample 𝑥𝑘, from a Markov chain 𝑥0, ...,𝑥𝑘, ...,
+can be computed via the relation
+𝑊(𝑥𝑘) = ˆ𝑝(𝑥0)
+ˆ𝑝(𝑥𝑘)𝑊(𝑥0).
+(16)
+ALGORITHM 3: Mutate sample via Metropolis-Hastings
+Input: Pixel i, reservoir 𝑟𝑖from Algorithm 2, and iteration count
+Output: Reservoir 𝑟𝑖with its sample mutated in proportion to ˆ𝑝𝑖
+1: function mutateSample(𝑖, 𝑟𝑖, iters)
+2:
+𝑧←metropolisHastings(𝑟𝑖.𝑥, ˆ𝑝𝑖, iters)
+⊲Section 2.5
+3:
+𝑟𝑖.𝑊←ˆ𝑝𝑖(𝑟𝑖.𝑥)
+ˆ𝑝𝑖(𝑧)
+· 𝑟𝑖.𝑊
+⊲Equation 16
+4:
+𝑟𝑖.𝑥←𝑧
+5:
+return 𝑟𝑖
+Equation 16 does not depend on samples between 𝑥0 and 𝑥𝑘in the
+Markov chain and imposes no constraints on computing 𝑊(𝑥0),
+which can arise from prior resampling, runs of MH, or a mix of the
+two. This provides flexibility in where and when to mutate samples
+during ReSTIR (as long as mutations are confined to a given pixel).
+One can get an intuitive feel for Equation 16 by substituting in
+the expression for 𝑊(𝑥0) from Equation 8:
+𝑊(𝑥𝑘) =
+HHH
+ˆ𝑝(𝑥0)
+ˆ𝑝(𝑥𝑘) ·
+1
+HHH
+ˆ𝑝(𝑥0)
+©­
+«
+𝑀
+∑︁
+𝑗=1
+𝑤(𝑦𝑗)ª®
+¬
+=
+1
+ˆ𝑝(𝑥𝑘)
+©­
+«
+𝑀
+∑︁
+𝑗=1
+𝑤(𝑦𝑗)ª®
+¬
+(17)
+Notice that the estimated normalization factor for ˆ𝑝, i.e., the sum
+of weights 𝑤, remains unchanged for both the initial and mutated
+samples 𝑥0 and 𝑥𝑘. This normalization factor arises via RIS (e.g.,
+Algorithm 2, lines 14-15) prior to performing mutations. Meanwhile,
+MH treats the resampling weights as fixed, simply redistributing a
+reservoir’s sample population proportionally to the per-pixel target
+function ˆ𝑝. Equation 16 then encodes any required correction to a
+sample’s contribution weight to account for the sample mutation.
+Start-up bias. Algorithm 3 does not require a burn-in period for
+mutations, even though the samples used to initialize MH are not dis-
+tributed exactly according to ˆ𝑝. This is because we use the unbiased
+contribution weights of mutated samples for subsequent steps in
+ReSTIR, including when computing shading and resampling weights
+for further reuse. This approach eliminates start-up bias completely
+for any mutated sample 𝑥𝑘by ensuring
+E[𝑓(𝑥𝑘)𝑊(𝑥𝑘)] =
+∫
+Ω
+𝑓(𝑥) d𝑥
+(18)
+for any function 𝑓. Appendix A provides a formal proof.
+Note that avoiding start-up bias does not imply samples generated
+using MH are well-distributed according to ˆ𝑝. However, since we
+initialize MH using reservoir samples roughly proportional to the
+target function, our method does not rely on MH to find important
+samples (see Figure 11)—rather it decorrelates and diversifies outlier
+samples by mutating them locally in proportion to ˆ𝑝.
+When to perform mutations? Temporal reservoirs often contain
+stale samples, as ReSTIR assigns higher relative importance to ex-
+isting samples. We therefore mutate samples output by Algorithm 2
+within each pixel (Figure 5), using the same per-pixel target func-
+tion as RIS for the current frame. Mutating samples randomly after
+temporal resampling diversifies the inputs to spatial resampling,
+protecting against possibly escalating amounts of sample impover-
+ishment caused by repeated reuse.
+Applying Algorithm 3 to mutate samples after the initial or spatial
+resampling steps in ReSTIR (Section 2.4) is possible but not required.
+arXiv, Vol. 1, No. 1, Article . Publication date: November 2022.
+
+
+===== restir-mcmc-2022 | page 7/14 =====
+
+Decorrelating ReSTIR Samplers via MCMC Mutations
+•
+7
+Like mutations, initial resampling serves to rejuvenate the sample
+population every frame (by introducing new independent samples
+into the population). Samples from spatial resampling are stored
+for future reuse; mutating them proportional to the current target
+function would cause them to lag by one frame.
+Finally, Algorithm 3 places no restrictions on MH iteration count.
+To improve runtime performance, one could adaptively specify mu-
+tation counts per pixel (including no mutations) using, for instance,
+local correlation estimates. We leave development of such heuristics
+to future work and use a fixed, user-specified number of iterations.
+4
+IMPLEMENTATION DETAILS
+We perform mutations for both direct and indirect illumination in
+ReSTIR using Kelemen et al. [2002]’s primary sample space (PSS)
+parameterization. This conveniently allows applying mutations di-
+rectly to random number sequences used to generate light-carrying
+paths, while constraining path vertices to remain on the scene man-
+ifold. Moreover, it simplifies use of certain shift mappings in ReSTIR
+PT, e.g., the random replay shift [Lin et al. 2022, Section 7.2].
+In this section, we represent samples with a path vertex notation
+¯x = [x0, x1, . . . , x𝑘] ∈Ω𝑘(M), with Ω𝑘(M) the space of all paths
+of length 𝑘on the scene manifold M (e.g., 𝑘= 2 for direct lighting).
+Each path ¯x is uniquely determined2 by a vector of random numbers
+¯u = [𝑢0,𝑢1 . . .] ∈[0, 1]𝑂(𝑘). We use 𝑆to denote a shift mapping
+from a base path ¯x in one pixel to an offset path ¯y in another pixel, i.e.,
+𝑆([x0, x1, . . . , x𝑘]) = [y0, y1, . . . , y𝑘]. Mutated paths and random
+numbers are represented using primed quantities, i.e., ¯y′ and ¯u′.
+4.1
+Primary sample space
+The PSS parameterization reformulates the acceptance probability
+in Equation 14 in terms of a contribution function 𝐶as follows:
+𝑎(¯u →¯u′) := min
+
+1, 𝐶(¯u′) 𝑇(¯u′ →¯u)
+𝐶(¯u) 𝑇(¯u →¯u′)
+
+.
+(19)
+For us 𝐶(¯u) := ˆ𝑝(¯y(¯u))/𝑞(¯y(¯u)), where ˆ𝑝is the per-pixel target
+function used for temporal resampling and 𝑞is the sampling PDF
+for generating ¯y from the random numbers ¯u 3 (with mutated path ¯y′
+likewise generated from ¯u′). As suggested by Kelemen et al. [2002],
+we compute ¯u′ by perturbing each element of ¯u with Gaussian noise.
+We use 𝑠= 𝑠2 exp(−log(𝑠2/𝑠1)𝑈) as our perturbation amount with
+𝑈∼[0, 1) and 𝑠∈(𝑠1,𝑠2] .
+4.2
+Direct Lighting
+Our ReSTIR DI mutations perturb the directions of reservoir samples
+via their random numbers. For direct lighting, path ¯y = [y0, y1, y2]
+and its PDF 𝑞(¯y) equals 𝑝𝜌(𝜔)|cos 𝜃|/|y2 −y1|2, where 𝑝𝜌is the
+PDF for importance sampling the BSDF 𝜌, 𝜔is the unit vector from
+y1 to y2, and 𝜃is the angle between 𝜔and the geometric surface
+normal at y2. The PDF 𝑞(¯y′) is defined analogously for the mutated
+𝜔′, pointing from y1 to y′
+2. Random numbers for the starting MH
+2As in Bitterli et al. [2017], we bijectively map between paths and their random numbers
+by padding paths with extra dimensions.
+3The starting unmutated path ¯y for MH could have been generated in ReSTIR from one
+of many sampling schemes (e.g., light or BSDF sampling), or over multiple rounds of
+resampling. Here, we do not require the random numbers ¯u that originally generated
+¯y; Sections 4.2 and 4.3 discuss the ¯u we use for mutations.
+Base path 
+Offset path (hybrid shift)    
+Mutated offset path
+Diffuse
+Diffuse
+x1
+x3
+x4 = y4
+y1
+x5
+y2
+y3
+x2
+Glossy
+y′ 4
+Fig. 6. The hybrid shift in ReSTIR PT reconnects the offset path to the base
+path when it encounters two consecutive diffuse vertices x3, x4; prior to that
+it reuses random numbers from the base path to trace rays. Our mutation
+strategy perturbs the reconnection vertex y4 in the offset path.
+sample y2 are recovered by inverting the sampling procedure for
+direction 𝜔[Bitterli et al. 2017]. Since this mutation is symmetric,
+the transition kernels in Equation 19 cancel.
+4.3
+Indirect Illumination
+For ReSTIR PT, our mutation strategies build on shift maps. Unlike
+a mutation, a shift mapping deterministically perturbs a base path
+¯x through one pixel into an offset path ¯y through another pixel.
+For instance, a random replay shift reuses the random numbers
+that generate ¯x to trace ¯y. Since tracing a full path is expensive,
+a reconnection is often used to connect the offset path to the base
+path at a given index 𝑖, i.e., y𝑗= x𝑗for 𝑗≥𝑖. Connecting paths
+immediately with 𝑖= 2 is called the reconnection shift. Compared to
+random replay, reconnections are often better at producing paths
+with similar contributions for diffuse surfaces. But reconnecting
+y𝑖−2, y𝑖−1 to x𝑖on a glossy surface can introduce paths with near-
+zero throughput, or introduce geometric singularities when y𝑖−1
+and x𝑖are too close.
+We use Lin et al.’s [2022] hybrid shift strategy (see Figure 6)
+to evaluate mutations in ReSTIR PT. This shift mapping postpones
+reconnection using random replay until certain connectability condi-
+tions are met (e.g., surface roughness and distance between vertices).
+Mutation strategies. As with direct lighting, one way to mutate a
+path is to perturb the random numbers used to generate it. Like a
+random replay shift, this approach expensively requires tracing a
+full path for each proposed mutation (which may be rejected).
+A more computationally efficient approach mutates the offset
+path with random replay up to the reconnection vertex y𝑖= x𝑖,
+and then connects to the base path starting at x𝑖+1 instead. We ob-
+serve this mutation strategy is not only faster, but also has higher
+acceptance (70% vs. 40% on the scene from Figure 1) as it minimizes
+changes to path geometry. Moreover, its paths have similar con-
+tributions to the offset paths it mutates. Note that mutating path
+vertices with random replay until the reconnection to x𝑖+1 can cause
+connectability conditions for the hybrid shift to fail. We reject such
+mutated samples by defining their transition PDF to be 0.
+Taking a step further, our final strategy mutates only the reconnec-
+tion vertex y𝑖(Figure 6) while keeping the rest of the offset path un-
+changed, i.e., [y′
+0, . . . , y′
+𝑘] = [y0, y1, . . . , y𝑖−1, y′
+𝑖, x𝑖+1, . . . , x𝑘], where
+y𝑖−1 connects to y′
+𝑖with mutated random numbers. We found this
+arXiv, Vol. 1, No. 1, Article . Publication date: November 2022.
+
+
+===== restir-mcmc-2022 | page 8/14 =====
+
+8
+•
+Rohan Sawhney, Daqi Lin, Markus Kettunen, Benedikt Bitterli, Ravi Ramamoorthi, Chris Wyman, and Matt Pharr
+0 mutations
+ReSTIR DI
+ReSTIR PT
+1 mutation
+1 spp, 11 ms
+1 spp, 12.5 ms
+2 spp, 22 ms
+1spp, 30 ms
+1 spp, 37 ms
+2 spp, 58 ms
+Fig. 7. Correlation artifacts often do not disappear simply by using more
+samples, justifying the overhead of performing mutations.
+strategy only slightly less effective at reducing correlations. It is,
+however, significantly faster when performing multiple mutations,
+as only rays from y𝑖−1 to y′
+𝑖and y′
+𝑖to x𝑖+1 need to be traced. We
+use this mutation strategy to generate results in Section 5, unless
+otherwise noted.
+Finally, note that the transition kernels 𝑇(¯u′ →¯u) and 𝑇(¯u →
+¯u′) are no longer symmetric when offset paths contain a reconnec-
+tion vertex. In Appendix C, we show that their ratio equals:
+𝑇(¯u′ →¯u)
+𝑇(¯u →¯u′) = |cos 𝜃′|
+|cos 𝜃|
+|y𝑖+1 −y𝑖|2
+|y𝑖+1 −y′
+𝑖|2
+𝑝(𝜔′
+𝑖−1,𝜔′
+𝑖)
+𝑝(𝜔𝑖−1,𝜔𝑖)
+𝑝(𝜔′
+𝑖,𝜔𝑖+1)
+𝑝(𝜔𝑖,𝜔𝑖+1) , (20)
+where 𝜔𝑖−1,𝜔𝑖and 𝜔𝑖+1 are unit vectors from y𝑖−1 to y𝑖, y𝑖to y𝑖+1(=
+x𝑖+1) and y𝑖+1 to y𝑖+2(= x𝑖+2) respectively, 𝜃is the angle between
+𝜔𝑖and the surface normal at y𝑖+1, and 𝑝is the solid angle PDF
+used to sample an outgoing direction. Primed quantities are defined
+similarly. Any mutations applied to random numbers for the subpath
+[y0, y1, . . . , y𝑖−1] do not factor in the ratio as they are symmetric.
+Reservoir storage. Lin et al. [2022, Section 8.2] note ReSTIR PT
+stores additional data in the reservoir from Algorithm 1, specifically
+a seed for random replay and the resampled path’s reconnection ver-
+tex. For the first two mutation strategies above, we need the path’s
+entire random number sequence since PSS mutations transform this
+sequence—as a result, it cannot be regenerated from its original seed.
+This increases the reservoir size as path length grows. Luckily, our
+final mutation strategy avoids this overhead, only mutating random
+numbers that sample y′
+𝑖from fixed offset vertex y𝑖−1. As in ReSTIR
+DI, we recover random numbers for y𝑖by inverting the sampling of
+direction y𝑖−y𝑖−1. The only additional information we store is the
+offset vertex y𝑖+1 (which connects to mutated vertex y′
+𝑖).
+5
+RESULTS AND DISCUSSION
+We prototyped our method in the open-source Falcor rendering
+framework [Kallweit et al. 2022]. All results use a GeForce RTX
+3090 GPU at 1920 × 1080 resolution. Our implementation uses the
+settings (e.g., spatial neighborhood size and reuse radius) proposed
+in Bitterli et al. [2020] and Lin et al. [2022] for direct and indirect
+Duplicate samples
+0
+357
+0 mutations
+5 mutations
+Random Replay Shif, 5 mutations
+Fig. 8. Mutations mitigate sample impoverishment in ReSTIR by diversifying
+the sample population. The bottom row visualizes duplicate samples in 20×20
+pixel neighborhoods on the scene from Figure 3.
+illumination, with the exception of 𝑀cap = 50 in our ReSTIR PT tests.
+Our supplementary videos show 1 spp results for all our scenes;
+Table 1 gives single frame timings.
+As shown in Figure 1 and Figures 7–10, short-range correlation
+artifacts are noticeably reduced in scenes with glossy materials and
+difficult lighting with just 1–5 mutations; further mutations have
+diminishing returns in improving image quality (Figure 9). Mutation
+cost overhead is generally less than simply increasing sample count
+(Figure 7), and recent denoisers [NVIDIA 2017] provide considerably
+better results with our decorrelated samples (see Figure 1). Figure 8
+shows mutations greatly reduce sample impoverishment, with fewer
+reservoirs sharing the exact same sample realizations.
+Compared to standard path tracing, ReSTIR is much faster at
+achieving equal-error via correlated sampling for real-time direct
+[Bitterli et al. 2020, Figure 8] and global illumination [Lin et al. 2022,
+Figure 13]. Mutations however provide only marginal improvements
+in mean squared error in ReSTIR samplers (see Figures 9 and 11).
+Akin to blue-noise dithering [Georgiev and Fajardo 2016; Heitz and
+Belcour 2019], our image quality improves despite errors having sim-
+ilar magnitudes. The reason is mutating within a pixel leaves the sum
+of resampling weight unchanged in Equation 17, and these weights
+ultimately control RIS estimator variance (Equation 9). Mutations do
+slightly reduce variance, as they indirectly alter resampling weights
+of future samples thanks to spatiotemporal reuse of the new, more
+diverse sample population; the supplementary document has more
+details. In Figure 10 we also ablate 𝑀cap values to show the greater
+leeway our approach offers for this parameter, allowing use of larger
+values to trade noise for correlation.
+Since ReSTIR often suffers from correlation artifacts, we quan-
+tify improvements in correlation by computing sample covariance
+arXiv, Vol. 1, No. 1, Article . Publication date: November 2022.
+
+
+===== restir-mcmc-2022 | page 9/14 =====
+
+Decorrelating ReSTIR Samplers via MCMC Mutations
+•
+9
+Forest (Fig. 7, top) 
+Relative covariance
+0 vs. 1 mutation
+Kitchen1 (Fig. 1)
+Kitchen2 (Fig. 2)
+Veach Egg (Fig. 10)
+Veach Ajar (Fig. 11)
+Time (ms)
+1 mutation 
+Time (ms)
+5 mutations 
+Time (ms)
+0 mutations 
+Method 
+ReSTIR DI
+ReSTIR PT (Hybrid)
+Scene 
+ReSTIR PT (Hybrid)
+ReSTIR PT (Hybrid)
+ReSTIR PT (Hybrid)
+Relative covariance
+0 vs. 5 mutations
+30
+37
+43
+32
+39
+47
+11
+15
+17
+26
+33
+37
+11
+12.5
+16
+0.017×
+0.060×
+0.733×
+0.824×
+0.697×
+0.764×
+0.668×
+0.737×
+0.881×
+0.922×
+Veach Ajar (Fig. 8) ReSTIR PT (Random Replay)
+44
+64
+90
+0.608×
+0.692×
+Table 1. Reduction in covariance from mutations at 1 spp. We first average covariances over boxes of pixel radius 8, and then over the entire image. The Forest
+scene uses 𝑀cap = 20; the rest use 𝑀cap = 50.
+0 mutations
+1 mutation
+5 mutations
+20 mutations
+50 mutations
+Reference
+Mutations
+Radial covariance
+Spatial radius
+RMSE
+Fig. 9. Increasing sample mutations reduces short range correlation arti-
+facts produced by ReSTIR, with even 1-5 mutations providing noticeable
+improvements in image quality (measured in the bottom left using average
+radial covariance). Mutations typically have little impact on mean squared
+error (shown in the bottom right at equal spp with 𝑀cap = 50) as we perturb
+samples only within each pixel.
+between pixels, which naturally generalizes sample variance. This
+metric measures the joint variability of two random variables (e.g.,
+whether error in two pixels varies similarly). For pixels 𝑖and 𝑗in
+image 𝐼, the sample covariance 𝑐𝑖𝑗between 𝑖and 𝑗is given by
+𝑐𝑖𝑗=
+1
+𝐾−1
+𝐾
+∑︁
+𝑘=1
+
+𝐼𝑘𝑖−¯𝐼𝑖
+ 
+𝐼𝑘𝑗−¯𝐼𝑗
+
+,
+(21)
+where 𝐾is the number of images used to estimate covariance (we
+use 𝐾= 100), and ¯𝐼is the average of 𝐾images. To capture the joint
+variability of a pixel with its local neighborhood, in our experiments
+RMSE: 0.0964 
+0 mutations
+ 
+1 mutation
+Mcap = 50
+RMSE: 0.0958 
+1 mutation
+Reference
+Fig. 10. By reducing correlation artifacts, mutations allow use of larger
+𝑀cap values in ReSTIR to trade noise for correlation, yielding lower error in
+scenes with difficult to sample light-carrying paths (see Figure 4 for results
+with smaller 𝑀cap values).
+we average covariance estimates over boxes of a given radius cen-
+tered at each pixel. We then further average over the entire image
+to get a single number. Figure 9 (bottom left) shows average radial
+covariance decreases with increasing spatial radius. This is expected
+as ReSTIR only reuses samples in local neighborhoods (so small-
+scale correlation artifacts are more pronounced); mutations reduce
+covariance in these short ranges.
+Table 1 lists the reduction in average covariance observed on our
+scenes, with pixel radius equal to 8. As correlations are typically
+localized, the reduction is even larger for the image insets in our
+figures compared to the results in Table 1. Ineffective shift mappings
+in ReSTIR often result in increased correlations; mutations compen-
+sate for this shortcoming. For instance, mutations typically have
+fewer correlation artifacts to resolve with a hybrid shift in ReSTIR
+PT compared to, e.g., random replay (Figures 11 and 8 respectively),
+which highlights the benefit of using good shift mappings. In con-
+trast, mutations provide greater covariance reduction in the Forest
+scene rendered with ReSTIR DI (Figure 7, top), where higher co-
+variance stems from vertex reconnections failing to preserve path
+contributions for low roughness surfaces.
+Why mutations help? The supplemental document details why
+mutations reduce covariance, simplifying down to the following,
+arXiv, Vol. 1, No. 1, Article . Publication date: November 2022.
+
+
+===== restir-mcmc-2022 | page 10/14 =====
+
+10
+•
+Rohan Sawhney, Daqi Lin, Markus Kettunen, Benedikt Bitterli, Ravi Ramamoorthi, Chris Wyman, and Matt Pharr
+somewhat unintuitive, phenomenon: without mutations, covariance
+between pixels 𝑖and 𝑗stems from mismatches between input sam-
+ple distributions and the target functions at 𝑖and 𝑗(Equation 16 in
+the supplemental). However, in the limit of infinite mutations, co-
+variance is determined by samples’ mismatch with their own pixel’s
+target function (Equation 10 in the supplemental) due to the ratio
+ˆ𝑝(𝑥0)/ ˆ𝑝(𝑥𝑘) in the mutated contribution weight (Equation 16); this
+mismatch tends to be smaller. Though our analysis predicts that
+covariance does not vanish completely even with infinite mutations,
+our results show covariance is often reduced with just one mutation.
+6
+RELATED WORK
+Our method builds directly on the recent ReSTIR family of algo-
+rithms for real-time direct [Bitterli et al. 2020] and global illumi-
+nation [Ouyang et al. 2021; Lin et al. 2021, 2022]. We augment
+spatiotemporal reservoir resampling in ReSTIR with sample muta-
+tions, and demonstrate the complementary strengths of resampling
+and mutations in this framework. In graphics, our approach is most
+closely related to Metropolis Light Transport (MLT) [Veach and
+Guibas 1997] and associated techniques [Kelemen et al. 2002; Jakob
+and Marschner 2012; Lehtinen et al. 2013; Hachisuka et al. 2014;
+Otsu et al. 2018; Cline et al. 2005; Lai et al. 2007, 2009; Bashford-
+Rogers et al. 2021]. In the broader Monte Carlo landscape, our ap-
+proach belongs to the class of algorithms that jointly use resampling
+and mutations for sampling problems, such as Sequential Monte
+Carlo (SMC) [Doucet et al. 2001] and Population Monte Carlo (PMC)
+[Cappé et al. 2004]. We discuss the relation to MLT, SMC and PMC
+in more detail next; Table 2 provides a summary. We refer the reader
+to Bitterli et al. [2020, Section 7] and Lin et al. [2022, Section 9.3]
+for comparisons between ReSTIR and other rendering algorithms
+that exploit path reuse and spatial correlations.
+Metropolis Light Transport. MLT uses statistically correlated sam-
+ples generated by Metropolis–Hastings to solve the rendering equa-
+tion. Unlike algorithms using independent samples, MLT is effective
+at finding difficult light paths by locally exploring the path space. It
+reuses samples by mutating high-contribution paths over the image.
+Algorithmically, our method resembles MLT in various ways. Both
+techniques require secondary estimators, respectively RIS and bidi-
+rectional path tracing (BDPT) [Lafortune and Willems 1993; Veach
+and Guibas 1995a], to normalize the MH target function. Samples
+used by these estimators are resampled into a smaller set to ini-
+tialize MH (our Section 3 and Veach [1998, Chapter 11.3.1]), and
+contributions of mutated samples are effectively weighted by the
+same weights (Equation 17) to remain unbiased (our Appendix A
+and Veach [1998, Appendix 11.A]).
+The crucial difference between our work and MLT lies in how sam-
+ples are reused across pixels. MLT latches onto high-contribution
+paths and mutates them over the entire image while just resam-
+pling to eliminate start-up bias. Thus, MLT results often contain
+correlation artifacts caused by mutations, applying MH to both find
+important samples and redistribute them between pixels. In con-
+trast, ReSTIR derives spatiotemporal reuse from resampling; in this
+paper, we mutate samples within each pixel to mitigate correlations
+and sample impoverishment from spatiotemporal resampling. As
+a result, our method does not require numerous MH iterations, as
+Hybrid Shift, 0 mutations
+Hybrid Shift, 5 mutations
+RMSE
+Sample count
+Mutations
+RMSE
+Fig. 11. Mutations do not reduce mean squared error in the Veach Ajar
+scene rendered using ReSTIR PT with the hybrid shift and 𝑀cap = 50. This
+suggests that in contrast to Metropolis Light Transport, resampling (and
+not mutations) finds important light-carrying paths in ReSTIR. Compared
+to the random replay shift in Figure 8, resampling with the superior hybrid
+shift does not introduce large correlation artifacts in this scene.
+the primary purpose of mutations is not finding important paths
+(Figure 11). Further, our approach suits real-time rendering as it
+integrates seamlessly into ReSTIR. MLT can be adapted to mutate
+temporally, but unlike our work, the entire animated sequence must
+be available in advance [Van de Woestijne et al. 2017].
+Several features have recently been added to MLT, including sam-
+ple stratification [Cline et al. 2005], MIS [Hachisuka et al. 2014] and
+enhanced mutation strategies [Jakob and Marschner 2012; Bitterli
+et al. 2017; Otsu et al. 2018; Kaplanyan et al. 2014]. Though we mostly
+employ simple PSS-style mutations [Kelemen et al. 2002], many of
+these improvements can also be incorporated into our approach.
+Resampling
+Mutations
+frame  
+t1
+frame  
+t2
+Weighted samples
+frame  
+t2
+Target function at frame t1
+Target function at frame t2
+Sequential Monte Carlo.
+SMC is a family of Monte
+Carlo methods used for
+filtering and tracking in
+Bayesian inference and sig-
+nal processing [Doucet et al.
+2001]. As shown in the in-
+set, the goal is maintaining
+a population of weighted
+samples distributed roughly
+proportional to an evolving target distribution (with unknown nor-
+malization factor). Sample weights are adjusted every iteration to
+reflect each sample’s importance to the most recent distribution.
+Resampling discards samples with low weights and duplicates those
+with high weights. Mutations ensure the population does not con-
+tain identical samples. Unlike ReSTIR, which uses RIS, SMC methods
+use weighted importance sampling (WIS) to estimate correlated in-
+tegrals in a chained fashion, i.e., the current step’s sample weights
+and normalization factors are defined incrementally based on cor-
+responding quantities from earlier steps [Del Moral et al. 2006].
+This allows temporally reusing samples for estimation, instead of
+generating new samples every frame.
+SMC methods have found limited use in rendering; Ghosh et al.
+[2006] sample a sequence of per-pixel target functions for direct
+arXiv, Vol. 1, No. 1, Article . Publication date: November 2022.
+
+
+===== restir-mcmc-2022 | page 11/14 =====
+
+Decorrelating ReSTIR Samplers via MCMC Mutations
+•
+11
+MLT
+SMC
+ReSTIR (Ours)
+PMC (ERPT)
+Estimator
+Role of 
+resampling
+Role of 
+mutations
+Standard Monte Carlo
+Standard Monte Carlo
+Weighted Importance Sampling
+Resampled Importance Sampling
+Contribution 
+weights
+Estimate integrated 
+luminance using BDPT*
+(value is constant over image) 
+Estimate per-pixel target 
+distribution for current frame
+Defined incrementally using 
+weights from previous frame
+Estimate per-pixel reciprocal target 
+distribution for current frame
+Defined incrementally using 
+weights from neighboring 
+(spatial and temporal) pixels
+Eliminate start-up bias in MH
+*For animated sequences, luminance is integrated over all images, and samples are mutated spatiotemporally
+Introduce new samples into 
+population each frame, discard 
+low-contribution samples
+Eliminate start-up bias in MH
+Temporal reuse of sample 
+population within a pixel
+Discard low-contribution samples
+Eliminate start-up bias in MH
+Spatiotemporal reuse of sample 
+populations across pixels
+Introduce new samples into 
+population each frame, discard 
+low-contribution samples
+Eliminate start-up bias in MH
+Mitigate sample impoverishment 
+due to resampling
+Mitigate correlations and 
+sample impoverishment 
+due to resampling
+Share samples spatially 
+across the image*
+Share samples spatially 
+across the image*
+Sample reuse derived from resampling
+Sample “reuse” derived from mutations
+Estimate integrated 
+luminance using BDPT*
+(value is constant over image) 
+Table 2. Overview of the role of resampling and mutations in MLT, PMC, SMC and ReSTIR.
+illumination of dynamic environment maps. Unlike ReSTIR, which
+derives its samples from spatiotemporally neighboring pixels, Ghosh
+et al. [2006] instead maintain a fixed sample population per pixel
+that is resampled and mutated to be updated for each frame. Large
+populations are needed for effective importance sampling, as high-
+contribution samples are not shared between pixels; in contrast,
+ReSTIR often stores just a single sample per reservoir. SMC methods
+likely require MIS weights and shift mappings (like ReSTIR) to
+resolve bias and correctly derive effective spatiotemporal reuse
+from neighbors. Similar to our work, mutations mitigate sample
+impoverishment but do not provide reuse.
+Population Monte Carlo. PMC methods also couple resampling
+and mutations to distribute weighted samples in proportion to a
+sequence of target functions [Cappé et al. 2004]. The main added
+feature is they sample using parametric mixture models with simple
+source PDFs. Mixture probabilities are tuned for each target function
+using previously generated samples and their importance.
+In rendering, the PMC framework has been used for direct lighting
+[Fan et al. 2007; Lai et al. 2015], global illumination [Lai and Dyer
+2007; Lai et al. 2007] and animation [Lai et al. 2009]. Lai et al.’s
+[2009] work is most relevant to ours: they derive sample reuse
+by mutating samples spatially and temporally across the image
+plane using Energy Redistribution Path Tracing (ERPT) [Cline et al.
+2005]. Resampling serves to select high-contribution samples while
+discarding those with small weights; it is also used to refresh the
+sample population (much like initial resampling in ReSTIR) and
+eliminate start-up bias from mutations. Unlike our method, they
+require knowing animated sequences in advance, precluding most
+real-time applications.
+7
+LIMITATIONS AND FUTURE WORK
+In this paper, we provide an unbiased mechanism leveraging MCMC
+mutations to diversify ReSTIR’s sample population. Often, just a
+single mutation per pixel effectively mitigates correlation artifacts
+in glossy scenes with complex lighting. However, as in most MCMC
+schemes, we cannot accurately predict the number of Metropolis–
+Hastings iterations needed to reduce correlations below a given
+threshold. Beyond the analysis in the supplemental document, fur-
+ther investigation is also needed to understand how mutations ad-
+dress sample impoverishment in ReSTIR—not just in terms of the
+number of duplicate samples (Figure 8), but also the discrepancy
+characteristics of the resulting sample population.
+Mutating inside ReSTIR has a non-negligible run-time overhead.
+Though we demonstrate improvements on an equal-time covariance
+metric with simple mutation strategies in both ReSTIR DI and Re-
+STIR PT (Figure 7 and Table 1), more sophisticated mutations [Jakob
+and Marschner 2012; Bitterli et al. 2017; Otsu et al. 2018; Kaplanyan
+et al. 2014] could provide further gains. Our decision to mutate only
+after temporal (but not spatial) resampling is also informed in part
+by run-time considerations. As mentioned in Section 3, applying
+mutations selectively (i.e., not at each pixel every frame) based on
+e.g., local correlation heuristics could improve performance. As both
+mutations and ReSTIR’s initial path candidates serve to rejuvenate
+the sample population, it may be interesting to carefully balance
+the costs of per-pixel mutations versus new path candidates.
+Our proposed sample mutations reduce correlation between nearby
+pixels, leading to an error distribution (likely) closer to white noise.
+But blue noise error distributions are often superior with respect
+to human perception [Mitchell 1987]; perhaps our mutations could
+arXiv, Vol. 1, No. 1, Article . Publication date: November 2022.
+
+
+===== restir-mcmc-2022 | page 12/14 =====
+
+12
+•
+Rohan Sawhney, Daqi Lin, Markus Kettunen, Benedikt Bitterli, Ravi Ramamoorthi, Chris Wyman, and Matt Pharr
+change to more directly optimize for blue noise characteristics. For
+example, when deciding mutation acceptance, we might consider
+both the target function and the neighboring pixel samples, pre-
+ferring mutations that introduce differing sample values. A further
+improvement might apply the insights of Heitz and Belcour [2019]
+to optimize the image-space distribution of error rather than solely
+considering the sample values.
+Like Metropolis Light Transport, mutating samples across pixels
+potentially unlocks further amortization by sharing samples over
+the entire image (e.g., using the expected values technique [Veach
+1998, Section 11.5]). We leave such "cross-pixel" mutations to future
+work as they require adjusting a mutated sample’s contribution
+weight (Equation 16) to account for varying integration domains.
+More generally, by augmenting ReSTIR with mutations, our work
+establishes a closer correspondence between the RIS-based resam-
+pling techniques developed in graphics, and those in the broader sta-
+tistics literature such as SMC and PMC. In particular, our approach
+stands to benefit from techniques such as annealed importance sam-
+pling [Neal 2001] used in SMC to reduce variance in the resampling
+weights [Ghosh et al. 2006, Section 4], as well as from adaptation
+strategies for mutation kernels developed in PMC to increase accep-
+tance rates [Lai et al. 2007, Section 4.2]. Moreover, as in these fields,
+mutations in ReSTIR open the door not just to artifact-free integra-
+tion (of the rendering equation), but also to tracking and filtering
+problems—for instance using well-distributed sample populations
+generated by our approach as training data for path guiding.
+REFERENCES
+Thomas Bashford-Rogers, Luís Paulo Santos, Demetris Marnerides, and Kurt Debattista.
+2021. Ensemble Metropolis Light Transport. ACM Transactions on Graphics (TOG)
+41, 1 (2021), 1–15.
+Benedikt Bitterli. 2022.
+Correlations and Reuse for Fast and Accurate Physically
+Based Light Transport. Vol. 77. Dartmouth College Ph.D Dissertations.
+https:
+//digitalcommons.dartmouth.edu/dissertations/77
+Benedikt Bitterli, Wenzel Jakob, Jan Novák, and Wojciech Jarosz. 2017. Reversible jump
+Metropolis light transport using inverse mappings. ACM Transactions on Graphics
+(TOG) 37, 1 (2017), 1–12.
+Benedikt Bitterli, Chris Wyman, Matt Pharr, Peter Shirley, Aaron Lefohn, and Wojciech
+Jarosz. 2020. Spatiotemporal reservoir resampling for real-time ray tracing with
+dynamic direct lighting. ACM Transactions on Graphics (TOG) 39, 4 (2020), 148–1.
+Olivier Cappé, Arnaud Guillin, Jean-Michel Marin, and Christian P Robert. 2004. Popu-
+lation Monte Carlo. Journal of Computational and Graphical Statistics 13, 4 (2004),
+907–929.
+Chakravarty R Alla Chaitanya, Anton S Kaplanyan, Christoph Schied, Marco Salvi,
+Aaron Lefohn, Derek Nowrouzezahrai, and Timo Aila. 2017. Interactive reconstruc-
+tion of Monte Carlo image sequences using a recurrent denoising autoencoder. ACM
+Transactions on Graphics (TOG) 36, 4 (2017), 1–12.
+Min-Te Chao. 1982. A general purpose unequal probability sampling plan. Biometrika
+69, 3 (1982), 653–656.
+David Cline, Justin Talbot, and Parris Egbert. 2005. Energy redistribution path tracing.
+ACM Transactions on Graphics (TOG) 24, 3 (2005), 1186–1195.
+Carsten Dachsbacher, Jaroslav Křivánek, Miloš Hašan, Adam Arbree, Bruce Walter, and
+Jan Novák. 2014. Scalable realistic rendering with many-light methods. In Computer
+Graphics Forum, Vol. 33. Wiley Online Library, 88–104.
+Pierre Del Moral, Arnaud Doucet, and Ajay Jasra. 2006. Sequential Monte Carlo
+samplers. Journal of the Royal Statistical Society: Series B (Statistical Methodology)
+68, 3 (2006), 411–436.
+Arnaud Doucet, Nando De Freitas, Neil James Gordon, et al. 2001. Sequential Monte
+Carlo Methods in Practice. Vol. 1. Springer.
+ShaoHua Fan, Yu-Chi Lai, Stephen Chenney, and Charles Dyer. 2007. Population Monte
+Carlo Samplers for Rendering. Technical Report. University of Wisconsin-Madison
+Department of Computer Sciences.
+Iliyan Georgiev and Marcos Fajardo. 2016. Blue-noise dithered sampling. In ACM
+SIGGRAPH 2016 Talks. 1–1.
+Abhijeet Ghosh, Arnaud Doucet, and Wolfgang Heidrich. 2006. Sequential Sampling
+for Dynamic Environment Map Illumination.. In Rendering Techniques. 115–126.
+Toshiya Hachisuka and Henrik Wann Jensen. 2009. Stochastic progressive photon
+mapping. In ACM SIGGRAPH Asia 2009 papers. 1–8.
+Toshiya Hachisuka, Anton S Kaplanyan, and Carsten Dachsbacher. 2014. Multiplexed
+Metropolis light transport. ACM Transactions on Graphics (TOG) 33, 4 (2014), 1–10.
+W Keith Hastings. 1970. Monte Carlo sampling methods using Markov chains and their
+applications. (1970).
+Eric Heitz and Laurent Belcour. 2019. Distributing Monte Carlo errors as a blue noise
+in screen space by permuting pixel seeds between frames. In Computer Graphics
+Forum, Vol. 38. Wiley Online Library, 149–158.
+Binh-Son Hua, Adrien Gruson, Victor Petitjean, Matthias Zwicker, Derek
+Nowrouzezahrai, Elmar Eisemann, and Toshiya Hachisuka. 2019.
+A Survey
+on Gradient-Domain Rendering. In Computer Graphics Forum, Vol. 38. Wiley Online
+Library, 455–472.
+Wenzel Jakob and Steve Marschner. 2012. Manifold exploration: A Markov chain
+Monte Carlo technique for rendering scenes with difficult specular transport. ACM
+Transactions on Graphics (TOG) 31, 4 (2012), 1–13.
+Henrik Wann Jensen. 1996. Global illumination using photon maps. In Eurographics
+workshop on Rendering techniques. Springer, 21–30.
+James T Kajiya. 1986. The rendering equation. In Proceedings of The 13th Annual
+Conference on Computer Graphics and Interactive Techniques. 143–150.
+Simon Kallweit, Petrik Clarberg, Craig Kolb, Tom’aš Davidovič, Kai-Hwa Yao, Theresa
+Foley, Yong He, Lifan Wu, Lucy Chen, Tomas Akenine-Möller, Chris Wyman, Cyril
+Crassin, and Nir Benty. 2022. The Falcor Rendering Framework.
+https://github.
+com/NVIDIAGameWorks/Falcor https://github.com/NVIDIAGameWorks/Falcor.
+Anton S Kaplanyan, Johannes Hanika, and Carsten Dachsbacher. 2014. The natural-
+constraint representation of the path space for efficient light transport simulation.
+ACM Transactions on Graphics (TOG) 33, 4 (2014), 1–13.
+Csaba Kelemen, László Szirmay-Kalos, György Antal, and Ferenc Csonka. 2002. A
+simple and robust mutation strategy for the Metropolis light transport algorithm.
+In Computer Graphics Forum, Vol. 21. Wiley Online Library, 531–540.
+Emmett Kilgariff, Henry Moreton, Nick Stam, and Brandon Bell. 2018. NVIDIA Turing
+Architecture In-Depth. URL: https://devblogs. nvidia. com/nvidia-turing-architecture-
+indepth/(visited on 2020-05-11) (2018).
+Pawel Kozlowski and Tim Cheblokov. 2021. ReLAX: A Denoiser Tailored to Work with
+the ReSTIR Algorithm. GPU Technology Conference (2021).
+Eric P. Lafortune and Yves D. Willems. 1993. Bi-Directional Path Tracing. In Proceed-
+ings of 3rd International Conference on Computational Graphics and Visualization
+Techniques. 145–153.
+Yu-Chi Lai, Hsuan-Ting Chou, Kuo-Wei Chen, and Shaohua Fan. 2015. Robust and
+efficient adaptive direct lighting estimation. The Visual Computer 31, 1 (2015), 83–91.
+Yu-Chi Lai and Charles Dyer. 2007. Population Monte Carlo Path Tracing. Technical
+Report. University of Wisconsin-Madison Department of Computer Sciences.
+Yu-Chi Lai, Shao Hua Fan, Stephen Chenney, and Charcle Dyer. 2007. Photorealistic
+image rendering with population Monte Carlo energy redistribution. In Proceedings
+of the 18th Eurographics conference on Rendering Techniques. 287–295.
+Yu-Chi Lai, Feng Liu, and Charles Dyer. 2009. Physically-based animation rendering
+with Markov chain Monte Carlo. Technical Report. University of Wisconsin-Madison
+Department of Computer Sciences.
+Jaakko Lehtinen, Tero Karras, Samuli Laine, Miika Aittala, Frédo Durand, and Timo Aila.
+2013. Gradient-domain Metropolis light transport. ACM Transactions on Graphics
+(TOG) 32, 4 (2013), 1–12.
+Daqi Lin, Markus Kettunen, Benedikt Bitterli, Jacopo Pantaleoni, Cem Yuskel, and
+Chris Wyman. 2022. Generalized Resampled Importance Sampling: Foundations of
+ReSTIR. ACM Transactions on Graphics (TOG) 41, 75.
+Daqi Lin, Chris Wyman, and Cem Yuksel. 2021. Fast volume rendering with spa-
+tiotemporal reservoir resampling. ACM Transactions on Graphics (TOG) 40, 6 (2021),
+1–18.
+Nicholas Metropolis, Arianna W Rosenbluth, Marshall N Rosenbluth, Augusta H Teller,
+and Edward Teller. 1953. Equation of state calculations by fast computing machines.
+The Journal of Chemical Physics 21, 6 (1953), 1087–1092.
+Don P. Mitchell. 1987. Generating Antialiased Images at Low Sampling Densities. In
+Proceedings of the 14th Annual Conference on Computer Graphics and Interactive
+Techniques (SIGGRAPH ’87). Association for Computing Machinery, New York, NY,
+USA, 65–72. https://doi.org/10.1145/37401.37410
+Radford M Neal. 2001. Annealed importance sampling. Statistics and computing 11, 2
+(2001), 125–139.
+NVIDIA. 2017. NVIDIA OptiX AI-Accelerated Denoiser. https://developer.nvidia.com/
+optix-denoiser.
+NVIDIA. 2022. NVIDIA Real-time denoisers (NRD). https://developer.nvidia.com/rtx/
+ray-tracing/rt-denoisers.
+Hisanari Otsu, Johannes Hanika, Toshiya Hachisuka, and Carsten Dachsbacher. 2018.
+Geometry-aware Metropolis light transport. ACM Transactions on Graphics (TOG)
+37, 6 (2018), 1–11.
+Yaobin Ouyang, Shiqiu Liu, Markus Kettunen, Matt Pharr, and Jacopo Pantaleoni. 2021.
+ReSTIR GI: Path Resampling for Real-Time Path Tracing. In Computer Graphics
+Forum, Vol. 40. Wiley Online Library, 17–29.
+arXiv, Vol. 1, No. 1, Article . Publication date: November 2022.
+
+
+===== restir-mcmc-2022 | page 13/14 =====
+
+Decorrelating ReSTIR Samplers via MCMC Mutations
+•
+13
+Christoph Schied, Anton Kaplanyan, Chris Wyman, Anjul Patney, Chakravarty R Alla
+Chaitanya, John Burgess, Shiqiu Liu, Carsten Dachsbacher, Aaron Lefohn, and Marco
+Salvi. 2017. Spatiotemporal variance-guided filtering: real-time reconstruction for
+path-traced global illumination. In Proceedings of High Performance Graphics. 1–12.
+Christoph Schied, Christoph Peters, and Carsten Dachsbacher. 2018. Gradient estima-
+tion for real-time adaptive temporal filtering. Proceedings of the ACM on Computer
+Graphics and Interactive Techniques 1, 2 (2018), 1–16.
+Justin Talbot, David Cline, and Parris Egbert. 2005. Importance Resampling for Global
+Illumination. In Eurographics Symposium on Rendering (2005), Kavita Bala and
+Philip Dutre (Eds.). The Eurographics Association. https://doi.org/10.2312/EGWR/
+EGSR05/139-146
+Justin F Talbot. 2005. Importance resampling for global illumination. Brigham Young
+University.
+Joran Van de Woestijne, Roald Frederickx, Niels Billen, and Philip Dutré. 2017. Temporal
+coherence for Metropolis light transport. In Eurographics Symposium on Rendering-
+Experimental Ideas & Implementations. Eurographics Association, 55–63.
+Eric Veach. 1998. Robust Monte Carlo methods for light transport simulation. Stanford
+University.
+Eric Veach and Leonidas Guibas. 1995a. Bidirectional estimators for light transport. In
+Photorealistic Rendering Techniques. Springer, 145–167.
+Eric Veach and Leonidas J Guibas. 1995b. Optimally combining sampling techniques for
+Monte Carlo rendering. In Proceedings of the 22nd Annual Conference on Computer
+Graphics and Interactive Techniques. 419–428.
+Eric Veach and Leonidas J Guibas. 1997. Metropolis light transport. In Proceedings of
+the 24th annual conference on Computer graphics and interactive techniques. 65–76.
+Gregory J Ward, Francis M Rubinstein, and Robert D Clear. 1988. A ray tracing solution
+for diffuse interreflection. In Proceedings of the 15th Annual Conference on Computer
+Graphics and Interactive Techniques. 85–92.
+Chris Wyman. 2021. Weighted Reservoir Sampling: Randomly Sampling Streams. In
+Ray Tracing Gems II. Springer, 345–349.
+Chris Wyman and Alexey Panteleev. 2021. Rearchitecting Spatiotemporal Resampling
+for Production. ACM/Eurographics Symposium on High Performance Graphics (2021).
+A
+UNBIASED CONTRIBUTION WEIGHTS AND
+ELIMINATION OF STARTUP BIAS
+Equation 16 shows how to update the contribution weight𝑊(𝑥𝑘) of
+a mutated sample 𝑥𝑘from the Markov chain 𝑥0, ...,𝑥𝑘, ..., generated
+with target function ˆ𝑝. Here we prove this rule yields an unbiased
+contribution weight for any mutated sample 𝑥𝑘, i.e., for any 𝑓with
+the same or smaller support,
+E[𝑓(𝑥𝑘)𝑊(𝑥𝑘)] =
+∫
+Ω
+𝑓(𝑥) d𝑥.
+(22)
+We assume sample 𝑥0 initializing the chain has the same support
+Ω as target function ˆ𝑝. For us, this is guaranteed by chained ap-
+plications of RIS with a valid shift map in Algorithm 2. Any 𝑥0
+chosen by RIS is not distributed exactly proportional to ˆ𝑝(unless we
+have infinite samples), however its contribution weight 𝑊(𝑥0) is
+unbiased and satisfies Equation 22 [Lin et al. 2022]. Next, we show
+access to 𝑊(𝑥0) is sufficient to eliminate any startup bias with MH.
+Proof. To show Equation 22 holds, we first express the update rule
+for contribution weight 𝑊(𝑥𝑘) (for 𝑘> 0) in terms of the previous
+sample 𝑥𝑘−1 in the chain, as follows:
+𝑊(𝑥𝑘) = ˆ𝑝(𝑥𝑘−1)
+ˆ𝑝(𝑥𝑘) 𝑊(𝑥𝑘−1).
+(23)
+This is equivalent to Equation 16, shown by recursively unfolding
+this relationship for all prior samples 𝑥𝑘−1 to 𝑥1 in the chain. As in
+Section 2.5, we also assume a candidate mutation to 𝑥𝑘−1 is gener-
+ated using the proposal density 𝑇(𝑥𝑘−1 →𝑧𝑘−1), with acceptance
+probability for candidate 𝑧𝑘−1 given by Equation 14:
+𝑎(𝑥𝑘−1 →𝑧𝑘−1) := min
+ 
+1, ˆ𝑝(𝑧𝑘−1) 𝑇(𝑧𝑘−1 →𝑥𝑘−1)
+ˆ𝑝(𝑥𝑘−1) 𝑇(𝑥𝑘−1 →𝑧𝑘−1)
+!
+.
+(24)
+Metropolis–Hastings sets 𝑥𝑘= 𝑧𝑘−1 with probability 𝑎; otherwise
+𝑥𝑘= 𝑥𝑘−1. This lets us rewrite the expectation in Equation 22:
+E[𝑓(𝑥𝑘)𝑊(𝑥𝑘)] =E
+"
+𝑓(𝑥𝑘) ˆ𝑝(𝑥𝑘−1)
+ˆ𝑝(𝑥𝑘) 𝑊(𝑥𝑘−1)
+#
+=E
+"
+𝑓(𝑧𝑘−1)𝑎(𝑥𝑘−1 →𝑧𝑘−1) ˆ𝑝(𝑥𝑘−1)
+ˆ𝑝(𝑧𝑘−1)𝑊(𝑥𝑘−1)
+#
++ E[𝑓(𝑥𝑘−1)(1 −𝑎(𝑥𝑘−1 →𝑧𝑘−1))𝑊(𝑥𝑘−1)].
+(25)
+Rearranging the terms slightly yields
+E[𝑓(𝑥𝑘)𝑊(𝑥𝑘)] = E[𝑓(𝑥𝑘−1)𝑊(𝑥𝑘−1)] +
+E
+"
+𝑓(𝑧𝑘−1)𝑎(𝑥𝑘−1 →𝑧𝑘−1) ˆ𝑝(𝑥𝑘−1)
+ˆ𝑝(𝑧𝑘−1)𝑊(𝑥𝑘−1)
+#
+−
+E[𝑓(𝑥𝑘−1)𝑎(𝑥𝑘−1 →𝑧𝑘−1)𝑊(𝑥𝑘−1)].
+(26)
+We now write each expectation as an integral. First, assume an in-
+ductive hypothesis E[𝑓(𝑥𝑘−1)𝑊(𝑥𝑘−1)] =
+∫
+Ω 𝑓(𝑥) d𝑥for the 𝑘−1st
+MH iteration. Base case 𝑘= 1 holds trivially, as 𝑊(𝑥0) is an unbi-
+ased contribution weight. Next, note that for any integrable func-
+tion 𝑔(𝑥𝑘−1,𝑧𝑘−1), its expectation E[𝑔(𝑥𝑘−1,𝑧𝑘−1)𝑊(𝑥𝑘−1)] can be
+rewritten as a conditional expectation over candidate mutations:
+E[𝑔(𝑥𝑘−1,𝑧𝑘−1)𝑊(𝑥𝑘−1)] = E[𝐸[𝑔(𝑥𝑘−1,𝑧𝑘−1) | 𝑥𝑘−1]𝑊(𝑥𝑘−1)]
+= E
+∫
+Ω
+𝑔(𝑥𝑘−1,𝑧)𝑇(𝑥𝑘−1 →𝑧) d𝑧
+
+𝑊(𝑥𝑘−1)
+
+,
+(27)
+where 𝑇is the proposal density used for mutations. This lets us
+expand out Equation 26 as follows:
+E[𝑓(𝑥𝑘)𝑊(𝑥𝑘)] =
+∫
+Ω
+𝑓(𝑥) d𝑥+
+∫
+Ω
+∫
+Ω
+𝑓(𝑧)𝑎(𝑥→𝑧) ˆ𝑝(𝑥)
+ˆ𝑝(𝑧)𝑇(𝑥→𝑧) d𝑧d𝑥−
+∫
+Ω
+∫
+Ω
+𝑓(𝑥)𝑎(𝑥→𝑧)𝑇(𝑥→𝑧) d𝑧d𝑥.
+(28)
+Finally, we show that the two double integrals cancel each other
+out (resulting in E[𝑓(𝑥𝑘)𝑊(𝑥𝑘)] =
+∫
+Ω 𝑓(𝑥) d𝑥) by invoking the
+detailed balance condition from Equation 15:
+ˆ𝑝(𝑥)𝑇(𝑥→𝑧)𝑎(𝑥→𝑧) = ˆ𝑝(𝑧)𝑇(𝑧→𝑥)𝑎(𝑧→𝑥)
+(29)
+and rewriting it as:
+𝑇(𝑥→𝑧)𝑎(𝑥→𝑧) = ˆ𝑝(𝑧)
+ˆ𝑝(𝑥)𝑇(𝑧→𝑥)𝑎(𝑧→𝑥).
+(30)
+Substituting for 𝑇(𝑥→𝑧)𝑎(𝑥→𝑧) in the third line of Equation 28
+yields the same integral as the second line, but with integration
+variables 𝑥and 𝑧swapped. Renaming 𝑥and 𝑧and swapping the
+integration order in the third line allows cancellation, simplifying to
+∫
+Ω 𝑓(𝑥) d𝑥, yielding Equation 22 and giving a proof by induction.
+arXiv, Vol. 1, No. 1, Article . Publication date: November 2022.
+
+
+===== restir-mcmc-2022 | page 14/14 =====
+
+14
+•
+Rohan Sawhney, Daqi Lin, Markus Kettunen, Benedikt Bitterli, Ravi Ramamoorthi, Chris Wyman, and Matt Pharr
+B
+MIS WEIGHTS FOR TEMPORAL REUSE
+ReSTIR uses MIS weights during resampling (Equations 12 and 13)
+to mitigate noise and bias from reusing samples across pixels. We
+provide explicit expressions for the MIS weights used in Algorithm 2
+here; Lin et al. [2022, Equations 37–38] provide similar expressions
+for Pairwise MIS weights needed for spatial resampling.
+Let 𝑆𝑗:Ω𝑗→Ω𝑖denote the shift map from pixel 𝑗to pixel 𝑖. Let 𝑥𝑖
+and 𝑥𝑗further represent the corresponding samples for these pixels,
+and 𝑆𝑗(𝑥𝑗) =𝑥′
+𝑗and 𝑆−1
+𝑗(𝑥𝑖) =𝑥′
+𝑖the respective shift mapped values.
+The MIS weights for 𝑥𝑖and 𝑥′
+𝑗are then given by:
+𝑚𝑖(𝑥𝑖) =
+𝑀𝑖ˆ𝑝𝑖(𝑥𝑖)
+𝑀𝑖ˆ𝑝𝑖(𝑥𝑖) + 𝑀𝑗ˆ𝑝𝑗(𝑥′
+𝑖) |𝜕𝑥′
+𝑖/𝜕𝑥𝑖|,
+(31)
+𝑚𝑗(𝑥′
+𝑗) =
+𝑀𝑗ˆ𝑝𝑗(𝑥𝑗) |𝜕𝑥𝑗/𝜕𝑥′
+𝑗|
+𝑀𝑗ˆ𝑝𝑗(𝑥𝑗) |𝜕𝑥𝑗/𝜕𝑥′
+𝑗| + 𝑀𝑖ˆ𝑝𝑖(𝑥′
+𝑗) .
+(32)
+We set 𝑚𝑖(𝑥𝑖) = 1 and 𝑚𝑗(𝑥′
+𝑗) = 0 when valid shifts do not exist
+for 𝑥𝑖and 𝑥𝑗respectively; Lin et al. [2022, Section 5.6] discusses
+properties of these MIS weights in detail.
+C
+TRANSITION KERNEL FOR MUTATING A
+RECONNECTION VERTEX
+A mutation involving a reconnection vertex y𝑖requires modifying
+random numbers not just for y𝑖, but also for non-mutated vertices
+y𝑖+1 and y𝑖+2. This is because the solid angle PDFs used to sample
+outgoing directions 𝜔′
+𝑖and 𝜔𝑖+1 depend on the mutated incoming
+directions 𝜔′
+𝑖−1 and 𝜔′
+𝑖, respectively. Here we derive Equation 20
+by first noting the joint PDF for connecting mutated reconnection
+vertex y′
+𝑖to y′
+𝑖+1 and y′
+𝑖+1 to y′
+𝑖+2 in the surface area measure is:
+𝑝(y′
+𝑖+2, y′
+𝑖+1|[y′
+0, y′
+1, . . . , y′
+𝑖]) = 𝛿(y′
+𝑖+2 −y𝑖+2)𝛿(y′
+𝑖+1 −y𝑖+1).
+This is a product of delta functions as y′
+𝑖+1 = y𝑖+1 and y′
+𝑖+2 = y𝑖+2
+are the only valid vertex positions. In the PSS to path space mapping,
+the joint PDF for the mutated random numbers ¯u′
+𝑖+1 and ¯u′
+𝑖+2 (for
+vertices y𝑖+1 and y𝑖+2) is related to 𝑝(y′
+𝑖+2, y′
+𝑖+1 | [y′
+0, y′
+1, . . . , y′
+𝑖])
+via a Jacobian determinant:
+𝑝(¯u′
+𝑖+2, ¯u′
+𝑖+1|[¯u′
+0, ¯u′
+1, . . . , ¯u′
+𝑖]) = 𝑝(y′
+𝑖+2, y′
+𝑖+1|[y′
+0, y′
+1, . . . , y′
+𝑖])
+
+𝜕¯y′
+𝜕¯u′
+
+This PDF serves as our proposal density 𝑇(¯u →¯u′) for mutations,
+which then yields:
+𝑇(¯u′ →¯u)
+𝑇(¯u →¯u′) =
+
+𝜕¯u′
+𝜕¯y′
+
+
+𝜕¯y
+𝜕¯u
+
+𝛿(y𝑖+2 −y′
+𝑖+2)𝛿(y𝑖+1 −y′
+𝑖+1)
+𝛿(y′
+𝑖+2 −y𝑖+2)𝛿(y′
+𝑖+1 −y𝑖+1)
+=
+
+𝜕¯u′
+𝜕¯𝜔′
+
+
+𝜕¯𝜔′
+𝜕¯y′
+
+
+𝜕¯y
+𝜕¯𝜔
+
+
+𝜕¯𝜔
+𝜕¯u
+
+=
+
+𝜕¯𝜔′
+𝜕¯y′
+
+
+𝜕¯y
+𝜕¯𝜔
+
+𝑝(𝜔′
+𝑖−1,𝜔′
+𝑖)
+𝑝(𝜔𝑖−1,𝜔𝑖)
+𝑝(𝜔′
+𝑖,𝜔𝑖+1)
+𝑝(𝜔𝑖,𝜔𝑖+1)
+= |cos 𝜃′|
+|cos 𝜃|
+|y𝑖+1 −y𝑖|2
+|y𝑖+1 −y′
+𝑖|2
+𝑝(𝜔′
+𝑖−1,𝜔′
+𝑖)
+𝑝(𝜔𝑖−1,𝜔𝑖)
+𝑝(𝜔′
+𝑖,𝜔𝑖+1)
+𝑝(𝜔𝑖,𝜔𝑖+1) . (33)
+The delta functions in the first line cancel since they are symmetric.
+In the third line, we use the fact that the Jacobian determinant of
+a sampling scheme is the same as its inverse PDF [Kelemen et al.
+2002, Section 2]. The final step substitutes in the definition of the
+Jacobians relating the solid angle and area measures.
+Received October 2022
+arXiv, Vol. 1, No. 1, Article . Publication date: November 2022.

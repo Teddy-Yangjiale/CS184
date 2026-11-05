@@ -1,0 +1,2105 @@
+
+
+===== photon-guiding-caustics-2024 | page 1/17 =====
+
+Online Photon Guiding with 3D Gaussians for Caustics Rendering
+JIAWEI HUANG, Chuzhou University and Void Dimensions, China
+HAJIME TANAKA, Tohoku University, Japan
+TAKU KOMURA, The University of Hong Kong, Hong Kong, China
+YOSHIFUMI KITAMURA, Tohoku University, Japan
+Reference
+(a) Ours
+(b) BG
+(c) H2D
+(d) vMF
+(e) MCMC
+Reference
+Ours
+MSE ×102:
+0.26
+0.95
+1.11
+1.06
+0.29
+(1-SSIM)×101:
+0.57
+1.38
+2.22
+1.95
+0.82
+Time (s):
+31
+39
+26
+27
+33
+Fig. 1. Comparative rendering results of the Ring scene, featuring intricate and aesthetically appealing caustics cast by metallic rings and diamonds, with
+various photon guiding techniques under a fixed 256 iteration. The insets are isolated caustics for comparison purpose. (a) Our method leverages 3D Gaussian
+mixture to guide photon emission to improve the photon density in visible area, achieving accurate photon density estimation, with minimal overhead. (b) A
+naïve bound-based guiding (BG) cannot be optimized to fit the complex geometry. (c) 2D histogram (H2D) approach fails to fit accurate distribution for area
+lights due to parallax issue, yielding noisy result. (d) Similar to the 2D histogram (H2D) approach, the 3D von Mises-Fisher distribution (vMF) is also able to
+guide photon emissions directionally but encounters the same parallax issue, leading to suboptimal guiding efficiency. (e) State-of-the-art Markov chain
+Monte Carlo (MCMC) approach suffers from non-uniform convergence, leading to a higher occurrence of outliers and a slightly elevated overall error in
+comparison to our method. The reference is produced with the same integrated rendering system using uniform sampling for sufficiently many iterations.
+In production rendering systems, caustics are typically rendered via photon
+mapping and gathering, a process often hindered by insufficient photon
+density. In this paper, we propose a novel photon guiding method to im-
+prove the photon density and overall quality for caustic rendering. The key
+insight of our approach is the application of 3D Gaussian mixtures, used in
+conjunction with an adaptive light sampler. This combination effectively
+guides photon emission in expansive 3D scenes with multiple light sources.
+By employing a 3D Gaussian mixture for each light source, our method pre-
+cisely models the distribution of the points of interest for photon emission.
+To sample diffuse emission from the 3D Gaussian mixture at any observa-
+tion point, we introduce a novel directional transform of the 3D Gaussian,
+which ensures accurate photon emission guiding. Furthermore, we propose
+Authors’ addresses: Jiawei Huang, Chuzhou University and Void Dimensions, China;
+Hajime Tanaka, Tohoku University, Japan; Taku Komura, The University of Hong Kong,
+Hong Kong, China; Yoshifumi Kitamura, Tohoku University, Japan.
+Permission to make digital or hard copies of all or part of this work for personal or
+classroom use is granted without fee provided that copies are not made or distributed
+for profit or commercial advantage and that copies bear this notice and the full citation
+on the first page. Copyrights for components of this work owned by others than ACM
+must be honored. Abstracting with credit is permitted. To copy otherwise, or republish,
+to post on servers or to redistribute to lists, requires prior specific permission and/or a
+fee. Request permissions from permissions@acm.org.
+© xxxx Association for Computing Machinery.
+0730-0301/xxxx/8-ART111 $15.00
+https://doi.org/XXXXXXX.XXXXXXX
+a scene-geometry-based initialization method to improve the optimization
+efficiency. Our method integrates a global light cluster tree, which models
+the contribution distribution of light sources to the image, facilitating effec-
+tive light source selection. We conduct experiments demonstrating that our
+approach robustly outperforms existing photon guiding techniques across a
+variety of scenarios, significantly advancing the quality of caustic rendering.
+ACM Reference Format:
+Jiawei Huang, Hajime Tanaka, Taku Komura, and Yoshifumi Kitamura. xxxx.
+Online Photon Guiding with 3D Gaussians for Caustics Rendering. ACM
+Trans. Graph. 37, 4, Article 111 (August xxxx), 17 pages. https://doi.org/
+XXXXXXX.XXXXXXX
+1
+INTRODUCTION
+In the realm of computer graphics, the rendering of caustics stands
+out for its visual appeal. In production rendering systems, caus-
+tics are usually separately sampled with photon mapping / photon
+tracing, while other components are path-traced. However, it re-
+quires significant photon density to render caustics accurately and
+effectively with photon mapping. This becomes a challenge when
+only a small portion of scene is rendered, or when only a selection
+of objects cast caustics. Many rendering systems thus necessitate
+photon guiding techniques to address this issue to achieve robust
+photon mapping.
+ACM Trans. Graph., Vol. 37, No. 4, Article 111. Publication date: August xxxx.
+arXiv:2403.03641v2  [cs.GR]  6 Aug 2024
+
+
+===== photon-guiding-caustics-2024 | page 2/17 =====
+
+111:2
+•
+Trovato and Tobin, et al.
+There has been significant research focus on developing sufficient
+photon guiding techniques. Lightweight Photon Mapping [2018] uti-
+lizes 2D histograms to learn distributions and guide emission for
+each light source. Hachisuka et al. [2011] leverage Markov chain
+Monte Carlo (MCMC) for more efficient photon emission sampling.
+However, limitations exist in these approaches. Lightweight Pho-
+ton Mapping’s 2D histogram approach is inherently limited by the
+parallax issue with non-delta light sources (e.g., rectangular light
+with nonnegligible area, or environment map with multiple peaks).
+MCMC occasionally suffers from non-uniform convergence, which
+is more visible when the rendering task consists of complex geome-
+try and lighting setup. The limitations of existing methods drive us
+to seek a different approach to tackle the photon guiding problem.
+In this paper, we propose a novel method to learn 3D spatial
+distributions of photons emitted towards from each light source
+to maximize the photon density in the rendered image, which can
+greatly enhance the rendering performance of scenes with caustics.
+To achieve this objective, we first represent the 3D spatial distri-
+bution of the photons emitted to the environment from each light
+source by 3D Gaussians; we then derive a directional probability
+density function and method to sample directions from 3D Gaussian
+from any observation point, directly and unbiasedly, to guide pho-
+ton emission. This approach addresses and eliminates the common
+parallax issues found in directional distributions. Our representa-
+tion and derivation allow estimating the region to concentrate the
+emission of photons for increasing the density of photons at regions
+where visible caustics are produced. To enhance the efficiency of
+online learning, we propose a scene-geometry-based initialization
+method that provides a precise starting point for the distribution.
+Along with 3D Gaussian emission guiding, we introduce a practical
+adaptive light source sampler. Together, these components form a
+comprehensive photon guiding framework. Our method is compact,
+executes rapidly on standard GPUs, and has been integrated with
+a unidirectional GPU path tracer to facilitate efficient rendering of
+caustics.
+In conclusion, the contribution of this paper includes:
+• The development of an algorithm for sampling directions
+from a 3D Gaussian at any observation point, completed with
+a closed-form probability density function (PDF).
+• A workflow to learn points of interest distribution for photon
+emission, represented with 3D Gaussian mixture, utilizing
+online photon samples as training data.
+• A novel, robust photon guiding framework that progressively
+learns global distributions to guide photon emission, initial-
+izes the distributions with the scene geometry, and selects
+light sources with an adaptive sampler.
+2
+RELATED WORK
+2.1
+Photon mapping and photon guiding
+Photon mapping is an efficient approach proposed by Jensen [1996]
+to calculate global illumination. Later research proposed several
+modification on the scheme for more accurate density estimation
+and adaptation to progressive rendering scheme [Hachisuka and
+Jensen 2009; Hachisuka et al. 2008]. Recently, Zhu et al. [2020]
+proposed to improve the quality of density estimation with ma-
+chine learning. To address the biasedness of photon mapping, Qin et
+al. [2015] propose to generate another full light path at the photon
+position during gathering for unbiased result, and Misso et al. [2022]
+showed that it is possible to obtain unbiased result from photon
+mapping with their debiasing framework. Photon mapping is con-
+sidered as an effective approach to render caustics from specular
+surfaces such as glass and mirror. Even in hybrid methods which uti-
+lize multiple sample algorithms for robust rendering (e.g., [Georgiev
+et al. 2012]), photon mapping is the common choice for caustics
+paths. Traditionally in photon mapping, photon emission is sampled
+uniformly; however, in practical scenarios, it is a common challenge
+that when only a small portion of the large scene can benefit from
+rendering caustics with photon mapping (the "caustic in a stadium"
+problem), the photon density with uniform emission sampling is
+not sufficient for accurate estimation. Hachisuka et al. [2011] adapt
+Markov chain Monte Carlo (MCMC) for photon emission sampling,
+utilizing the primary sample space as introduced by Kelemen et
+al. [2002]. Grittmann et al. [2018] adapts 2D histogramming, to guide
+photon emission for higher photon density. These ideas are imple-
+mented in production renderers (e.g., [Burley et al. 2018; Droske et al.
+2023; Estevez and Kulla 2020; Šik and Krivánek 2019]). However,
+we found these approaches to exhibit certain limitations: MCMC
+suffers from non-uniform convergence when the sample space is
+complex, while 2D histogram suffers from inherent parallax issue
+since it projects high dimensional distributions to 2D. Our method
+fits global 3D distributions, using a compact parametric model, to
+guide photon emission for light sources. The fitting process is effi-
+cient, and the model only uses several tens of scalars, providing a
+robust solution for the photon guiding problem.
+2.2
+Distributions and sampling methods
+Our research seeks to importance sample photon emission with an
+explicit global distribution. In Monte Carlo rendering, it has become
+a common practise to importance sample different distributions for
+variance reduction. As a typical instance, almost every rendering sys-
+tem importance sample the local bidirectional scattering distribution
+function (BSDF) of surfaces (e.g., [Oren and Nayar 1994; Trowbridge
+and Reitz 1975]). However, sampling local BSDF distribution may
+not be optimal when indirect lighting is a major contribution to the
+result. Path guiding research leverage more general distributions
+to model indirect lighting. Jensen [1995] utilizes 2D histograms
+to model and importance sample the spherical incident radiance
+distribution. Many distribution models are explored subsequently.
+Vorba et al. [2014] utilize 2D Gaussian mixtures for a similar pur-
+pose, with training data from a photon-emitting pass, to achieve a
+more practical method. Mueller et al. [2017] propose an SD-tree to
+achieve more compact histogram-based representation. Rupper et
+al. [2020] propose to use von-Mises Fisher (vMF) distribution along
+with a parallax-aware fitting algorithm to remove the parallax issue
+caused by spatial partition. vMF is also utilized by Li et al. [2022]
+specifically for caustics rendering with unidirectional path tracing.
+Dodik et al. [2022] propose to use 5D Gaussians to model incident
+radiance distribution over the space. Huang et al. [2024] propose
+an anisotropic spherical distribution that can be directly evaluated
+ACM Trans. Graph., Vol. 37, No. 4, Article 111. Publication date: August xxxx.
+
+
+===== photon-guiding-caustics-2024 | page 3/17 =====
+
+Online Photon Guiding with 3D Gaussians for Caustics Rendering
+•
+111:3
+and sampled for more accurate and compact representation. Actu-
+ally, despite different algorithms, these methods share a common
+insight, i.e. to build and sample local directional distributions that
+are represented by a suitable distribution model.
+Previous photon guiding methods adapt this idea to photon emis-
+sion straightforwardly. For example, several studies and rendering
+systems [2018; 2023; 2020; 2018] choose to build a local distribution
+for each of the light source using 2D histograms, however, as men-
+tioned above, it suffers from the parallax issue due to the existence
+of area in actual light sources. Our research learns a per-light global
+distribution of the surfaces that photons should be emitted towards,
+and we find 3D Gaussian serves this purpose well. However, guiding
+photon emission from a light source with 3D Gaussians requires to
+sample directions from the distribution. To the best of our knowl-
+edge, there is no existing algorithm related to this. In this paper we
+derive a novel directional transform for 3D Gaussians, enabling sam-
+pling directions from it, to guide photon emission at any location.
+Reibold et al. [2018] build unique guiding distributions using trun-
+cated Gaussians on-the-fly from previously collected challenging
+light paths for each sampling event. This method shares a similar
+adaptive philosophy with our approach.
+In addition to various distributions used in importance sampling,
+Markov chain Monte Carlo (MCMC) methods, originating from the
+pioneering work by Metropolis et al. [1953], have been extensively
+studied in Monte Carlo rendering. Veach and Guibas [1997] intro-
+duced Metropolis Light Transport (MLT), a seminal technique that
+utilizes MCMC to efficiently sample complex light paths, signif-
+icantly improving the rendering of global illumination. Building
+on this foundation, Kelemen et al. [2002] developed primary sam-
+ple space MLT, which enhanced the robustness and efficiency of
+the sampling process. Kitaoka et al. [2009] further extended these
+concepts with the replica exchange light transport method, combin-
+ing MCMC with replica exchange to tackle challenging light paths
+more effectively. These foundational works underpin state-of-the-
+art MCMC photon emission techniques.
+2.3
+Adaptive light source sampling
+In addition to emission guiding, it is also important to importance
+sample light sources. Traditionally light sources are sampled based
+on their flux, however adaptive sampling strategy is even preferred
+as reported in [Šik and Krivánek 2019], since the actual contribution
+of each light source does not (fully) depend on their flux when only
+a portion of the full scene is rendered. Walter et al. [2005] propose
+Lightcuts, which utilizes a binary tree, to cluster light sources for
+efficient rendering. Yuksel [2020] sample Lightcuts stochastically in
+Monte Carlo rendering to remove bias. Wang et al. [2021] propose
+to adaptively refine the importance of each node of the binary tree.
+Our adaptive light sampler can be seen as an adaptation of the
+idea of Wang et al. to photon guiding, with the difference that we
+progressively build the binary tree instead of starting from complete
+Lightcuts, and we approximate the importance of each node based
+on the sum of radiance from gathered photons.
+3
+OVERVIEW
+Background. Our technique improves photon density for visible
+region to achieve higher quality photon mapping results. To bet-
+ter explain our technique with an actual implementation, we first
+briefly describe the approach we integrate photon mapping into a
+production renderer for caustics rendering. Since the target produc-
+tion renderer is a GPU unidirectional path tracer, we employ photon
+mapping to render caustics in stochastic approach (i.e., [Hachisuka
+and Jensen 2009]), allowing the rest to be handled by path tracing.
+In the target path tracer, the specular surfaces that casts caustics are
+explicitly marked as “casters” while surfaces that receives caustics
+are marked as “receivers”. Only photons that travels through casters
+and reach receivers will be recorded to construct the photon map.
+This is a typical approach in production rendering systems, however,
+under this setup, uniform emission cannot achieve significant pho-
+ton density for proper density estimation, leading to poor results.
+Therefore, we propose to guide photon emission with a novel online
+learned distribution.
+Integration. Fig. 2 outlines the components and workflow of our
+framework. The main rendering pipeline is a two-pass process: in the
+first pass (the photon pass), we randomly trace a batch of photons,
+guided by our progressively refined distributions, and build a photon
+map with a KD-tree. The second pass is path tracing; in addition
+to regular path tracing, we gather nearby photons and estimate
+indirect lighting at diffuse surfaces. During gathering, we also record
+the data required for distribution learning. After each rendering
+iteration, the distribution is refined based on the recorded data.
+Through the rendering iterations, our distribution converges to one
+that maximizes the number of gathered photons. The distribution
+consists of two parts: a 3D Gaussian mixture that represents the
+spatial distribution of points of interest, which is used for guiding
+later photon emission from light sources (see § 4); and a tree-based
+1D distribution that is used for light source sampling (see § 5.2).
+4
+LEARNING TO GUIDE PHOTON EMISSION WITH 3D
+GAUSSIANS
+In this section, we briefly review the existing photon guiding ap-
+proaches, as well as other potential methods that could be applied
+yet not explored. Afterwards, we introduce our approach to guide
+photon emission with 3D Gaussians.
+4.1
+Existing techniques
+2D Histograms. For most of the light sources, the photon emission
+can be seen as a 4D distribution 𝐷(𝑥,𝑦,𝜃,𝜙) where 𝑥,𝑦defines the
+point at the light surface and 𝜃,𝜙represents the direction. However,
+since most of the light sources that cause caustics only have a small
+area, previous photon guiding methods choose to only guide the
+direction components. Grittmann et al. [2018] leverage 2D maps
+to histogram the 2D directional distribution for guiding. It projects
+𝜃(usually it’s cos𝜃for better sampling efficiency) and 𝜙to a 2D
+square with a fixed resolution. During emission sampling, the co-
+ordinate is sampled from the 2D map based on the pixel weights
+and converted to directions. Droske et al. [2023] further improve
+this idea by introducing a quadtree representation as a replacement
+of fixed-resolution 2D histograms; the quadtree is progressively
+ACM Trans. Graph., Vol. 37, No. 4, Article 111. Publication date: August xxxx.
+
+
+===== photon-guiding-caustics-2024 | page 4/17 =====
+
+111:4
+•
+Trovato and Tobin, et al.
+Fig. 2. Our method is integrated in a two-pass rendering process. After the photon pass and the path tracing pass, the distributions are refined using the
+collected photon data recorded in path tracing pass. With guiding of the learned distributions, the photon density gradually increases over iterations.
+subdivided into smaller squares at areas with high weight, so that
+the resolution is not limited.
+The directional distribution often encounters a parallax issue
+when modeling area lights: it assumes emissions originate from a
+single point. This simplification means the fitted distribution may
+not accurately reflect the true conditions when applied at specific
+points other than the assumed position, leading to inaccuracies in
+the rendered scene.
+von Mises-Fisher mixture. In computer graphics and statistics, 3D
+von Mises-Fisher (vMF) distribution has many applications:
+𝐹𝑣(𝜔| 𝜅,𝜈) =
+𝜅
+4𝜋sinh(𝜅)𝑒𝜅(cos𝜃−1),
+(1)
+where 𝜃is the angle between 𝜔and vMF’s mean vector 𝜈: cos𝜃=
+𝜔· 𝜈. The application of vMF in photon guiding is not explored yet,
+however, it can easily work as a replacement for 2D histograms
+for direction guiding. There is also normalized anistropic spherical
+Gaussian (NASG [Huang et al. 2024]) that serves a similar purpose
+with anisotropic support. Such spherical parametric distributions
+share the same limitation with 2D maps: it cannot guide infinite
+light sources, and it suffers from the parallax issue.
+Bounding box. Since our primary interest lies in guiding photon
+emissions toward the casters, an alternative approach is to leverage
+the bounding boxes of the casters. These bounding boxes can be
+interpreted as a spatial distribution, transformable into a directional
+distribution from any point, thereby avoiding the parallax issue. In
+rendering systems, axis-aligned bounding boxes (AABB) are typi-
+cally available with no additional computational cost since it’s also
+widely used in other aspects. There are also alternatives to AABB,
+such as oriented bounding box (OBB) and bounding sphere.
+While the selection probability for each bounding box can be opti-
+mized during the rendering process, the distribution inside a bound-
+ing box cannot be further refined. Contrary to the assumption of an
+even distribution within bounding boxes, the actual distribution is
+typically non-uniform. This discrepancy reduces the effectiveness
+of bound-based guiding, particularly when only a small part of the
+bounding area contributes to visible caustics—common in situations
+like a close-up view of underwater caustics or when surfaces are un-
+evenly distributed within bounds (e.g., within a ring). Furthermore,
+in scenes with numerous casters, the process of multiple importance
+sampling across many bounds can become excessively costly.
+4.2
+3D Gaussians
+We propose to use 3D Gaussians for photon guiding to overcome
+the major limitations discussed in § 4.1. 3D Gaussians can be opti-
+mized easily, and can be applied to model spatial distributions that
+does not suffer from parallax issues. We will also show that with a
+trivial transformation, we can sample directions directly from 3D
+Gaussians.
+An (unnormalized) isotropic 3D Gaussian is given by the equation:
+𝐺(x) = exp
+
+−∥x −𝜇∥2
+2𝜎2
+
+,
+(2)
+where x is the position vector in 3D space, 𝜇is the mean vector
+representing the center of the Gaussian distribution and 𝜎is the
+standard deviation. A 3D Gaussian mixture with 𝑁isotropic 3D
+Gaussians can effectively model distributions over the 3D space:
+𝑀(x) =
+𝑁
+∑︁
+𝑖=1
+𝑤𝑖
+√︁
+(2𝜋𝜎2)3𝐺𝑖(x),
+(3)
+where 𝐺𝑖are the 3D Gaussian components, and 𝑤𝑖are the corre-
+sponding weights which sum to 1. The normalizing constant is the
+integral of each 𝐺𝑖. As shown in Fig. 3, for each light source, our
+method fits a global 3D Gaussian mixture, which is used to guide
+the later photon emission.
+In the rest of this section we describe the workflow to fit the
+3D Gaussian mixture using gathered photons, and the method we
+derived to sample emission direction from a 3D Gaussian.
+4.3
+Learning with gathered photons
+Our goal is to model a distribution to achieve maximum photon
+density in the visible region, and eventually improve the accuracy
+of density estimation. Based on the fact that caustics photons are
+usually gathered at a diffuse surface after a sequence of specular
+bounce, we only need to fit a distribution at the location of the
+first bounce, which we define as the point of interest. To learn the
+distribution of points of interest, when emitting photons, we record
+the location of the first bounce and the emission pdf (directional pdf
+· positional pdf), along with the original photon data. In addition,
+every photon has an indicator of how many times it is gathered.
+We learn the distribution with gradient descent using Kullback-
+Leibler divergence (KL divergence), adapting the approach proposed
+in [Müller et al. 2019]. First, we define the learned 3D Gaussian
+mixture as 𝑞(x;𝛾), where 𝛾is the vector of parameters. The target
+distribution 𝑝(x), which we are trying to fit, is unknown. However,
+ACM Trans. Graph., Vol. 37, No. 4, Article 111. Publication date: August xxxx.
+
+
+===== photon-guiding-caustics-2024 | page 5/17 =====
+
+Online Photon Guiding with 3D Gaussians for Caustics Rendering
+•
+111:5
+Fig. 3. The concept of photon guiding with 3D Gaussians: we fit a 3D Gauss-
+ian mixture with gathered photons and use it to guide photon emission.
+In (a), the light source uniformly emits multiple photons, however, only
+the yellow photon is actually gathered from the camera view. We use the
+first bounce location of yellow photon to fit a 3D Gaussian as shown in (b).
+Later when emitting photons, we use the 3D Gaussian to sample emission
+directions, so that more photons can be gathered, achieving higher density.
+for each point of interest, the basic rule is that the more times the
+photons are gathered the higher the density should be, thus we
+define:
+𝑝(x) = 𝑔· 𝑇(x),
+(4)
+where 𝑇(x) denotes how many times a photon bounced from x
+is gathered in the current pass, and 𝑔is an unknown global scal-
+ing factor. The fitting can then be achieved by minimizing a KL
+divergence:
+𝐷𝐾𝐿(𝑝(x)∥𝑞(x;𝛾)) =
+∫
+R3 𝑝(x)(log[𝑝(x)] −log[𝑞(x;𝛾)])𝑑x.
+(5)
+We can minimize it by using gradient descent by optimizing𝛾, where
+𝛾= (𝜇, 𝜎) in our context. Notice that log[𝑝(x)] is irrelevant to 𝛾’s
+gradient and thus we have
+∇𝛾𝐷𝐾𝐿(𝑝(x)∥𝑞(x;𝛾)) = −∇𝛾
+∫
+R3 𝑝(x) log[𝑞(x;𝛾)])𝑑x.
+(6)
+Although it requires to calculate the integral over 3D space, we are
+able to attempt a one-sample estimation:
+∇𝛾𝐷𝐾𝐿(𝑝(x)∥𝑞(x;𝛾)) = −E
+𝑝(x)
+ˆ𝑞(x) ∇𝛾log[𝑞(x;𝛾)]
+
+.
+(7)
+In our rendering process, each time we sample an emitted photon,
+the emission pdf is ˆ𝑞(x). We then replace 𝑝(𝑥) with 𝑔·𝑇(x), and by
+using a moment-based optimizer, the global scaling factor 𝑔can be
+effectively cancelled.
+4.4
+Sampling directions from 3D Gaussian
+In this section, we describe a novel approach to transform the a
+global 3D Gaussian mixture that represents the distribution of pho-
+tons, into a local directional distribution representing the photon
+emission from a given light source position.
+Given an observation point x0, we can define the north pole z
+pointing from x0 to 𝜇. Then, we are able to represent any 3D point
+x using distance 𝑟= ∥x0 −x∥and the angle 𝜃between (x −x0) and
+z:
+z = 𝜇−x0
+𝑑
+where 𝑑= ∥x0 −𝜇∥.
+(8)
+Then, ∥x−𝜇∥2 in Eq. (2) can be represented with distance𝑟= ∥x0−x∥
+and 𝜃:
+∥x −𝜇∥2 = ∥(x −x0) −(𝜇−x0)∥2 = (𝑟−𝑑cos𝜃)2 + 𝑑2 sin2 𝜃. (9)
+With these parameters, we transform a 3D Gaussian to polar coor-
+dinates:
+𝐺(𝜔,𝑟) = exp
+
+−(𝑟−𝑑cos𝜃)2 + 𝑑2 sin2 𝜃
+2𝜎2
+
+.
+(10)
+The integral of 3D Gaussian can be then transformed to the spherical
+form:
+∫
+R3 𝐺(x) 𝑑x =
+∫
+Ω
+∫∞
+0
+exp
+
+−(𝑟−𝑑cos𝜃)2 + 𝑑2 sin2 𝜃
+2𝜎2
+
+𝑟2𝑑𝑟𝑑𝜔.
+(11)
+By matching Eq. (11) with the definition of a directional distribution,
+we derive the directional distribution of a 3D Gaussian at observa-
+tion point x0 as:
+𝑓𝑜(𝜔) =
+∫∞
+0
+exp
+
+−(𝑟−𝑑cos𝜃)2 + 𝑑2 sin2 𝜃
+2𝜎2
+
+𝑟2𝑑𝑟.
+(12)
+Actually, this integral has a closed-form solution:
+𝑓𝑜(𝜔) =𝜎2𝑒−𝑑2
+2𝜎2 𝑑cos𝜃
++
+√︂𝜋
+2 𝜎𝑒−𝑑2 sin2 𝜃
+2𝜎2
+
+𝜎2 + 𝑑2 cos2 𝜃
+
+×
+
+1 + erf
+𝑑cos𝜃
+√
+2𝜎
+
+.
+(13)
+This is our unnormalized directional PDF of the 3D Gaussian; readers
+are referred to the appendix for a complete derivation. Since the
+normalizing term is the integral of the original 3D Gaussian over
+real space, the normalized form is given as:
+𝐹𝑜(𝜔) =
+1
+√︁
+(2𝜋𝜎2)3 𝑓𝑜(𝜔).
+(14)
+The distribution can be effectively evaluated; it only involves several
+elementary transcendental functions and the error function, and the
+error function can be precisely approximated with Abramowitz and
+Stegun approximation [1964]. Despite the complex form, we find it
+rather simple to sample this distribution too: by sampling a 3D point
+from the original 3D Gaussian, the distribution of direction pointing
+to it from the observation point obeys Eq. (14). In the appendix
+we provide the complete proof of this sampling algorithm. With
+these conditions, we achieve efficient unbiased sampling of spherical
+transform of 3D Gaussian.
+Our transformation of the 3D Gaussian essentially builds a con-
+nection between global spatial distribution and local directional
+distribution; this can potentially lead a shift from using multiple
+local directional distribution (e.g., the vMF mixture) to one global
+3D Gaussian mixture, which could significantly reduce redundancy
+and improve learning efficiency. Furthermore, it could eliminate the
+parallax issue introduced by local discrete distributions.
+ACM Trans. Graph., Vol. 37, No. 4, Article 111. Publication date: August xxxx.
+
+
+===== photon-guiding-caustics-2024 | page 6/17 =====
+
+111:6
+•
+Trovato and Tobin, et al.
+Fig. 4. Visualization of distributions for our directional transform of 3D
+Gaussian (𝐹𝑜) and vMF (𝐹𝑣) with different parameters. By choosing param-
+eters meticulously, the two distributions achieve very similar shapes.
+Similarity with von-Mises Fisher distribution. 𝑑and 𝜎determine
+the shape of 𝐹𝑜(𝜔). Interestingly, we find the shape of this spherical
+distribution very similar to 3D von-Mises Fisher distribution (vMF).
+Actually, the north pole z used in Eq. (14) works the same way as the
+mean vector 𝜈of vMF (thus, in our discussion, we always assume z
+and 𝜈are the same). Fig. 4 presents a comparative visualization: it
+displays 𝐹𝑜(𝜔) under two distinct parameter sets alongside a vMF
+distribution. The parameters of the 𝐹𝑣are meticulously chosen to
+achieve a close match with the shape of 𝐹𝑜(𝜔).
+4.5
+Sampling Photon Emission with 3D Gaussian Mixture
+Photon emission sampling comprises two principal stages: determin-
+ing the emission location x0, and selecting the emission direction
+𝜔0. Utilizing 3D Gaussians, we can precisely guide photon emis-
+sions from different types of light sources, each following a unique
+approach:
+Area and Point Lights: For both area and point lights, we first
+sample the emission location ˆx0. In the case of area lights, we
+perform this sampling uniformly across the surface. For point
+lights, the location is a fixed point. Subsequently, we deter-
+mine the emission direction using the method we describe in
+§ 4.4.
+Infinite Lights: We begin by sampling the direction ˆ𝜔0 from
+the infinite light’s distribution. A plane is then defined that
+passes through the center of the scene and is perpendicular
+to ˆ𝜔0. Projecting our 3D Gaussian mixture onto this plane
+yields a corresponding 2D Gaussian mixture. We sample a
+point ˆx′
+0 from this 2D distribution on the plane. The actual
+emission location ˆx0 is calculated as ˆx0 = ˆx′
+0 −𝑏ˆ𝜔0, where
+𝑏is the radius of the scene’s bounding sphere. Importantly,
+the 2D Gaussian has infinite support, and truncation to the
+bounds of the scene’s bounding sphere is not necessary.
+To sample from a 3D Gaussian mixture, we first select a compo-
+nent based on its weight and sample the projected direction or 2D
+position from it. The probability density function (PDF) for each
+sample is then calculated as the weighted sum of the PDFs from all
+components at that sample point.
+5
+PHOTON GUIDING FRAMEWORK
+To enhance the efficiency and accuracy of photon guiding, our
+method incorporates two pivotal components alongside the 3D
+Gaussians optimization and sampling. These components, a robust
+initializer and an adaptive light sampler, are designed to signifi-
+cantly improve the learning process and photon distribution. In this
+section, we elaborate on each of these components, detailing their
+implementation and contributions to the overall framework.
+5.1
+Robust Initializer
+In line with standard practices in distribution-fitting applications,
+our 3D Gaussian mixture model requires an accurate initial guess
+to commence the fitting process effectively.
+A naïve approach can utilize the first batch of photon emission:
+for a 3D Gaussian mixture comprising 𝑁components, we employ
+the k-means method to ascertain 𝑁mean positions from the initial
+position data in the first photon pass. Subsequently, these mean
+positions serve as the preliminary guesses for the Gaussian compo-
+nents. Regarding the standard deviation parameter (𝜎), we opt for
+the median value of our encoding.
+This can be further extended to a more robust initialization that
+leverages the prior knowledge of scene geometry. Before the ren-
+dering, we fit a global 3D Gaussian set from the caustics casters’
+geometry data using the k-means method. After the first emission
+batch, for each light source, we select the 3D Gaussians that the first
+hit of the photons are closest to, and pick the Top N selected Gaus-
+sians as the initial set for that light source. The detailed algorithm
+is described as Algo. (1). Compared with the naïve approach, our
+initialization ensures fast convergence. Note that such initialization
+is not trivial with directional mixture models such as vMF.
+5.2
+Adaptive Light Sampler
+Under the circumstance that only a portion of objects cast caustics,
+an independent light source sampler helps to reduce the variance
+and improve photon density. [Šik and Krivánek 2019] mentioned
+a light source sampler for photon mapping is achieved, however
+the authors didn’t provide details of the method. In this section we
+introduce our adaptive light sampler, which progressively learns an
+appropriate distribution of light sources for photon emission.
+Our light sampler is inspired by [Wang et al. 2021] and [Müller
+et al. 2017]: we store a binary tree whose nodes are used to store the
+photon count gathered in the last iteration. Each node represents a
+range of light sources according to the node’s position and depth.
+For example, the root node represents the whole light sources, while
+the left child of it represents the first half. Starting from a single
+root node, in each sample iteration, we record how many photons
+are gathered in the region a node represents. When the photon
+number of a leaf node passes the threshold, we branch the leaf node
+into two children. To sample this light tree we just need to run
+binary sample down along the tree, using each node’s recorded
+count as importance. After several iterations we are able to obtain
+a close approximation of importance distribution of light sources.
+Compared to a 1D piecewise constant table approach, our adaptive
+sampler is efficient to be built in a streamed GPU renderer, and can
+quickly prune to important light sources when there are many light
+sources in the scene.
+ACM Trans. Graph., Vol. 37, No. 4, Article 111. Publication date: August xxxx.
+
+
+===== photon-guiding-caustics-2024 | page 7/17 =====
+
+Online Photon Guiding with 3D Gaussians for Caustics Rendering
+•
+111:7
+Algorithm 1 Scene-geometry-based 3D Gaussian Mixture initializer
+Require: Scene geometry list 𝑆, number of Gaussians per geometry
+𝐾, number of photons 𝑃, number of components 𝐺, light source
+list 𝐿
+1: function initializeLightSourceGaussians(𝑆, 𝐾, 𝐿, 𝐺)
+// Create and initialize Gaussians from scene geometry
+2:
+gaussians ←initializeGaussians(𝑆, 𝐾)
+// Emit photons and gather them
+3:
+photons ←emitPhotons(𝑃)
+4:
+gatheredPhotons ←gatherPhotons(camera, photons)
+// Compute initial Gaussians for each light source
+5:
+for all 𝑙in 𝐿do
+6:
+Gs ←gaussians, GPs ←gatheredPhotons
+7:
+topG ←computeInitialGaussians(Gs, GPs,𝐺)
+8:
+setLightSourceGaussians(𝑙, topG)
+9:
+end for
+10: end function
+11: function computeInitialGaussians(𝑔𝑎𝑢𝑠𝑠𝑖𝑎𝑛𝑠, 𝑝ℎ𝑜𝑡𝑜𝑛𝑠, 𝐺)
+// Increment counter for closest Gaussian to each photon
+12:
+for all 𝑔in 𝑔𝑎𝑢𝑠𝑠𝑖𝑎𝑛𝑠do
+13:
+clearCounter(𝑔)
+14:
+end for
+15:
+for all 𝑝in 𝑝ℎ𝑜𝑡𝑜𝑛𝑠do
+16:
+𝑔closest ←findClosestGaussian(gaussians, 𝑝)
+17:
+incrementCounter(𝑔closest)
+18:
+end for
+// Sort Gaussians by counters and select top 𝐺
+19:
+sortGaussiansByCounter(gaussians)
+20:
+topGaussians ←selectTopG(gaussians,𝐺)
+21:
+return topGaussians
+22: end function
+6
+IMPLEMENTATION DETAILS
+We implement our method in a GPU production renderer. In this sec-
+tion we provide implementation details that help to build a complete
+learning-based photon guiding framework.
+Encoding Scheme. Optimizing (sparse) 3D Gaussians in large scenes
+presents significant challenges. In our implementation, we consis-
+tently apply a scaling factor 𝐵to the scene positions for optimization
+or guiding purposes. The scaling factor 𝐵is defined as:
+𝐵= 𝑐𝑏
+𝑅𝑏
+,
+(15)
+where 𝑅𝑏is the diameter of the scene’s bounding sphere, and 𝑐𝑏is a
+constant meta-parameter. Furthermore, we encode the 𝜎of the 3D
+Gaussian using the sigmoid function to ensure robust and efficient
+optimization:
+𝜎=
+𝑐𝑠
+1 + 𝑒−𝑝𝜎,
+(16)
+where 𝑝𝜎is the learned encoded parameter, and 𝑐𝑠is a scaling meta-
+parameter. It is crucial to set 𝑐𝑏and 𝑐𝑠in a correlated manner to
+achieve stable optimization. In our implementation, we use 𝑐𝑏=
+20 and 𝑐𝑠= 0.65. The weights of components in a mixture are
+normalized using softmax:
+𝑤𝑖=
+𝑒𝑤′
+𝑖
+Í𝑁
+𝑗=1 𝑒𝑤′
+𝑗,
+(17)
+where 𝑤′
+𝑖is the learned unnormalized weight.
+Progressive learning of 3D Gaussian mixture. Although we use
+gradient-based learning approach to fit the global 3D Gaussian mix-
+ture, we do not use existing learning frameworks. Instead, we imple-
+ment a high performance learning kernel utilizing auto-differentiation
+feature of LuisaRender [2022], which can be integrated with our
+rendering system’s pipeline seamlessly. The learning process re-
+quires a moment-based optimizer, for which we utilize Adam [2014].
+The learning rate is initially set to 0.1 and then progressively scaled
+down to 0.01.
+Searching radius. The searching radius is an essential parameter
+for gathering. We employ an adaptive searching radius approach,
+where a relatively large maximum radius is initially set. For each
+shading point, we gather the four nearest photons, and the distance
+to the farthest photon among these dictates the actual searching
+radius. This allows for dynamic adjustment of the radius in response
+to the increasing photon density achieved through photon guiding.
+Multiple importance sampling with uniform emission. Existing
+path guiding techniques usually blend guiding with uniform sam-
+pling: a selection probability 𝛽is used to choose the distribution
+to sample from, and 𝛽progressively increases from 0 to a fixed or
+learnable value. However, due to our robust scene-geometry-based
+initializer, we can directly use a high fraction from the beginning.
+In our implementation, our first rendering iteration uses uniform
+sampling and the result is only used for initialization. We discard
+this result, initialize the 3D Gaussians for each light source, and
+set 𝛽to 0.8 in the rest of the iterations. 3D Gaussian has infinite
+support, which in theory ensures unbiased sampling.
+7
+EXPERIMENTS
+We conduct evaluation experiments by rendering scenes using differ-
+ent configurations and techniques, and then comparing the quality
+of the outputs. All images in this section are rendered at a resolution
+of 1920×1080, and full-sized images are included in the supplemen-
+tal materials. The rendering is performed on the same conventional
+PC equipped with an Intel Core 9700K CPU and an Nvidia RTX
+4070 GPU. In all experiments, our method utilizes 32-component 3D
+Gaussian mixtures. We use the same maximum searching radius for
+all methods (while keeping the adaptive strategy as described above).
+The output from the renderer includes all light paths; however, to
+evaluate the guiding quality, we specifically isolate the caustics
+results for comparison. The scenes we used are shown in Fig. 5.
+These include simple caustic cases as well as complex, production-
+level assets and scenes that present challenges for photon mapping.
+We report the mean square error (MSE, where lower is better) and
+the complement of the structural similarity index measure (1-SSIM,
+where lower is better) for all comparisons to evaluate both image
+error and visual quality. These metrics are calculated using images
+rendered with uniform sampling through sufficiently many itera-
+tions as the reference. In our integrated renderer, photon gathering
+ACM Trans. Graph., Vol. 37, No. 4, Article 111. Publication date: August xxxx.
+
+
+===== photon-guiding-caustics-2024 | page 8/17 =====
+
+111:8
+•
+Trovato and Tobin, et al.
+is the most computation-intensive stage. This means that methods
+emitting a higher number of visible photons are generally slower.
+Therefore, even though similar time costs are recorded across all
+methods, we do not compare them directly in our experiments due
+to the irrelevance of these differences in this context. Nonetheless,
+we include time cost data for the sake of completeness.
+7.1
+Distributions Comparison
+In this experiment, we compare our 3D Gaussian (G3D) guiding
+with other existing distribution models, including 2D histograms
+(H2D), 3D von Mises-Fisher (vMF), AABB-based guiding (BG), and
+traditional uniform distribution (Uni). Although our method pro-
+vides a full framework for photon guiding with 3D Gaussians, for
+fair comparison, we set the configurations as follows to achieve
+similar conditions for each distribution:
+• To learn an accurate distribution, H2D uses a fixed resolu-
+tion of 256 × 256 for all light sources, vMF and G3D use 32
+components.
+• Scene-geometry-based initializer is disabled and 3D Gaus-
+sians are initialized naïvely.
+• The selection probability 𝛽starts from 0 and linearly increases
+to 0.75 in 128 iterations for G3D, H2D, and vMF. Since BG
+does not require any optimization, we do not blend BG with
+uniform sampling. However, we optimize the weights of each
+bound during rendering.
+• Our adaptive light sampler is enabled for all the distributions.
+We perform rendering for 256 iterations for each method and
+compare the resulting output to the reference in order to calculate
+the differences. The metrics derived from these comparisons are
+presented in Tab. 1. The results are interpreted in two separate parts
+as follows:
+Compare with directional distributions. In the GlassOfWater
+scene, which features only one point light and lacks the parallax
+issues associated with H2D and vMF, all distributions perform simi-
+larly (see Fig. 6 (a)). However, area lights highlight the limitations
+of H2D and vMF: as demonstrated in the Dragon scene with a
+small rectangular light overhead, these directional distributions
+struggle to learn accurate representations for all emission points,
+rendering the guiding less efficient (see Fig. 6 (b)). In contrast, G3D
+adapts robustly, transforming spatial distributions to directional
+distributions accurately at any emission point. H2D and vMF typ-
+ically assume point light sources and thus do not trivially guide
+infinite area lights (e.g., environment maps or image-based lighting).
+G3D easily guides such light sources since its a spatial distribu-
+tion. In other production-level scenes with complex lighting setups,
+G3D generally outperforms H2D and vMF, except in the Bistro
+scene. Here, despite the light sources being delta spotlights, which
+typically don’t present parallax issues, G3D exhibited higher er-
+rors due to inadequate initialization. Subsequent experiments with
+our scene-geometry-based initializer significantly enhanced G3D’s
+performance.
+Compare with bound-based guiding. In this setup, BG outper-
+formed G3D in 6 out of 8 scenes, attributed to G3D’s requirement for
+optimization. BG provides effective guidance from the start, whereas
+G3D requires a warm-up phase, reducing its initial efficiency. Sub-
+sequent experiments demonstrate that our scene-geometry-based
+initializer substantially accelerates this optimization, allowing G3D
+to consistently outperform BG. In the 6 scenes where BG was more
+effective, the distributions within the bounds were somewhat uni-
+form. However, in scenes like Ring and SunTemple, where lighting
+needs to focus on specific parts of the caster meshes, G3D excelled
+even without our initializer (see Fig. 6 (c)). This illustrates that while
+BG achieves full efficiency immediately, its potential is capped due
+to the uniform assumption of light distribution. The differences
+between these distributions are further detailed in § 7.4.
+Table 1. Comparison of guiding with different distribution models, including
+3D Gaussians (G3D), 2D histogram (H2D), 3D von Mises-Fisher (vMF), and
+traditional uniform distribution (Uni). We compare mean square error (MSE,
+lower is better) and complement of structural similarity index measure (1-
+SSIM, lower is better). Best results are highlighted in bold. The time cost is
+also reported for completeness.
+Scene
+G3D
+BG
+H2D
+vMF
+Uni
+Glass
+Of
+Water
+MSE ×102
+0.93
+0.17
+0.95
+1.05
+4.32
+(1-SSIM) ×101
+1.94
+0.81
+1.95
+2.22
+3.58
+Time (s)
+17
+16
+15
+17
+5
+Dragon
+MSE ×103
+0.11
+0.04
+0.53
+0.67
+1.46
+(1-SSIM) ×102
+0.87
+0.31
+2.96
+3.43
+5.42
+Time (s)
+21
+18
+16
+16
+8
+Bistro
+MSE ×105
+6.75
+2.41
+2.27
+3.63
+5.25
+(1-SSIM) ×103
+6.22
+3.11
+3.06
+4.02
+5.47
+Time (s)
+11
+20
+12
+9
+16
+Bistro
+Street
+MSE
+0.01
+0.01
+N/A
+N/A
+3.30
+(1-SSIM) ×101
+0.08
+0.02
+N/A
+N/A
+1.32
+Time (s)
+21
+23
+-
+-
+16
+Eyes
+MSE ×103
+0.23
+0.03
+N/A
+N/A
+1.70
+(1-SSIM) ×102
+1.06
+0.17
+N/A
+N/A
+3.86
+Time (s)
+31
+32
+-
+-
+29
+Kitchen
+MSE ×103
+0.09
+0.02
+0.38
+7.13
+1.68
+(1-SSIM) ×102
+0.44
+0.13
+1.11
+4.29
+2.81
+Time (s)
+32
+39
+30
+28
+26
+Ring
+MSE ×102
+0.33
+0.95
+1.11
+1.06
+2.00
+(1-SSIM) ×101
+0.78
+1.38
+2.22
+1.95
+2.23
+Time (s)
+28
+39
+26
+27
+21
+Sun
+Temple
+MSE
+0.02
+0.03
+0.04
+1.37
+0.74
+(1-SSIM) ×101
+2.78
+3.32
+2.83
+5.31
+4.58
+Time (s)
+22
+10
+24
+25
+16
+7.2
+Ablation Studies
+Our method provides a full framework of photon emission guiding.
+In addition to fitting 3D Gaussians for light sources and sampling
+from them, we propose a scene-geometry-based initializer and an
+adaptive light sampler. In this experiment, we evaluate the improve-
+ment of rendering quality introduced by each of the components.
+ACM Trans. Graph., Vol. 37, No. 4, Article 111. Publication date: August xxxx.
+
+
+===== photon-guiding-caustics-2024 | page 9/17 =====
+
+Online Photon Guiding with 3D Gaussians for Caustics Rendering
+•
+111:9
+Fig. 5. The scene set we used for experiments: GlassOfWater, Dragon, Bistro, BistroStreet, Eyes, Kitchen, Ring, SunTemple.
+Reference
+G3D
+BG
+H2D
+vMF
+Uniform
+(a) GlassOfWater
+MSE ×102:
+0.93
+0.17
+0.95
+1.05
+4.32
+(1-SSIM) ×101:
+1.94
+0.81
+1.95
+2.22
+3.58
+(b) Dragon
+MSE ×103:
+0.11
+0.04
+0.53
+0.67
+1.46
+(1-SSIM) ×102:
+0.87
+0.31
+2.96
+3.43
+5.32
+(c) BistroStreet
+MSE ×102
+0.33
+0.95
+1.11
+1.06
+2.00
+(1-SSIM) ×101
+0.78
+1.38
+2.22
+1.95
+2.23
+Fig. 6. A portion of rendering results in comparison of rendering quality and efficiency across different distributions. The exposure of each inset is adjusted for
+better observation. (a) Similar results are achieved among G3D, H2D, and vMF under a point light scenario, indicating comparable guiding efficiency with the
+absence of parallax issues. (b) Under a small rectangular area light, results vary; G3D outperforms other distributions as it can accurately transform global
+positional distribution into directional distribution at any emission point without parallax issue. (c) When the distribution inside bounds of the caster mesh is
+not uniform, efficiency of bound-based guiding becomes low, while G3D can be optimized for a close approximation, achieving lower error.
+The baseline is naïve guiding with 3D Gaussians, where the Gaus-
+sians are naïvely initialized, 𝛽linearly increases from 0 to 0.75 in 128
+iterations, and light sources are uniformly sampled. We compare the
+rendering result of the baseline and that with our scene-geometry-
+based initializer, and the full framework. Additionally, we revisit the
+comparison with our bound-based guiding (BG), which previously
+showed strong performance, to underscore the advancements our
+method offers. The results are shown in Tab. 2.
+The results, detailed in Tab. 2, demonstrate that each compo-
+nent distinctly improves rendering quality, contributing to a robust
+ACM Trans. Graph., Vol. 37, No. 4, Article 111. Publication date: August xxxx.
+
+
+===== photon-guiding-caustics-2024 | page 10/17 =====
+
+111:10
+•
+Trovato and Tobin, et al.
+photon guiding framework. In the Bistro scene, for instance, our ini-
+tializer significantly reduces the MSE from 9.96×10−5 to 1.27×10−5,
+marking an 87% improvement. Furthermore, when compared to the
+H2D result from the previous experiment (2.27 × 10−5), our full
+framework achieves a 49% lower MSE, recorded at 1.16 × 10−5. Sim-
+ilar enhancements are observed in the Eyes scene, as illustrated
+in Fig. 7. Notably, with the full integration of these components,
+our method surpasses BG in 7 out of 8 scenes (tied in the Kitchen
+scene). With improved optimization efficiency, our method is both
+more performant and more robust compared to BG.
+Table 2. Comparison of performance using only 3D Gaussians as a base-
+line (Base), augmented with our scene-geometry-based initializer (+ Init),
+and employing our full framework (Full), which incorporates our adaptive
+light sampler. We also compare with bound-based guiding results (BG). The
+analysis omits time cost but includes it for completeness. The best results
+are highlighted in bold. Our initializer significantly enhances optimization
+efficiency and reduces errors across all tested scenes. With improved opti-
+mization efficiency, our method consistently surpasses bound-based guiding
+regardless of geometry complexity. In scenes with complex lighting arrange-
+ments, such as Eyes and Ring, our light sampler further improves guiding
+quality. With these components, our result outperforms BG in 7 scenes out
+of 8.
+Scene
+Base
++ Init
+Full
+BG
+Glass
+Of
+Water
+MSE ×103
+7.82
+1.23
+1.29
+1.73
+(1-SSIM) ×101
+1.76
+0.64
+0.66
+0.81
+Time (s)
+17
+19
+19
+16
+Dragon
+MSE ×104
+1.18
+0.37
+0.37
+0.39
+(1-SSIM) ×103
+9.62
+3.09
+3.06
+3.14
+Time (s)
+21
+21
+21
+18
+Bistro
+MSE ×105
+9.96
+1.27
+1.16
+2.41
+(1-SSIM) ×103
+7.09
+1.92
+1.97
+3.11
+Time (s)
+11
+20
+21
+20
+Bistro
+Street
+MSE ×102
+1.16
+0.19
+0.19
+0.24
+(1-SSIM) ×103
+7.76
+1.59
+1.60
+1.89
+Time (s)
+21
+29
+29
+23
+Eyes
+MSE ×104
+2.40
+0.17
+0.14
+0.27
+(1-SSIM) ×102
+1.10
+0.12
+0.10
+0.17
+Time (s)
+31
+32
+34
+32
+Kitchen
+MSE ×105
+7.93
+2.51
+1.71
+1.60
+(1-SSIM) ×103
+3.91
+1.75
+0.94
+1.35
+Time (s)
+27
+36
+37
+39
+Ring
+MSE ×103
+3.30
+8.93
+2.63
+9.52
+(1-SSIM) ×101
+0.79
+0.86
+0.57
+1.38
+Time (s)
+28
+28
+31
+39
+Sun
+Temple
+MSE ×102
+1.89
+0.85
+0.76
+2.58
+(1-SSIM) ×101
+2.70
+1.44
+1.47
+3.32
+Time (s)
+22
+29
+29
+10
+7.3
+State-of-the-art Comparison
+Two principal methods have been employed to improve the visi-
+bility of photons. The first, adaptive importance sampling with 2D
+histogram, has been explored in research and adopted in production
+renderers [Burley et al. 2018; Droske et al. 2023; Grittmann et al.
+2018]. The second, Markov-chain Monte Carlo (MCMC), proposed
+by Hachisuka and Jensen [2011], has also been adopted in produc-
+tion rendering [Šik and Krivánek 2019]. In our preliminary studies,
+MCMC shows clear superiority when compared with H2D. While
+we’ve compared with the 2D histogram approach in § 7.1, in this
+experiment, we compare our method with MCMC.
+Our MCMC implementation closely follows [Hachisuka and Jensen
+2011]; however, since the original method was designed for pro-
+gressive photon mapping, we made necessary modifications for
+adaptation to our rendering scheme. Our target function, 𝐹𝑖(v),
+is binary: it returns 1 if a photon v successfully reaches a visible
+receiver surface after several specular bounces on caster surfaces,
+and 0 otherwise. This robust approach marks caustic casters and
+receivers explicitly, while photon emission and gathering occur in
+separate passes. Our GPU integration emits 220 photons in parallel
+per iteration, with each thread maintaining its own MCMC chain.
+During the bootstrap phase, we emit 226 photons (64 times the num-
+ber of MCMC samplers) with random states to comprehensively
+explore the sample space, forming an initial state pool. Each MCMC
+sampler then randomly selects a state from this pool as a diverse yet
+representative starting point. Given the complex scenes and lighting,
+the bootstrap phase is crucial for ensuring an even initial sample
+distribution and reduction of correlation, especially when iteration
+counts are limited. In our GPU implementation, the bootstrap only
+takes less than 1 second.
+Our MCMC chain implements a replica exchange Monte Carlo
+method, as adapted from [Hachisuka and Jensen 2011]. This ap-
+proach combines uniform sampling and Markov chain strategies
+within the same framework. Specifically, the chain first proposes
+a uniform path, emitting a photon v′. If 𝐹𝑖(v′) = 1, the photon is
+recorded and the path accepted; otherwise, a mutation is applied to
+the last accepted path, emitting a second photon v′′. This second
+photon is recorded and the path is accepted if 𝐹𝑖(v′′) = 1. If both
+proposals fail, the last accepted photon is recorded. We opted not
+to implement the adaptive mutation size strategy from [Hachisuka
+and Jensen 2011] due to its requirement for per-sample mutation
+scale updates, which did not integrate well with our GPU-based
+SPPM scheme. Instead, we explored the mutation algorithm from
+[Kelemen et al. 2002] and Gaussian mutations with varying 𝜎values,
+ultimately selecting Gaussian mutation with 𝜎= 0.001 for its lower
+overall error. The result is reported in Tab. 3.
+Readers are referred to the supplemental material for the pro-
+duced results in full size. In Fig. 8, we analyze several results that
+demonstrate the difference between our method and MCMC. In
+scenes with simple geometry and lighting, MCMC shows clear su-
+periority: in WaterOfGlass and Dragon, MCMC achieves lower
+error and smooth caustics (see Fig. 8 (a)). However, in complex
+production-level scenes, MCMC sometimes struggles to effectively
+explore the primary sample space, leading to slightly higher image
+errors (see Fig. 8 (b)). Šik et al. [2020] reported the non-uniform
+ACM Trans. Graph., Vol. 37, No. 4, Article 111. Publication date: August xxxx.
+
+
+===== photon-guiding-caustics-2024 | page 11/17 =====
+
+Online Photon Guiding with 3D Gaussians for Caustics Rendering
+•
+111:11
+Reference
+Base
++ Init
+Full
+BG
+(a) BistroStreet
+MSE ×102
+1.16
+0.19
+0.19
+0.24
+(1-SSIM) ×103
+7.76
+1.59
+1.60
+1.89
+(b) Eyes
+MSE ×104:
+2.40
+0.17
+0.14
+0.27
+(1-SSIM)×102:
+1.10
+0.12
+0.10
+0.17
+Fig. 7. Comparison of rendering results using different components of our photon emission guiding framework. From left to right: reference image, baseline
+with naïve 3D Gaussian guiding, our scene-geometry-based initializer added, the full framework with both the initializer and adaptive light sampler, and the
+result of bound-based guiding (BG). Exposure of the insets are adjusted for better observation. (a) Our initializer assigns close initial values to the distribution
+to achieve faster convergence for optimization. With accelerated optimization, G3D outperforms BG. (b) The light sampler in the full framework further
+enhances the results in rendering tasks with complex lighting setup.
+convergence of MCMC methods in complex scenarios, which is
+consistent with our observation. In rendering the SunTemple scene,
+as shown in Fig. 8 (c), MCMC encounters inherent limitations that
+affect accuracy. This scene features two common delta light sources:
+an infinite directional light and a point light in front of the glass
+statue. Due to the large size of the scene, the overall visibility of
+the directional light is approximately 0.002%, compared to 5.9% for
+the point light (2950× higher). When a uniform light sampler is em-
+ployed to select light sources, MCMC tends to get stuck at the point
+light, struggling to adequately explore paths from the directional
+light. Efforts to address this by adjusting the weights assigned to
+different light sources proved insufficient. For instance, assigning a
+weight of 0.99 to the directional light still resulted in noisy outcomes.
+Increasing the weight to 0.999 allowed for normal sampling of the
+directional light but introduced a visual bias in the contribution
+from the point light. The spatial target function proposed by Gru-
+son et al. [2017] is not effective in this scenario, as the challenge here
+stems from differences in visibility that are not location-dependent.
+Thus, while MCMC is highly efficient, it can encounter challenges in
+scenarios with highly disparate light source visibilities. Our method
+in contrast performs more robustly and provides a good option for
+photon mapping in production rendering.
+7.4
+Learned Result
+In addition to the quantitative experiments, we conducted an exper-
+iment to directly compare the learned distributions using different
+models. In Fig. 9, we demonstrate the parallax issue and how G3D
+eliminates it. For a small rectangular light source located at the
+camera position in Fig. 9 (a) and facing forward, we fit the emission
+distribution using three models: G3D, H2D, and vMF. When emit-
+ting from the center of the rectangular light, as shown in Fig. 9 (a),
+the directional distribution of all models accurately fits the actual
+caster geometry. However, when emitting from a corner of the light,
+as shown in Fig. 9 (e), the distributions of vMF and H2D deviate
+from the actual situation due to the parallax issue. Our method
+transforms G3D from a spatial distribution into a directional one at
+any observation point, allowing it to guide emission accurately even
+from offset positions. Furthermore, this advantage extends to infi-
+nite directional lights with directional areas, where similar parallax
+challenges can occur. For infinite lights, our G3D method gener-
+ates and samples a 2D distribution corresponding to the sampled
+direction.
+We also visualize the spatial distribution of the learned 3D Gauss-
+ian mixtures in Fig. 10, in comparison with bound-based guiding.
+The learned distribution demonstrates superiority over bound-based
+guiding. In the SunTemple scene, the statue geometry contains a lot
+of empty space within its bounds, and not all of the mesh requires
+equal even photon emission. Our 3D Gaussian mixture quickly
+prunes to only the relevant regions to efficiently guide photon emis-
+sion.
+Finally, in Fig. 11, we visualize the photon density from one ren-
+dering iteration of the same scene. In one rendering iteration of
+ACM Trans. Graph., Vol. 37, No. 4, Article 111. Publication date: August xxxx.
+
+
+===== photon-guiding-caustics-2024 | page 12/17 =====
+
+111:12
+•
+Trovato and Tobin, et al.
+Reference
+G3D (Ours)
+MCMC
+(a) Dragon
+MSE ×105:
+3.68
+2.37
+(1-SSIM)×103:
+3.06
+1.69
+(b) Bistro
+MSE ×105:
+1.16
+2.34
+(1-SSIM)×103:
+1.97
+3.25
+(c) SunTemple
+MSE ×102:
+0.76
+8.31
+(1-SSIM)×101:
+1.47
+3.19
+Fig. 8. Representative results from the comparison between our method (G3D) and the Markov chain Monte Carlo method (MCMC) proposed in [Hachisuka
+and Jensen 2011]. The exposure of each inset is adjusted for better observation. (a) In scenes with straightforward geometry and lighting, MCMC demonstrates
+higher guiding efficiency than G3D. (b) In a large-scope scene, when only a small portion of the scene casts caustics, MCMC struggles to explore the primary
+sample space within the given iteration limit. After 256 iterations, the produced result contains slightly higher error than G3D. (c) When a scene contains light
+sources that have very different visibility distribution, MCMC tends to concentrate on more visible light sources, making it difficult to sample from less visible
+ones.
+the Bistro scene, our photon guiding method increases the photon
+count in the visible area from 438 to 30,1326: 687× more visible
+photons, leading to a significant boost in density and more accurate
+estimation.
+8
+DISCUSSION
+Cosine-weighted guiding. Theoretically, our method can be ex-
+tended for cosine-weighted guiding for emission direction. We have
+shown that the spherical distribution Eq. (14), obtained using our
+novel directional transform of 3D Gaussian, has a similar shape with
+vMF distribution 𝐹𝑣(while they are essentially different). For an
+area light, if we can first approximate 𝐹𝑜with 𝐹𝑣, then, with another
+𝐹𝑣resembling the cosine-weighted distribution of directions with
+respect to the surface normal, we are able to calculate the product
+of these two, which is still a vMF distribution. By sampling the
+product vMF we can achieve cosine-weighted guiding for diffuse
+area lights. However, finding a 𝐹𝑣approximating 𝐹𝑜is expensive,
+since it requires solving a transcendental equation that connects
+parameters of 𝐹𝑜(𝜔| 𝑑, 𝜎) and 𝐹𝑣(𝜔| 𝜅). We leave this as a future
+work.
+ACM Trans. Graph., Vol. 37, No. 4, Article 111. Publication date: August xxxx.
+
+
+===== photon-guiding-caustics-2024 | page 13/17 =====
+
+Online Photon Guiding with 3D Gaussians for Caustics Rendering
+•
+111:13
+(a)
+(b) G3D (ours)
+(c) vMF
+(d) H2D
+(e)
+(f) G3D (ours)
+(g) vMF
+(h) H2D
+Fig. 9. For a small rectangular light source colocated at the camera position in (a), we fit the emission distribution using G3D, H2D, and vMF models. The
+resulting emission directions are visualized in (b), (c), and (d), respectively. When emitting from the center of the area light, all models fit the caustics casters
+accurately (indicated by arrows). However, when emitting from a corner of it, as shown in (e) (note the change in perspective from (a)), the directional models
+H2D and vMF suffer from parallax issues. This causes their distributions to misalign with the casters, as observed in (g) and (h) respectively (observe the
+misalignment with the glasses). The G3D model, shown in (f), maintains an accurate distribution because it derives the directional distribution from the global
+positional distribution. Readers are encouraged to zoom in on the visualizations for a detailed view.
+Bound-based guiding
+Ours
+Fig. 10. Visualization of fitted 3D Gaussian mixture from all light sources,
+and the guiding bound used in our bound-based guiding, in the SunTemple
+scene. Compared to the naïve bound-based guiding (left), our 3D Gaussian
+method effectively focuses on the important part of a single mesh (right),
+which makes it efficient when only part of the caster geometry needs to be
+considered, or when the geometry contains a lot of empty space. Readers
+are encouraged to zoom in to compare the quality of rendering results.
+4D guiding. The photon emission can be considered as a 4D distri-
+bution, while our method focus on half of the dimensions which we
+consider is dominating, and leave the rest uniformly sampled. For
+most actual rendering tasks this is efficient, however, it could suffer
+when the other half has an extreme distribution. This limitation
+could be addressed by incorporating another importance sampling
+technique, for example, it’s possible to fit another distribution for
+position sampling in area lights. We leave this as a future work.
+Indirect caustics. Our method does not handle caustics from indi-
+rect lighting. However, it is also possible to extend our method and
+combine it with path guiding techniques to achieve a solution to
+this challenge. In such a solution, 3D Gaussians are still leveraged
+to guide the initial photon emission, and the path guiding technique
+is used to guide the bounce at the diffuse surfaces. We leave this as
+a future work too.
+Multi-lobe guiding. In caustics rendering, many photon paths
+involve multi-lobe BSDF sampling (e.g., glass has both a reflection
+lobe and a refraction lobe). For such paths, we currently sample lobes
+with their corresponding BSDF weights, however, the variance could
+be further reduced if we are able to sample the decision based on the
+lobes’ actual contribution to the image. In fact, in the comparison of
+Pool scene (Fig. 8 (c)), MLT achieves the best result mainly because it
+invests more samples on the reflection of the water surface. Adapting
+a variance-aware distribution, as suggested by Rath et al. [2020], is a
+ACM Trans. Graph., Vol. 37, No. 4, Article 111. Publication date: August xxxx.
+
+
+===== photon-guiding-caustics-2024 | page 14/17 =====
+
+111:14
+•
+Trovato and Tobin, et al.
+Table 3. Mean square error (MSE, lower is better) and complement of struc-
+tural similarity index measure (1-SSIM, lower is better) in the comparison
+between our method (G3D) and the Markov chain Monte Carlo (MCMC)
+method proposed in [Hachisuka and Jensen 2011]. The best metrics are
+highlighted in bold. The time cost in this experiment is reported for com-
+pleteness.
+Scene
+G3D (ours)
+MCMC
+Glass
+Of
+Water
+MSE ×103
+1.29
+0.85
+(1-SSIM) ×102
+6.59
+4.39
+Time (s)
+19
+22
+Dragon
+MSE ×105
+3.68
+2.37
+(1-SSIM) ×103
+3.06
+1.69
+Time (s)
+21
+27
+Bistro
+MSE ×105
+1.16
+2.34
+(1-SSIM) ×103
+1.97
+3.25
+Time (s)
+21
+29
+Bistro
+Street
+MSE ×103
+1.94
+3.36
+(1-SSIM) ×103
+1.60
+2.71
+Time (s)
+29
+33
+Eyes
+MSE ×105
+1.41
+2.08
+(1-SSIM) ×103
+0.97
+1.29
+Time (s)
+34
+40
+Kitchen
+MSE ×104
+0.17
+1.04
+(1-SSIM) ×103
+0.94
+4.71
+Time (s)
+37
+39
+Ring
+MSE ×103
+2.63
+2.91
+(1-SSIM) ×102
+5.70
+8.17
+Time (s)
+31
+33
+Sun
+Temple
+MSE ×102
+0.76
+8.31
+(1-SSIM) ×101
+1.47
+3.19
+Time (s)
+29
+30
+conceivable solution. However, the practical implementation of such
+a concept within our gradient-based learning remains unexplored,
+which we leave as a future work.
+9
+CONCLUSION AND FUTURE WORK
+In this paper, we have introduced a novel photon guiding method
+designed for production rendering systems, focusing on efficiently
+rendering caustics. The cornerstone of our approach is the innova-
+tive utilization of 3D Gaussian mixture. We have derived a novel
+transform that enables sampling directions from 3D Gaussians at
+any observation point, effectively eliminating the common parallax
+issue associated with existing directional distributions. Additionally,
+we propose a scene-geometry-based initializer and an adaptive light
+source sampler to further improve the efficiency of online learning
+and guiding. Through experiments, we demonstrate that our frame-
+work not only outperforms existing directional distributions but is
+also more robust than state-of-the-art methods in handling complex
+rendering tasks.
+Fig. 11. Visualization of the searching radius of each pixel that successfully
+gathers photons during one iteration in the Bistro scene. Green indicates
+a larger searching radius at the surface, and red indicates a smaller one
+(hence a higher photon density). With uniform emission (top), only a few
+photons successfully reach the visible receiver surface, resulting in low or
+zero photon density for most pixels. Our method (bottom) effectively guides
+the photons to emit more into the visible region, achieving a more accurate
+density estimation.
+We consider 3D Gaussians to not only serve as the foundation of
+our method, but also to hold immense potential for a wide range of
+applications in computer graphics research. For example, the versa-
+tility of 3D Gaussians in connecting local and global distributions is
+also promising in a broader path guiding context, such as modeling
+indirect lighting and view-dependent visual effects. We will explore
+such directions in our future work.
+REFERENCES
+Milton Abramowitz and Irene A. Stegun. 1964. Handbook of Mathematical Functions
+with Formulas, Graphs, and Mathematical Tables. Dover Publications, New York.
+Brent Burley, David Adler, Matt Jen-Yuan Chiang, Hank Driskill, Ralf Habel, Patrick
+Kelly, Peter Kutz, Yining Karl Li, and Daniel Teece. 2018. The Design and Evolution
+of Disney’s Hyperion Renderer. ACM Trans. Graph. 37, 3, Article 33 (jul 2018),
+22 pages. https://doi.org/10.1145/3182159
+Ana Dodik, Marios Papas, Cengiz Öztireli, and Thomas Müller. 2022. Path Guiding
+Using Spatio-Directional Mixture Models. Computer Graphics Forum (2022). https:
+//doi.org/10.1111/cgf.14428
+Marc Droske, Johannes Hanika, Jiří Vorba, Andrea Weidlich, and Manuele Sabbadin.
+2023. Path Tracing in Production: The Path of Water. In ACM SIGGRAPH 2023
+Courses (SIGGRAPH ’23). Association for Computing Machinery, New York, NY,
+USA, Article 12, 66 pages. https://doi.org/10.1145/3587423.3595519
+Alejandro Conty Estevez and Christopher Kulla. 2020. Practical Caustics Rendering
+with Adaptive Photon Guiding. In ACM SIGGRAPH 2020 Talks (Virtual Event, USA)
+(SIGGRAPH ’20). Association for Computing Machinery, New York, NY, USA, Article
+17, 2 pages. https://doi.org/10.1145/3388767.3407370
+Iliyan Georgiev, Jaroslav Křivánek, Tomáš Davidovič, and Philipp Slusallek. 2012. Light
+Transport Simulation with Vertex Connection and Merging. ACM Trans. Graph. 31,
+6, Article 192 (nov 2012), 10 pages. https://doi.org/10.1145/2366145.2366211
+ACM Trans. Graph., Vol. 37, No. 4, Article 111. Publication date: August xxxx.
+
+
+===== photon-guiding-caustics-2024 | page 15/17 =====
+
+Online Photon Guiding with 3D Gaussians for Caustics Rendering
+•
+111:15
+Pascal Grittmann, Arsène Pérard-Gayot, Philipp Slusallek, and Jaroslav Křivánek. 2018.
+Efficient Caustic Rendering with Lightweight Photon Mapping. Computer Graphics
+Forum 37, 4 (2018), 133–142. https://doi.org/10.1111/cgf.13481
+Adrien Gruson, Mickaël Ribardière, Martin Šik, Jiří Vorba, Rémi Cozot, Kadi Bouatouch,
+and Jaroslav Křivánek. 2017. A Spatial Target Function for Metropolis Photon
+Tracing. ACM Trans. Graph. 36, 4, Article 75a (jul 2017), 13 pages. https://doi.org/
+10.1145/3072959.2963097
+Toshiya Hachisuka and Henrik Wann Jensen. 2009. Stochastic Progressive Photon
+Mapping. In ACM SIGGRAPH Asia 2009 Papers (Yokohama, Japan) (SIGGRAPH Asia
+’09). Association for Computing Machinery, New York, NY, USA, Article 141, 8 pages.
+https://doi.org/10.1145/1661412.1618487
+Toshiya Hachisuka and Henrik Wann Jensen. 2011. Robust Adaptive Photon Tracing
+Using Photon Path Visibility. ACM Trans. Graph. 30, 5, Article 114 (oct 2011),
+11 pages. https://doi.org/10.1145/2019627.2019633
+Toshiya Hachisuka, Shinji Ogaki, and Henrik Wann Jensen. 2008. Progressive photon
+mapping. ACM Trans. Graph. 27, 5, Article 130 (dec 2008), 8 pages. https://doi.org/
+10.1145/1409060.1409083
+Jiawei Huang, Akito Iizuka, Hajime Tanaka, Taku Komura, and Yoshifumi Kitamura.
+2024. Online Neural Path Guiding with Normalized Anisotropic Spherical Gaussians.
+ACM Trans. Graph. 43, 3, Article 26 (apr 2024), 18 pages. https://doi.org/10.1145/
+3649310
+Henrik Wann Jensen. 1995. Importance Driven Path Tracing using the Photon Map.
+In Rendering Techniques ’95, Patrick M. Hanrahan and Werner Purgathofer (Eds.).
+Springer Vienna, Vienna, 326–335.
+Henrik Wann Jensen. 1996. Global illumination using photon maps. In Rendering
+Techniques’ 96: Proceedings of the Eurographics Workshop in Porto, Portugal, June
+17–19, 1996 7. Springer, 21–30.
+Csaba Kelemen, László Szirmay-Kalos, György Antal, and Ferenc Csonka. 2002. A
+Simple and Robust Mutation Strategy for the Metropolis Light Transport Algorithm.
+Computer Graphics Forum 21, 3 (2002), 531–540.
+https://doi.org/10.1111/1467-
+8659.t01-1-00703
+Diederik P. Kingma and Jimmy Ba. 2014. Adam: A Method for Stochastic Optimization.
+CoRR abs/1412.6980 (2014). http://arxiv.org/abs/1412.6980
+Shinya Kitaoka, Yoshifumi Kitamura, and Fumio Kishino. 2009. Replica Exchange Light
+Transport. Computer Graphics Forum 28, 8 (2009), 2330–2342. https://doi.org/10.
+1111/j.1467-8659.2009.01540.x
+He Li, Beibei Wang, Changhe Tu, Kun Xu, Nicolas Holzschuch, and Ling-Qi Yan.
+2022. Unbiased Caustics Rendering Guided by Representative Specular Paths. In
+SIGGRAPH Asia 2022 Conference Papers (<conf-loc>, <city>Daegu</city>, <coun-
+try>Republic of Korea</country>, </conf-loc>) (SA ’22). Association for Computing
+Machinery, New York, NY, USA, Article 41, 8 pages. https://doi.org/10.1145/3550469.
+3555381
+Nicholas Metropolis, Arianna W. Rosenbluth, Marshall N. Rosenbluth, Augusta H.
+Teller, and Edward Teller. 1953. Equation of State Calculations by Fast Computing
+Machines. The Journal of Chemical Physics 21, 6 (06 1953), 1087–1092.
+https:
+//doi.org/10.1063/1.1699114
+Zackary Misso, Benedikt Bitterli, Iliyan Georgiev, and Wojciech Jarosz. 2022. Unbiased
+and Consistent Rendering Using Biased Estimators. ACM Trans. Graph. 41, 4, Article
+48 (jul 2022), 13 pages. https://doi.org/10.1145/3528223.3530160
+Thomas Müller, Markus Gross, and Jan Novák. 2017. Practical Path Guiding for Efficient
+Light-Transport Simulation. Comput. Graph. Forum 36, 4 (jul 2017), 91–100. https:
+//doi.org/10.1111/cgf.13227
+Thomas Müller, Brian Mcwilliams, Fabrice Rousselle, Markus Gross, and Jan Novák.
+2019. Neural Importance Sampling. ACM Trans. Graph. 38, 5, Article 145 (oct 2019),
+19 pages. https://doi.org/10.1145/3341156
+Michael Oren and Shree K. Nayar. 1994. Generalization of Lambert’s reflectance model.
+In Proceedings of the 21st Annual Conference on Computer Graphics and Interactive
+Techniques (SIGGRAPH ’94). Association for Computing Machinery, New York, NY,
+USA, 239–246. https://doi.org/10.1145/192161.192213
+Hao Qin, Xin Sun, Qiming Hou, Baining Guo, and Kun Zhou. 2015. Unbiased photon
+gathering for light transport simulation. ACM Trans. Graph. 34, 6, Article 208 (nov
+2015), 14 pages. https://doi.org/10.1145/2816795.2818119
+Alexander Rath, Pascal Grittmann, Sebastian Herholz, Petr Vévoda, Philipp Slusallek,
+and Jaroslav Křivánek. 2020. Variance-Aware Path Guiding. ACM Trans. Graph. 39,
+4, Article 151 (jul 2020), 12 pages. https://doi.org/10.1145/3386569.3392441
+Florian Reibold, Johannes Hanika, Alisa Jung, and Carsten Dachsbacher. 2018. Selective
+guided sampling with complete light transport paths. ACM Trans. Graph. 37, 6,
+Article 223 (dec 2018), 14 pages. https://doi.org/10.1145/3272127.3275030
+Lukas Ruppert, Sebastian Herholz, and Hendrik P. A. Lensch. 2020. Robust Fitting of
+Parallax-Aware Mixtures for Path Guiding. ACM Trans. Graph. 39, 4, Article 147
+(aug 2020), 15 pages. https://doi.org/10.1145/3386569.3392421
+T. S. Trowbridge and K. P. Reitz. 1975. Average irregularity representation of a rough
+surface for ray reflection. J. Opt. Soc. Am. 65, 5 (May 1975), 531–536.
+https:
+//doi.org/10.1364/JOSA.65.000531
+Eric Veach and Leonidas J. Guibas. 1997. Metropolis light transport. In Proceedings
+of the 24th Annual Conference on Computer Graphics and Interactive Techniques
+(SIGGRAPH ’97). ACM Press/Addison-Wesley Publishing Co., USA, 65–76. https:
+//doi.org/10.1145/258734.258775
+Jiří Vorba, Ondřej Karlík, Martin Šik, Tobias Ritschel, and Jaroslav Křivánek. 2014.
+On-Line Learning of Parametric Mixture Models for Light Transport Simulation.
+ACM Trans. Graph. 33, 4, Article 101 (jul 2014), 11 pages. https://doi.org/10.1145/
+2601097.2601203
+Bruce Walter, Sebastian Fernandez, Adam Arbree, Kavita Bala, Michael Donikian, and
+Donald P. Greenberg. 2005. Lightcuts: a scalable approach to illumination. ACM
+Trans. Graph. 24, 3 (jul 2005), 1098–1107. https://doi.org/10.1145/1073204.1073318
+Yu-Chen Wang, Yu-Ting Wu, Tzu-Mao Li, and Yung-Yu Chuang. 2021. Learning to
+Cluster for Rendering with Many Lights. ACM Trans. Graph. 40, 6, Article 277 (dec
+2021), 10 pages. https://doi.org/10.1145/3478513.3480561
+Cem Yuksel. 2020. Stochastic Lightcuts for Sampling Many Lights. IEEE Transactions
+on Visualization and Computer Graphics (2020), 11 pages. https://doi.org/10.1109/
+TVCG.2020.3001271
+Shaokun Zheng, Zhiqian Zhou, Xin Chen, Difei Yan, Chuyan Zhang, Yuefeng Geng, Yan
+Gu, and Kun Xu. 2022. LuisaRender: A High-Performance Rendering Framework
+with Layered and Unified Interfaces on Stream Architectures. ACM Trans. Graph.
+41, 6, Article 232 (nov 2022), 19 pages. https://doi.org/10.1145/3550454.3555463
+Shilin Zhu, Zexiang Xu, Henrik Wann Jensen, Hao Su, and Ravi Ramamoorthi. 2020.
+Deep Kernel Density Estimation for Photon Mapping. Computer Graphics Forum 39,
+4 (2020), 35–45. https://doi.org/10.1111/cgf.14052
+Martin Šik and Jaroslav Krivánek. 2019. Implementing One-Click Caustics in Corona
+Renderer. In Eurographics Symposium on Rendering - DL-only and Industry Track,
+Tamy Boubekeur and Pradeep Sen (Eds.). The Eurographics Association.
+https:
+//doi.org/10.2312/sr.20191221
+Martin Šik and Jaroslav Křivánek. 2020. Survey of Markov Chain Monte Carlo Methods
+in Light Transport Simulation. IEEE Transactions on Visualization and Computer
+Graphics 26, 4 (2020), 1821–1840. https://doi.org/10.1109/TVCG.2018.2880455
+ACM Trans. Graph., Vol. 37, No. 4, Article 111. Publication date: August xxxx.
+
+
+===== photon-guiding-caustics-2024 | page 16/17 =====
+
+111:16
+•
+Trovato and Tobin, et al.
+A
+DERIVATION OF DIRECTIONAL TRANSFORM
+Consider an unnormalized isotropic 3D Gaussian distribution of the following form with mean vector 𝜇:
+𝐺(x) = exp
+
+−∥x −𝜇∥2
+2𝜎2
+
+.
+(18)
+Let x0 be the location of observation point. Set
+𝑑= ∥x0 −𝜇∥.
+We consider a polar coordinate centered at x0 such that z = 𝑑−1(𝜇−x0) is the north pole and express the integral of 𝐺(x) over R3 with
+respect to it. Since
+∥x −𝜇∥2 = ∥(x −x0) −(𝜇−x0)∥2 = 𝑟2 −2𝑑𝑟cos𝜃+ 𝑑2 = (𝑟−𝑑cos𝜃)2 + 𝑑2 sin2 𝜃,
+we have
+∫
+R3 𝐺(x) 𝑑x =
+∫2𝜋
+0
+𝑑𝜙
+∫𝜋
+0
+𝑑𝜃
+∫∞
+0
+exp
+
+−(𝑟−𝑑cos𝜃)2 + 𝑑2 sin2 𝜃
+2𝜎2
+
+𝑟2 sin𝜃𝑑𝑟
+=
+∫
+Ω
+∫∞
+0
+exp
+
+−(𝑟−𝑑cos𝜃)2 + 𝑑2 sin2 𝜃
+2𝜎2
+
+𝑟2 𝑑𝑟𝑑𝜔,
+where Ω denotes the unit sphere, and cos𝜃= 𝜔· z.
+We now compute
+𝑓𝑜(𝜔) =
+∫∞
+0
+exp
+
+−(𝑟−𝑑cos𝜃)2 + 𝑑2 sin2 𝜃
+2𝜎2
+
+𝑟2 𝑑𝑟.
+Note that
+𝑟2 = (𝑟−𝑑cos𝜃)2 + 2𝑑cos𝜃(𝑟−𝑑cos𝜃) + 𝑑2 cos2 𝜃.
+By the change of variable 𝑠= 𝑟−𝑑cos𝜃, we have
+𝑓𝑜(𝜔) =
+∫∞
+−𝑑cos𝜃
+exp
+
+−𝑠2 + 𝑑2 sin2 𝜃
+2𝜎2
+
+(𝑠2 + 2𝑑cos𝜃· 𝑠+ 𝑑2 cos2 𝜃) 𝑑𝑠.
+By integrating by parts using
+∫
+exp
+
+−𝑠2 + 𝑑2 sin2 𝜃
+2𝜎2
+
+𝑠𝑑𝑠= −𝜎2 exp
+
+−𝑠2 + 𝑑2 sin2 𝜃
+2𝜎2
+
++ 𝐶,
+we have
+∫∞
+−𝑑cos𝜃
+exp
+
+−𝑠2 + 𝑑2 sin2 𝜃
+2𝜎2
+
+(𝑠2 + 2𝑑cos𝜃· 𝑠) 𝑑𝑠=
+
+−𝜎2 exp
+
+−𝑠2 + 𝑑2 sin2 𝜃
+2𝜎2
+
+(𝑠+ 2𝑑cos𝜃)
+∞
+−𝑑cos𝜃
++ 𝜎2
+∫∞
+−𝑑cos𝜃
+exp
+
+−𝑠2 + 𝑑2 sin2 𝜃
+2𝜎2
+
+𝑑𝑠
+= 𝜎2𝑒−𝑑2
+2𝜎2 𝑑cos𝜃+ 𝜎2
+∫∞
+−𝑑cos𝜃
+exp
+
+−𝑠2 + 𝑑2 sin2 𝜃
+2𝜎2
+
+𝑑𝑠.
+On the other hand, we have
+∫∞
+−𝑑cos𝜃
+exp
+
+−𝑠2 + 𝑑2 sin2 𝜃
+2𝜎2
+
+𝑑𝑠= 𝑒−𝑑2 sin2 𝜃
+2𝜎2
+(∫∞
+0
+𝑒−𝑠2
+2𝜎2 𝑑𝑠+
+∫𝑑cos𝜃
+0
+𝑒−𝑠2
+2𝜎2 𝑑𝑠
+)
+=
+√
+2𝜎𝑒−𝑑2 sin2 𝜃
+2𝜎2
+(∫∞
+0
+𝑒−𝑡2 𝑑𝑡+
+∫
+𝑑cos𝜃
+√
+2𝜎
+0
+𝑒−𝑡2 𝑑𝑡
+)
+=
+√︂𝜋
+2 𝜎𝑒−𝑑2 sin2 𝜃
+2𝜎2
+
+1 + erf
+𝑑cos𝜃
+√
+2𝜎
+
+,
+where we have applied the change of variable 𝑡= 𝑠/(
+√
+2𝜎). Putting these together, we obtain
+𝑓𝑜(𝜔) = 𝜎2𝑒−𝑑2
+2𝜎2 𝑑cos𝜃+ (𝜎2 + 𝑑2 cos2 𝜃)
+∫∞
+−𝑑cos𝜃
+exp
+
+−𝑠2 + 𝑑2 sin2 𝜃
+2𝜎2
+
+𝑑𝑠
+= 𝜎2𝑒−𝑑2
+2𝜎2 𝑑cos𝜃+
+√︂𝜋
+2 𝜎𝑒−𝑑2 sin2 𝜃
+2𝜎2
+(𝜎2 + 𝑑2 cos2 𝜃)
+
+1 + erf
+𝑑cos𝜃
+√
+2𝜎
+
+,
+as desired.
+ACM Trans. Graph., Vol. 37, No. 4, Article 111. Publication date: August xxxx.
+
+
+===== photon-guiding-caustics-2024 | page 17/17 =====
+
+Online Photon Guiding with 3D Gaussians for Caustics Rendering
+•
+111:17
+B
+PROOF OF SAMPLING ALGORITHM
+Now, define Φx0 : R3 \ {x0} →Ω by
+Φx0 (x) =
+1
+∥x −x0∥(x −x0)
+(x ∈R3 \ {x0}).
+Let us sample x following Eq. (18). Thus, for every random variable 𝑋on R3, we have
+E[𝑋] =
+1
+√︁
+(2𝜋𝜎2)3
+∫
+R3 𝑋(x)𝐺(x) 𝑑x.
+We discard x if we happen to get x = x0. Then, for every random variable 𝑋′ on Ω, we have
+E[𝑋′ ◦Φ] =
+1
+√︁
+(2𝜋𝜎2)3
+∫
+R3 𝑋′(Φ(x))𝐺(x) 𝑑x
+=
+1
+√︁
+(2𝜋𝜎2)3
+∫
+Ω
+∫∞
+0
+𝑋′(𝜔) exp
+
+−(𝑟−𝑑cos𝜃)2 + 𝑑2 sin2 𝜃
+2𝜎2
+
+𝑟2 𝑑𝑟𝑑𝜔
+=
+1
+√︁
+(2𝜋𝜎2)3
+∫
+Ω
+𝑋′(𝜔)
+∫∞
+0
+exp
+
+−(𝑟−𝑑cos𝜃)2 + 𝑑2 sin2 𝜃
+2𝜎2
+
+𝑟2 𝑑𝑟𝑑𝜔
+=
+1
+√︁
+(2𝜋𝜎2)3
+∫
+Ω
+𝑋′(𝜔)𝑓𝑜(𝜔) 𝑑𝜔,
+where we applied the change of variables x −x0 = 𝑟𝜔. Note that 𝜔= Φ(x) (when 𝑟> 0). Hence, it follows that Φ(x) obeys the spherical
+distribution 𝑓𝑜(after normalization).
+ACM Trans. Graph., Vol. 37, No. 4, Article 111. Publication date: August xxxx.

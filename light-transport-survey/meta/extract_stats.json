@@ -1,0 +1,210 @@
+[
+  {
+    "slug": "caustic-surface-light-2025",
+    "pages": 17,
+    "chars": 80278,
+    "ocr_pages": [],
+    "empty_pages": [],
+    "txt": "text/caustic-surface-light-2025.txt"
+  },
+  {
+    "slug": "ddgi-resampling-2021",
+    "pages": 13,
+    "chars": 64647,
+    "ocr_pages": [],
+    "empty_pages": [],
+    "txt": "text/ddgi-resampling-2021.txt"
+  },
+  {
+    "slug": "diff-light-tracing-2026",
+    "pages": 4,
+    "chars": 19294,
+    "ocr_pages": [],
+    "empty_pages": [],
+    "txt": "text/diff-light-tracing-2026.txt"
+  },
+  {
+    "slug": "double-freeform-2026",
+    "pages": 17,
+    "chars": 50296,
+    "ocr_pages": [],
+    "empty_pages": [],
+    "txt": "text/double-freeform-2026.txt"
+  },
+  {
+    "slug": "dynamic-caustics-2025",
+    "pages": 13,
+    "chars": 44483,
+    "ocr_pages": [],
+    "empty_pages": [],
+    "txt": "text/dynamic-caustics-2025.txt"
+  },
+  {
+    "slug": "gratnet-2025",
+    "pages": 15,
+    "chars": 61591,
+    "ocr_pages": [],
+    "empty_pages": [],
+    "txt": "text/gratnet-2025.txt"
+  },
+  {
+    "slug": "let-there-be-light-2026",
+    "pages": 24,
+    "chars": 75225,
+    "ocr_pages": [],
+    "empty_pages": [],
+    "txt": "text/let-there-be-light-2026.txt"
+  },
+  {
+    "slug": "lt3d-embedding-2025",
+    "pages": 18,
+    "chars": 97155,
+    "ocr_pages": [],
+    "empty_pages": [],
+    "txt": "text/lt3d-embedding-2025.txt"
+  },
+  {
+    "slug": "neural-integral-operators-2025",
+    "pages": 16,
+    "chars": 40496,
+    "ocr_pages": [],
+    "empty_pages": [],
+    "txt": "text/neural-integral-operators-2025.txt"
+  },
+  {
+    "slug": "neural-visibility-cache-2025",
+    "pages": 19,
+    "chars": 45829,
+    "ocr_pages": [],
+    "empty_pages": [],
+    "txt": "text/neural-visibility-cache-2025.txt"
+  },
+  {
+    "slug": "npm-path-guiding-2025",
+    "pages": 10,
+    "chars": 53769,
+    "ocr_pages": [],
+    "empty_pages": [],
+    "txt": "text/npm-path-guiding-2025.txt"
+  },
+  {
+    "slug": "nrc-2021",
+    "pages": 16,
+    "chars": 88262,
+    "ocr_pages": [],
+    "empty_pages": [],
+    "txt": "text/nrc-2021.txt"
+  },
+  {
+    "slug": "ntmc-2024",
+    "pages": 17,
+    "chars": 85472,
+    "ocr_pages": [],
+    "empty_pages": [],
+    "txt": "text/ntmc-2024.txt"
+  },
+  {
+    "slug": "photon-guiding-caustics-2024",
+    "pages": 17,
+    "chars": 78183,
+    "ocr_pages": [],
+    "empty_pages": [],
+    "txt": "text/photon-guiding-caustics-2024.txt"
+  },
+  {
+    "slug": "plasmonic-stiffness-2021",
+    "pages": 17,
+    "chars": 28850,
+    "ocr_pages": [],
+    "empty_pages": [],
+    "txt": "text/plasmonic-stiffness-2021.txt"
+  },
+  {
+    "slug": "plateau-diffpt-2022",
+    "pages": 13,
+    "chars": 56257,
+    "ocr_pages": [],
+    "empty_pages": [],
+    "txt": "text/plateau-diffpt-2022.txt"
+  },
+  {
+    "slug": "renderformer-2025",
+    "pages": 11,
+    "chars": 62139,
+    "ocr_pages": [],
+    "empty_pages": [],
+    "txt": "text/renderformer-2025.txt"
+  },
+  {
+    "slug": "renderformer-plus-2026",
+    "pages": 9,
+    "chars": 39647,
+    "ocr_pages": [],
+    "empty_pages": [],
+    "txt": "text/renderformer-plus-2026.txt"
+  },
+  {
+    "slug": "renderformer-v2-2026",
+    "pages": 28,
+    "chars": 63143,
+    "ocr_pages": [],
+    "empty_pages": [],
+    "txt": "text/renderformer-v2-2026.txt"
+  },
+  {
+    "slug": "restir-mcmc-2022",
+    "pages": 14,
+    "chars": 77045,
+    "ocr_pages": [],
+    "empty_pages": [],
+    "txt": "text/restir-mcmc-2022.txt"
+  },
+  {
+    "slug": "sobolev-2017",
+    "pages": 19,
+    "chars": 56179,
+    "ocr_pages": [],
+    "empty_pages": [],
+    "txt": "text/sobolev-2017.txt"
+  },
+  {
+    "slug": "specular-prefilter-2026",
+    "pages": 5,
+    "chars": 18562,
+    "ocr_pages": [],
+    "empty_pages": [],
+    "txt": "text/specular-prefilter-2026.txt"
+  },
+  {
+    "slug": "stiffness-polarization-2015",
+    "pages": 5,
+    "chars": 28017,
+    "ocr_pages": [],
+    "empty_pages": [],
+    "txt": "text/stiffness-polarization-2015.txt"
+  },
+  {
+    "slug": "tof-restir-2026",
+    "pages": 19,
+    "chars": 102785,
+    "ocr_pages": [],
+    "empty_pages": [],
+    "txt": "text/tof-restir-2026.txt"
+  },
+  {
+    "slug": "wave-ray-2023",
+    "pages": 20,
+    "chars": 118191,
+    "ocr_pages": [],
+    "empty_pages": [],
+    "txt": "text/wave-ray-2023.txt"
+  },
+  {
+    "slug": "wave-tracing-2025",
+    "pages": 12,
+    "chars": 66627,
+    "ocr_pages": [],
+    "empty_pages": [],
+    "txt": "text/wave-tracing-2025.txt"
+  }
+]

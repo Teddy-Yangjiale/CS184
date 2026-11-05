@@ -1,0 +1,385 @@
+
+
+===== specular-prefilter-2026 | page 1/5 =====
+
+Neural Caching of Prefiltered Radiance for Specular Lighting
+D. Klepikov
+, V. Frolov
+Lomonosow Moscow State University
+Figure 1: Qualitative comparison on Bunny (first row) and Specular Sponza (second row), a version of Sponza with highly reflective,
+untextured surfaces. All renderings use only specular lobes. In Bunny, the walls and floor have roughness 0.1. The NRC baseline uses the
+implementation provided in [MRNK21]. The reference is obtained by accumulating the Falcor path tracer over 4000 frames.
+Abstract
+Neural Radiance Caching (NRC) [MRNK21] provides an online neural representation of scene illumination for real-time path
+tracing. This paper presents an NRC variant tailored to specular lighting through a reflection-direction parameterization and
+a roughness-dependent radiance target. Our network predicts prefiltered incoming radiance at individual surface points, which
+is combined with a precomputed BRDF integration map using the split-sum approximation to estimate outgoing radiance. On
+Bunny and Specular Sponza, the reported comparisons indicate faster convergence to the accumulated path-tracing reference
+and improved specular-lighting quality relative to the evaluated NRC baselines. Our online-trained method maintains real-time
+performance while adapting its cache during rendering.
+CCS Concepts
+• Computing methodologies →Ray tracing; Neural networks;
+arXiv:2610.11702v1  [cs.GR]  8 Oct 2026
+
+
+===== specular-prefilter-2026 | page 2/5 =====
+
+D. Klepikov / Neural Caching of Prefiltered Radiance for Specular Lighting
+1. Introduction
+Specular reflection depends strongly on viewing direction and sur-
+face roughness, making its representation challenging for radiance
+caching. Neural Radiance Caching (NRC) [MRNK21] learns scene
+illumination online to accelerate path tracing. We target specular
+lighting by parameterizing the cache with the reflected viewing di-
+rection and learning roughness-dependent prefiltered incoming ra-
+diance for split-sum reconstruction.
+The main goal of path-tracing is to calculate the solution of Light
+Transport Equation (LTE) [Kaj86]:
+Lo(ωo) = Le(ωo)+
+Z
+H+ Li(ωi)fs(ωi,ωo)cos(θi)dωi.
+(1)
+Here, Le is the radiance emitted in direction ωo, Li is the radiance
+arriving from direction ωi, and fs is the bidirectional scattering dis-
+tribution function (BSDF). The angle θi is measured between the
+surface normal n at position x and ωi. We omit the position argu-
+ment for brevity. For reflection, the BSDF is restricted to a bidirec-
+tional reflectance distribution function (BRDF). In this work, we
+consider its specular component. Estimating the integral is compu-
+tationally expensive, motivating approaches that cache previously
+computed lighting information.
+Traditional radiance caching approaches like [KBPZ06] (and
+analogues) are based on several heuristics that are difficult to im-
+plement and tend to produce artefacts that need special care to be
+suppressed [SJJ12]. Other progressive rendering and reconstruction
+approaches (for example [MCY14]) also uses handcrafted mathe-
+matic models which makes their implementation and testing inside
+and existing rendering system a challenging task. At the same time
+NRC [MRNK21] reduces such complexity by way of abstraction
+of internal radiance cache representation via neural network. This
+method represents scene illumination with a multilayer perceptron
+that maps hit ray positions and directions to radiance values of the
+scattered light. The approach is lightweight and it is designed to
+continuously train in real-time to support dynamic scenes while en-
+suring predictable performance and resource usage. The research
+presents a multitude of methods to regulate and stabilize the output
+of the neural network like self-training and path termination that
+are omitted in our paper. The idea of encoding input data was also
+explored in these papers [MESK22] [VHM∗22] [MMR∗19].
+Our method parameterizes the cache to represent specular reflec-
+tion, including mirror-like and rough glossy reflection. Following
+the reflection-direction parameterization used in [VHM∗22], we
+use the viewing direction reflected about the surface normal as a
+network input. We also use the split-sum approximation [KG13] to
+separate prefiltered lighting from the final BRDF reconstruction.
+The cache predicts roughness-dependent filtered radiance, while
+the BRDF integration lookup supplies the final Fresnel-dependent
+reconstruction. Together, these terms approximate the reflected
+component of Equation (1).
+2. Previous Work
+2.1. Microfacet Specular BRDF
+Microfacet theory is a popular approach to modelling surface re-
+flection and transmission. In this theory, surfaces are modelled as
+a collection of small microfacets, with their aggregated statistical
+behaviour determining the observed scattering of light. The micro-
+facet specular BRDF is an expression that describes the scatter-
+ing of light from a surface composed of microfacets. To compute
+BRDF from such a model, local lighting effects at the microfacet
+level need to be considered, such as microfacet occlusion, shad-
+owing, and interreflection. An expression representing BRDF con-
+sists of two statistical measures, a microfacet normalized distribu-
+tion function(NDF) of facets represented as D and a shadowing-
+masking function between facets G, and a Fresnel reflectance fac-
+tor F. All of that is combined in a general Cook-Torrance [CT81]
+[CT82] microfacet specular shading model. Here h is the halfway-
+vector between ωi,ωo.
+fr(ωi,ωo) = D(h)F(ωo,h)G(ωi,ωo)
+4(n·ωi)(n·ωo)
+(2)
+For the implementation of those terms, we used ones implemented
+in the Falcor rendering framework [BYC∗20] and thoroughly de-
+scribed in Disney’s research paper [BS12]. In the presented pa-
+per NDF is represented as a modified Trowbridge-Reitz(GGX)
+[TR75] distribution. For the Fresnel term the Schlick approxima-
+tion [Sch94] is used. For the shadowing-masking function modified
+GGX model [WMLT07] is used with reparametrization presented
+in Disney’s research paper to dampen the shine on small roughness
+values.
+2.2. Split sum approximation
+The reflected component of Equation (1) can be estimated by im-
+portance sampling. Let p(ωi) denote the probability density of the
+sampled incoming direction, measured with respect to solid angle.
+We use the NDF-based sampling implementation provided by Fal-
+cor. For N samples ωi,k, the estimator is
+Lo(ωo) = Le(ωo)+
+Z
+H+ Li(ωi)fr(ωi,ωo)cos(θi)dωi
+≈Le(ωo)+ 1
+N
+N
+∑
+k=1
+Li(ωi,k)fr(ωi,k,ωo)cos(θi,k)
+p(ωi,k)
+.
+(3)
+Even with importance sampling, many samples may be required
+for high-quality results. Karis [KG13] approximates the reflected-
+radiance estimate by separating it into two averages:
+Lo(ωo)−Le(ωo)
+≈
+ 
+1
+N
+N
+∑
+k=1
+Li(ωi,k)
+! 
+1
+N
+N
+∑
+k=1
+fr(ωi,k,ωo)cos(θi,k)
+p(ωi,k)
+!
+.
+(4)
+The first factor represents prefiltered environment radiance. The
+practical prefilter in [KG13] samples the GGX normal distribu-
+tion and uses normalized cosine weighting. During prefiltering, the
+viewing direction is assumed perpendicular to the filtering surface,
+so n = ωo. The filtering normal is aligned with the reflected viewing
+direction used for lookup. Incoming directions ωi remain sampled
+over the hemisphere. This normal-view assumption introduces ap-
+proximation error at grazing viewing angles.
+
+
+===== specular-prefilter-2026 | page 3/5 =====
+
+D. Klepikov / Neural Caching of Prefiltered Radiance for Specular Lighting
+Figure 2: FLIP, SSIM, and MSE during online training on Bunny (first row) and Specular Sponza (second row). The horizontal axis measures
+rendering frames. Lower FLIP and MSE values and higher SSIM values indicate better agreement with the reference. MSE is displayed on a
+logarithmic scale. The curves compare our method with the evaluated NRC variants.
+The second factor is the BRDF integration map. With Schlick’s
+Fresnel approximation, it is represented by two coefficients stored
+in a lookup texture indexed by roughness and the cosine of the
+viewing angle. Our method uses this split-sum factorization and
+BRDF integration lookup to reconstruct outgoing radiance from the
+neural cache.
+2.3. Neural radiance cache
+We examined various methods employing neural networks (and
+multilayer perceptron specifically) for providing scene informa-
+tion. Neural methods are increasingly being used for rendering
+in various applications. The recent method of spatio-directional
+neural representations replaces traditional discrete representations
+with an MLP for reconstructing 3D geometry-aware solutions. The
+most widely adopted strategy currently is Neural Radiance Fields
+[MST∗20], the science publication of which inspired a multitude of
+works [BMT∗21] [VHM∗22] in the novel view synthesis problem.
+Gradually, the interest in neural approaches for global illumina-
+tion increased. There has been a significant effort to improve sam-
+pling [MMR∗19] and denoising of Monte Carlo global illumina-
+tion algorithms [BVM∗17] [CKS∗17] [GLA∗19]. The current work
+is based on NRC [MRNK21] where researchers use small neural
+networks that undergo online training to store and predict indirect
+global illumination for real-time path tracing. Further development
+shows the significant advantage of using hash grid parametric en-
+coding for NRC [MESK22].
+3. Proposed method
+Our method uses a single multilayer perceptron to predict pre-
+filtered incoming radiance at a queried position, reflection direc-
+tion, and roughness. The network is trained during rendering to
+adapt to scene changes. We divide rendering into three passes.
+The first generates training paths with multiple surface bounces.
+The second traces rendering paths and stores the surface informa-
+tion needed to query the cache, terminating paths earlier than the
+training pass. Both passes use Monte Carlo integration and impor-
+tance sampling for continuation directions. The third queries the
+cache and reconstructs outgoing radiance using the BRDF integra-
+tion lookup.
+For each surface hit, we collect the radiance and path-throughput
+information along the continuation of the training path. These data
+are used to reconstruct an RGB incoming-radiance target Y, which
+is stored in the training buffer together with its cache query. Differ-
+ent sampled paths can produce different targets for the same query.
+The cache query is q = (φ(x),ωrefl,ρ), where x is the surface
+position, φ is its hash-grid encoding, and ρ is the surface rough-
+ness. For an outgoing direction ωo pointing away from the surface,
+the reflected direction is ωrefl = 2(n · ωo)n −ωo. We hash-grid en-
+code positions [MESK22] and pass reflection direction and rough-
+ness directly to the MLP. Each query produces an RGB estimate of
+the filtered incoming radiance. The roughness input conditions the
+cached lighting on the reflection lobe.
+We train the network using mean squared error (MSE). Under
+squared-error loss, the population-optimal predictor is the condi-
+
+
+===== specular-prefilter-2026 | page 4/5 =====
+
+D. Klepikov / Neural Caching of Prefiltered Radiance for Specular Lighting
+tional mean of the training target given the cache query,
+bL∗(q) = E[Y | q].
+(5)
+The sampling distribution and target weighting therefore determine
+the radiance filter represented by the cache. The network and op-
+timization configuration follow [MRNK21]. To reduce fluctuations
+during online adaptation, we use an exponential moving average of
+the optimized network weights. The final pass combines the pre-
+dicted radiance with the stored BRDF integration map to estimate
+outgoing specular radiance in the camera direction. This recon-
+struction retains the split-sum approximation and its grazing-angle
+limitations.
+4. Experiments and Results
+We use the ray-tracing pipeline in Falcor [BYC∗20] and the MLP
+implementation in tiny-cuda-nn [Mü21]. All images were rendered
+at a resolution of 1920×1080 on an Intel Core i7-8700K processor
+with an NVIDIA RTX 3080 Ti graphics card. We evaluate image
+quality using FLIP [ANAM∗20], SSIM [WBSS04], and MSE on
+each rendering frame. MSE is displayed on a logarithmic scale be-
+cause its values span a wide range. The reference image is obtained
+by accumulating the regular path tracer over 4000 frames.
+Our findings indicate that the modifications have not resulted in
+any discernible performance degradation while improving conver-
+gence and output quality. The BRDF integration map is precom-
+puted and queried during rendering. The changes to the neural net-
+work inputs do not negatively influence the other major NRC com-
+ponents.
+We compare our method with the NRC baseline and an NRC
+variant trained only on initial hits. We include the initial-hit vari-
+ant because removing training targets from multiple hits along a
+path reduced NRC output quality in our tests. The two variants are
+distinguished in the comparison plots.
+Figure 1 presents a qualitative comparison after 1000 rendering
+frames. The displayed images were adjusted for improved visibil-
+ity. The FLIP results indicate closer agreement with the accumu-
+lated reference for our method than for the evaluated NRC base-
+lines. Figure 2 shows the evolution of the quality metrics dur-
+ing training and indicates faster convergence for our method. On
+Bunny, our method achieves better image quality than the NRC
+baseline after 1000 frames.
+5. Conclusion
+We presented an NRC variant for real-time specular-lighting ap-
+proximation that predicts roughness-dependent prefiltered incom-
+ing radiance and reconstructs outgoing radiance using the split-sum
+approximation. On Bunny and Specular Sponza, the reported com-
+parisons show faster convergence and improved output quality rel-
+ative to the evaluated NRC baselines while maintaining the same
+level of performance. The evaluated method uses hash-grid position
+encoding, a reflection-direction input, and split-sum reconstruction.
+It retains the grazing-angle limitations of the split-sum approxima-
+tion. Online training enables the cache to adapt during rendering,
+motivating further investigation of its behavior in dynamic scenes.
+References
+[ANAM∗20]
+ANDERSSON P., NILSSON J., AKENINE-MÖLLER T., OS-
+KARSSON M., ÅSTRÖM K., FAIRCHILD M. D.: Flip: A difference eval-
+uator for alternating images. Proc. ACM Comput. Graph. Interact. Tech.
+3, 2 (2020), 15–1. 4
+[BMT∗21]
+BARRON J. T., MILDENHALL B., TANCIK M., HEDMAN
+P., MARTIN-BRUALLA R., SRINIVASAN P. P.: Mip-nerf: A multiscale
+representation for anti-aliasing neural radiance fields. In Proceedings
+of the IEEE/CVF International Conference on Computer Vision (2021),
+pp. 5855–5864. 3
+[BS12]
+BURLEY B., STUDIOS W. D. A.: Physically-based shading at
+disney. In Acm Siggraph (2012), vol. 2012, vol. 2012, pp. 1–7. 2
+[BVM∗17]
+BAKO S., VOGELS T., MCWILLIAMS B., MEYER M.,
+NOVÁK J., HARVILL A., SEN P., DEROSE T., ROUSSELLE F.: Kernel-
+predicting convolutional networks for denoising monte carlo renderings.
+ACM Trans. Graph. 36, 4 (2017), 97–1. 3
+[BYC∗20]
+BENTY N., YAO K.-H., CLARBERG P., CHEN L., KALL-
+WEIT S., FOLEY T., OAKES M., LAVELLE C., WYMAN C.:
+The
+falcor rendering framework, 2020. URL: https://github.com/
+NVIDIAGameWorks/Falcor. 2, 4
+[CKS∗17]
+CHAITANYA C. R. A., KAPLANYAN A. S., SCHIED C.,
+SALVI M., LEFOHN A., NOWROUZEZAHRAI D., AILA T.: Interactive
+reconstruction of monte carlo image sequences using a recurrent denois-
+ing autoencoder. ACM Transactions on Graphics (TOG) 36, 4 (2017),
+1–12. 3
+[CT81]
+COOK R. L., TORRANCE K. E.: A reflectance model for com-
+puter graphics. ACM Siggraph Computer Graphics 15, 3 (1981), 307–
+316. 2
+[CT82]
+COOK R. L., TORRANCE K. E.: A reflectance model for com-
+puter graphics. ACM Transactions on Graphics (ToG) 1, 1 (1982), 7–24.
+2
+[GLA∗19]
+GHARBI M., LI T.-M., AITTALA M., LEHTINEN J., DU-
+RAND F.: Sample-based monte carlo denoising using a kernel-splatting
+network. ACM Transactions on Graphics (TOG) 38, 4 (2019), 1–12. 3
+[Kaj86]
+KAJIYA J. T.: The rendering equation. SIGGRAPH Comput.
+Graph. 20, 4 (aug 1986), 143–150. URL: https://doi.org/10.
+1145/15886.15902, doi:10.1145/15886.15902. 2
+[KBPZ06]
+KRIVÁNEK J., BOUATOUCH K., PATTANAIK S. N., ZARA
+J.: Making radiance and irradiance caching practical: Adaptive caching
+and neighbor clamping. Rendering Techniques 2006 (2006), 127–138. 2
+[KG13]
+KARIS B., GAMES E.: Real shading in unreal engine 4. Proc.
+Physically Based Shading Theory Practice 4, 3 (2013), 1. 2
+[MCY14]
+MOON B., CARR N., YOON S.-E.: Adaptive rendering based
+on weighted local regression. ACM Transactions on Graphics (TOG) 33,
+5 (2014), 1–14. 2
+[MESK22]
+MÜLLER T., EVANS A., SCHIED C., KELLER A.: Instant
+neural graphics primitives with a multiresolution hash encoding. ACM
+Transactions on Graphics (ToG) 41, 4 (2022), 1–15. 2, 3
+[MMR∗19]
+MÜLLER T., MCWILLIAMS B., ROUSSELLE F., GROSS
+M., NOVÁK J.: Neural importance sampling. ACM Transactions on
+Graphics (ToG) 38, 5 (2019), 1–19. 2, 3
+[MRNK21]
+MÜLLER T., ROUSSELLE F., NOVÁK J., KELLER A.:
+Real-time neural radiance caching for path tracing.
+arXiv preprint
+arXiv:2106.12372 (2021). 1, 2, 3, 4
+[MST∗20]
+MILDENHALL B., SRINIVASAN P. P., TANCIK M., BARRON
+J. T., RAMAMOORTHI R., NG R.: Nerf: Representing scenes as neural
+radiance fields for view synthesis. In ECCV (2020). 3
+[Mü21]
+MÜLLER T.: tiny-cuda-nn, 4 2021. URL: https://github.
+com/NVlabs/tiny-cuda-nn. 4
+[Sch94]
+SCHLICK C.: An inexpensive brdf model for physically-based
+rendering. In Computer graphics forum (1994), vol. 13, Wiley Online
+Library, pp. 233–246. 2
+
+
+===== specular-prefilter-2026 | page 5/5 =====
+
+D. Klepikov / Neural Caching of Prefiltered Radiance for Specular Lighting
+[SJJ12]
+SCHWARZHAUPT J., JENSEN H. W., JAROSZ W.:
+Practical
+hessian-based error control for irradiance caching. ACM Transactions
+on Graphics (TOG) 31, 6 (2012), 1–10. 2
+[TR75]
+TROWBRIDGE T., REITZ K. P.: Average irregularity representa-
+tion of a rough surface for ray reflection. JOSA 65, 5 (1975), 531–536.
+2
+[VHM∗22]
+VERBIN D., HEDMAN P., MILDENHALL B., ZICKLER T.,
+BARRON J. T., SRINIVASAN P. P.: Ref-nerf: Structured view-dependent
+appearance for neural radiance fields. In 2022 IEEE/CVF Conference
+on Computer Vision and Pattern Recognition (CVPR) (2022), IEEE,
+pp. 5481–5490. 2, 3
+[WBSS04]
+WANG Z., BOVIK A. C., SHEIKH H. R., SIMONCELLI E. P.:
+Image quality assessment: from error visibility to structural similarity.
+IEEE transactions on image processing 13, 4 (2004), 600–612. 4
+[WMLT07]
+WALTER B., MARSCHNER S. R., LI H., TORRANCE K. E.:
+Microfacet models for refraction through rough surfaces. In Proceedings
+of the 18th Eurographics conference on Rendering Techniques (2007),
+pp. 195–206. 2

@@ -1,0 +1,1037 @@
+
+
+===== renderformer-plus-2026 | page 1/9 =====
+
+RenderFormer++: Scalable and Physics-Informed Feed-Forward Neural
+Rendering
+Huangsheng Du∗, Haoran Zhu∗, Youcheng Cai†
+Jingyang Meng, Ligang Liu
+University of Science and Technology of China
+Hefei, China
+caiyoucheng@ustc.edu.cn
+Abstract
+We present RenderFormer++, a scalable and physics-
+informed feed-forward neural rendering framework
+for global illumination in mesh scenes.
+Existing
+Transformer-based neural rendering methods such as
+RenderFormer achieve promising cross-scene general-
+ization, but lack explicit transport priors and scale poorly
+due to quadratic triangle-level attention. To address
+these issues, we introduce Physics-Informed Transport
+Guidance (PITG), which embeds rendering-equation-
+inspired inductive biases into the attention mechanism
+and introduces a transport consistency loss, encour-
+aging physics-informed light transport modeling. We
+further propose Hierarchical Object-Centric Tokeniza-
+tion (HOCT), which aggregates triangle-level features
+into compact object-level tokens via cross-attention with
+learnable queries, substantially reducing computational
+and memory costs. Extensive experiments demonstrate
+that RenderFormer++ achieves scalable and generaliz-
+able feed-forward global illumination rendering across
+complex large-scale scenes with competitive rendering
+quality and substantially improved efficiency over Ren-
+derFormer. The code will be made publicly available
+upon acceptance.
+Introduction
+Modeling global illumination for scenes represented as
+discrete triangle meshes remains a fundamental chal-
+lenge in computer graphics. Classical rendering methods
+rely on physically based simulations of light transport
+and can accurately reproduce complex phenomena such
+as indirect illumination, soft shadows, and specular in-
+terreflections. More recently, neural rendering (Tewari
+et al. 2022) has emerged as a promising data-driven
+paradigm for modeling global illumination. In particular,
+transformer-based approaches, such as RenderFormer
+(Zeng et al. 2025), offer the possibility of feed-forward
+rendering models that generalize across diverse mesh
+scenes without requiring per-scene optimization.
+Existing neural rendering methods for global illumi-
+nation can generally be categorized into two paradigms.
+Neural radiance methods (Hadadan, Chen, and Zwicker
+2021; Müller et al. 2021) model global illumination
+through continuous or learned scene-specific spatial
+functions. Neural transport methods (Diolatzis, Philip,
+∗These authors contributed equally.
+†Corresponding author.
+Figure 1: Feed-forward global illumination results pro-
+duced by RenderFormer++ across diverse complex
+scenes with varied geometry, materials, and lighting
+conditions.
+and Drettakis 2022; Ren et al. 2024) embed physical con-
+straints into their training objectives or architectures to
+better simulate complex light transport. Despite achiev-
+ing high rendering quality, methods in both paradigms
+are typically trained or optimized in a scene-specific
+manner. This inherent dependence on per-scene training
+severely limits their ability to generalize to unseen and
+diverse environments.
+To overcome this generalization barrier, recent feed-
+forward architectures such as RenderFormer (Zeng et al.
+2025) represent an important step toward fully neural
+and generalizable rendering pipelines for triangle-mesh
+scenes. By tokenizing scene triangles into attention-
+based representations, RenderFormer captures global
+light transport interactions with minimal prior assump-
+tions, allowing the network to learn transport behav-
+iors directly from data. However, this purely data-driven
+paradigm suffers from two major limitations: (1) Physi-
+cal Constraints: relying solely on attention mechanisms
+does not explicitly enforce the physical laws governing
+light transport as described by the rendering equation
+(Kajiya 1986); and (2) Scalability: naive triangle-level
+tokenization causes computational and memory costs to
+arXiv:2606.30380v2  [cs.GR]  7 Aug 2026
+
+
+===== renderformer-plus-2026 | page 2/9 =====
+
+grow quadratically with the number of scene triangles.
+This poor scalability restricts applicability to large-scale
+scenes.
+In this work, we seek to address these limitations
+and enable high-fidelity neural rendering for substan-
+tially larger and more complex environments. The pri-
+mary challenges are twofold: (1) how to effectively in-
+corporate the inductive biases of the rendering equation
+into Transformer-based light transport modeling; and (2)
+how to design a more efficient tokenization strategy that
+replaces naive triangle-based tokenization while sub-
+stantially reducing computational overhead and preserv-
+ing essential geometric and radiometric information.
+To address these challenges, we propose Render-
+Former++, a scalable and physics-informed feed-
+forward neural rendering framework for global illumi-
+nation. First, we introduce Physics-Informed Trans-
+port Guidance (PITG), which explicitly incorporates
+rendering-equation-inspired inductive biases into the
+Transformer architecture. Specifically, we embed light
+transport principles directly into the attention mecha-
+nism and introduce a transport consistency loss to mini-
+mize a rendering-equation-inspired residual in feature
+space during training, encouraging physics-informed
+light transport modeling. Second, we propose a Hier-
+archical Object-Centric Tokenization (HOCT) strat-
+egy that aggregates triangle-level tokens into compact
+object-level tokens through cross-attention with learn-
+able query vectors. This abstraction significantly reduces
+the sequence length processed by the attention layers,
+effectively alleviating the quadratic computational bot-
+tleneck and enabling scalable rendering for large multi-
+object scenes. Finally, during the view-dependent de-
+coding stage, we introduce a geometry-guided decoder
+that integrates G-buffers with aggregated object-level
+tokens to produce high-fidelity renderings. Through ex-
+tensive experiments on complex mesh scenes with di-
+verse geometric structures and lighting configurations,
+we demonstrate that the proposed framework enables
+scalable and generalizable feed-forward global illumi-
+nation modeling.
+Our primary contributions are summarized as follows:
+• We propose RenderFormer++, a scalable, physics-
+informed, and feed-forward neural rendering frame-
+work capable of generalizing across complex, large-
+scale triangle-mesh environments.
+• We introduce two key technical innovations: PITG,
+which incorporates rendering-equation-inspired in-
+ductive biases for physics-informed light transport
+modeling, and HOCT, which alleviates the quadratic
+computational bottleneck through compact object-
+centric tokenization, jointly enabling efficient and
+physics-informed rendering of complex environ-
+ments.
+Related Work
+Physically-Based Light Transport
+Physically based rendering models image formation
+through radiance transport. The rendering equation (Ka-
+jiya 1986) expresses outgoing surface radiance as the
+sum of emitted radiance and reflected incident radiance
+integrated over the hemisphere. Solving it requires ac-
+counting for recursive interactions among surfaces and
+light sources, modulated by reflectance functions such as
+BRDFs (Nicodemus et al. 1977), which produce global
+illumination effects.
+Monte Carlo path tracing is the standard approach to
+approximating the rendering equation, but its stochastic
+estimation suffers from high variance and slow con-
+vergence. Neural importance sampling (Dong, Wang,
+and Li 2023; Huang et al. 2024) and radiance caching
+(Müller et al. 2021; Majercik et al. 2019) improve sam-
+pling and reuse efficiency, yet remain within the conven-
+tional Monte Carlo pipeline.
+Radiosity methods (Sillion et al. 1991; Goral et al.
+1984; Immel, Cohen, and Greenberg 1986) provide
+a finite-element formulation of light transport but are
+largely limited to diffuse surfaces. Neural Radiosity and
+its dynamic-scene extensions demonstrate the value of
+physically grounded inductive biases (Hadadan, Chen,
+and Zwicker 2021; Su et al. 2024; Coomans et al. 2024).
+However, these methods do not address unified feed-
+forward rendering for complex triangle-mesh scenes,
+motivating our rendering-equation-inspired design.
+Neural Rendering
+Recent advances in neural rendering have explored
+replacing traditional rendering pipelines with neural
+network-based inference of light transport. Existing ap-
+proaches can be broadly grouped into three categories.
+The first category focuses on scene-specific neural ap-
+proximations of global illumination, including Neural
+Radiosity and its dynamic extensions (Hadadan, Chen,
+and Zwicker 2021; Su et al. 2024; Coomans et al. 2024).
+These methods produce high-quality results but require
+per-scene fitting and therefore offer limited cross-scene
+generalization. The second category models the light
+transport process through neural scene representations
+(Granskog et al. 2020; Eslami et al. 2018). Specifically,
+active exploration improves coverage of variable scenes
+(Diolatzis, Philip, and Drettakis 2022), while regression-
+based methods approximate scene-specific transport and
+extend it to dynamic area lights (Ren et al. 2013; Gao,
+Mu, and Xu 2023). Furthermore, source-to-object and
+inter-object transport interactions are explicitly mod-
+eled in (Ren et al. 2024; Zheng et al. 2024). Despite
+their differences, these approaches remain largely scene-
+specific. The third category represents a departure from
+the above methods. RenderFormer tokenizes mesh tri-
+angles and models their interactions with self-attention,
+enabling cross-scene feed-forward rendering (Zeng et al.
+2025). However, it remains constrained by light and cam-
+era distributions and the number of scene primitives,
+
+
+===== renderformer-plus-2026 | page 3/9 =====
+
+leaving scalable rendering for complex meshes an open
+challenge.
+Transformer-based feed-forward network
+Transformer architectures (Vaswani et al. 2017) use
+attention to model long-range dependencies and have
+proven effective in vision (Dosovitskiy et al. 2021), lan-
+guage modeling (Devlin et al. 2019), and 3D shape rep-
+resentation (Zhang et al. 2023). More recently, mod-
+els such as VGGT (Wang et al. 2025) and AnySplat
+(Jiang et al. 2025) have demonstrated their potential for
+feed-forward structured inference by amortizing multi-
+stage geometric inference, post-optimization, or per-
+scene reconstruction into a single forward pass that
+predicts scene geometry, camera parameters, or view-
+synthesis-ready representations. These advances posi-
+tion transformers as learnable surrogates for structured
+inference rather than merely generic feature extrac-
+tors. In rendering, attention-based architectures have
+similarly been used to model light transport (Ren
+et al. 2024). Most closely related, RenderFormer (Zeng
+et al. 2025) formulates triangle-mesh rendering as a
+feed-forward sequence-to-sequence transformation, us-
+ing self-attention to capture global transport interac-
+tions across scene primitives. Although it enables cross-
+scene generalization, its flat triangle-level tokenization
+becomes a scalability bottleneck as scene complexity
+increases.
+Method
+We consider the problem of rendering a high-dynamic-
+range (HDR) image with global illumination directly
+from an explicit triangle-mesh representation of a scene.
+The 3D scene is represented as a collection of M tri-
+angles, denoted as S = {tm}M
+m=1. Each triangle tm
+is associated with geometric and radiometric attributes,
+including spatial coordinates, shading normals, surface
+reflectance properties (e.g., diffuse albedo, specular
+albedo, and roughness), as well as emission profiles.
+Our objective is to learn a feed-forward neural mapping
+function fθ that takes the explicit scene representation
+S and the camera pose C as inputs and directly predicts
+the target HDR image I ∈R3×H×W :
+I = fθ(S, C).
+(1)
+RenderFormer (Zeng et al. 2025) adopts a similar
+formulation by representing S as triangle-level tokens,
+learning transport interactions directly over scene prim-
+itives, and decoding image values conditioned on C.
+In this work, we investigate how rendering-equation-
+inspired inductive biases can be incorporated into
+Transformer-based light transport modeling, while si-
+multaneously designing a more efficient scene encod-
+ing strategy to alleviate the computational bottleneck in
+complex scenes.
+Figure 2 provides an overview of RenderFormer++,
+which first aggregates per-object triangle features into
+compact object-level tokens using HOCT, refines the
+resulting global representation with PITG, and then pre-
+dicts the HDR image through the geometry-guided de-
+coder.
+Physics-Informed Transport Guidance
+PITG takes as input a global scene token Fglobal. Our
+goal is to model light transport directly through the at-
+tention mechanism of Transformers. In physically based
+rendering, the light transport operator, denoted as T,
+propagates radiance through the scene by transporting
+incident radiance to the next visible surface, where it is
+scattered according to the surface reflectance. Follow-
+ing Soler, Molazem, and Subr (2022), the equilibrium
+radiance field satisfies the rendering equation:
+Lo = TLo + Le,
+(2)
+where Lo denotes the outgoing radiance field, Le rep-
+resents emitted radiance from light sources, and Ls =
+TLo corresponds to transported and scattered radiance
+within the scene.
+RenderFormer (Zeng et al. 2025) implicitly models
+Eq. 2 as:
+Lo = Tθ(Fglobal),
+(3)
+where Tθ denotes the Transformer-based neural renderer
+parameterized by θ. In RenderFormer, the transport pro-
+cess is learned in a largely unconstrained manner from
+triangle-based scene tokenization and global attention
+interactions.
+However, such a direct formulation lacks explicit
+physical structure for representing key properties of light
+transport, especially the separation between emitted and
+transported radiance and the recursive nature of multi-
+bounce illumination. To address this limitation, we in-
+troduce Physics-Informed Transport Guidance (PITG),
+which injects rendering-equation-inspired inductive bi-
+ases into the Transformer architecture through three
+complementary mechanisms: (1) an emission encoder
+that explicitly incorporates emission priors into feature
+representations, (2) a neural light transport operator that
+reflects the recursive structure of light transport in fea-
+ture space, and (3) a transport consistency loss that reg-
+ularizes iterative transport dynamics during training.
+Emission Encoder.
+In the rendering equation, emis-
+sive surfaces act as the origins of illumination and pro-
+vide the source term for global light transport. To mirror
+this behavior within our neural formulation, we explic-
+itly inject emission priors into the global scene token
+Fglobal.
+Let E denote the emission features aligned with
+the scene tokens, where entries corresponding to non-
+emissive elements are zero-padded. We concatenate E
+with the scene tokens and map the resulting features
+into the transport feature space via an emission encoder,
+denoted as EEncode(·) and implemented using multi-
+layer perceptrons (MLPs). This transformation produces
+the global emission token Fglobal
+e
+and the global non-
+
+
+===== renderformer-plus-2026 | page 4/9 =====
+
+Cross-Attention
+Self-Attention
+Feed-Forward 
+Network
+DPT Head
+Self-Attention
+Feed-Forward 
+Network
+Triangle 
+Tokens
+Object
+Tokens
+Self-Attention
+Feed-Forward 
+Network
+Global Scene
+Token 
+Emission Encoder
+Cross-Attention
+Self-Attention
+Feed-Forward 
+Network
+Learnable Query Vectors
+Self-Attention
+Feed-Forward 
+Network
+Camera Ray Map & G-buffer
+(a) Hierarchical Object-Centric Tokenization (HOCT)
+(b) Physics-Informed Transport Guidance (PITG)
+(c) Geometry-Guided Decoder (GGD)
+Transport Consistency Loss
+HOCT
+Figure 2: Overview of RenderFormer++. The framework first aggregates triangle-level features into compact object-
+level tokens, refines them through physics-informed transport modeling, and decodes view-dependent radiance using
+geometry-guided queries.
+emission token Fglobal
+s
+:
+Fglobal
+e
+= EEncode
+ concat(Fglobal, E)
+
+,
+Fglobal
+s
+= EEncode
+ concat(Fglobal, 0)
+
+,
+(4)
+where 0 denotes an all-zero emission embedding.
+This explicit emission injection is applied once before
+the neural light transport stage, ensuring that localized
+light source information is embedded into the global to-
+ken representation. Intuitively, Fglobal
+e
+represents features
+associated with emitted radiance Le, while Fglobal
+s
+repre-
+sents features corresponding to transported and scattered
+radiance Ls.
+Neural Light Transport Operator.
+Inspired by Neu-
+ral Radiosity (Hadadan, Chen, and Zwicker 2021),
+which formulates global illumination as an iterative
+transport process, we rewrite Eq. 2 as:
+Ls = T(Le + Ls).
+(5)
+This formulation emphasizes that scattered radiance is
+recursively generated from the combination of emitted
+radiance and previously transported radiance. To pre-
+serve this operator-based structure in feature space, we
+design a Transformer-based neural light transport oper-
+ator Tθ:
+Fglobal
+s
+= Tθ
+ Fglobal
+s
++ Fglobal
+e
+
+.
+(6)
+Here, the self-attention mechanism serves as a learn-
+able feature-space transport mechanism that propagates
+illumination information across scene tokens, enabling
+long-range interactions for global illumination predic-
+tion in a fully feed-forward manner.
+Finally, the refined scattered features are combined
+with the emission features to obtain the final global illu-
+mination representation:
+˜Fglobal = Fglobal
+s
++ Fglobal
+e
+.
+(7)
+Compared with unconstrained Transformer-based
+rendering of RenderFormer, our formulation introduces
+physics-informed structure into feature propagation,
+separately encodes features with and without explicit
+emission conditioning, and supports the modeling of
+complex illumination effects.
+To model recursive light transport in feature space,
+we repeatedly apply the neural light transport operator
+using shared parameters across iterations. At iteration k,
+the transport update is defined as:
+(k+1)Fglobal
+s
+= Tθ
+
+(k)Fglobal
+s
++ Fglobal
+e
+
+,
+(8)
+where the same operator Tθ is shared across all itera-
+tions.
+This recursive refinement progressively propagates il-
+lumination information throughout the scene, allowing
+the network to iteratively refine global illumination rep-
+resentations in feature space while maintaining parame-
+ter efficiency. In our implementation, we empirically set
+
+
+===== renderformer-plus-2026 | page 5/9 =====
+
+the number of transport iterations to K = 3. The influ-
+ence of the iteration K on rendering quality is further
+analyzed in the ablation studies.
+Transport Consistency Loss.
+Motivated by the recur-
+sive structure of the rendering equation, we introduce
+a transport consistency loss to regularize intermediate
+transport states during training.
+Specifically, we define the objective as the cumulative
+discrepancy between the current transport state and the
+updated state predicted by the neural transport operator:
+Lcons =
+K
+X
+k=1
+
+
+
+(k)Fglobal
+s
+−Tθ
+ (k)Fglobal
+s
++ Fglobal
+e
+
+
+
+
+2
+2 .
+(9)
+This regularization penalizes discrepancies between
+transport states and their predicted updates, encouraging
+consistent multi-step feature refinement during training
+while preserving a feed-forward inference mechanism at
+test time.
+Hierarchical Object-Centric Tokenization
+Directly modeling light transport over unstructured se-
+quences of triangles yields a sequence length that scales
+linearly with the total number of primitives in a scene.
+This formulation inherently limits scalability as geomet-
+ric complexity increases. To address this computational
+bottleneck while preserving essential structural infor-
+mation, we introduce a Hierarchical Object-Centric To-
+kenization (HOCT) strategy.
+Triangle Embedding.
+Triangle-mesh scenes are natu-
+rally organized into objects, denoted as S = {On}N
+n=1,
+where each object On contains a subset of scene tri-
+angles. For a given mesh object On = {tm
+n }Mn
+m=1,
+we initially treat its constituent triangles as an un-
+ordered set. Following the design of RenderFormer
+(Zeng et al. 2025), the spatial coordinates of each tri-
+angle are encoded using Relative Spatial Positional En-
+coding (RSPE). Concurrently, we encode intrinsic ge-
+ometric and radiometric attributes, including shading
+normals, emission profiles, and surface reflectance pa-
+rameters. Surface reflectance is modeled using a micro-
+facet BRDF with a GGX normal distribution function
+(NDF) (Walter et al. 2007), parameterized by diffuse
+albedo, specular albedo, and roughness values.
+The combination of positional and attribute embed-
+dings yields a sequence of encoded triangle tokens for
+object On, denoted as Hn. This primitive-level encoder
+shares its weights across all objects to ensure consistent
+extraction of local geometric structures.
+Object-Centric Tokenization.
+To reduce the se-
+quence length processed by the global transport module,
+we aggregate the triangle tokens of each object via cross-
+attention. Inspired by 3DShape2VecSet (Zhang et al.
+2023), we introduce a learnable query set Q ∈Rnq×d
+shared across all objects, where nq denotes the num-
+ber of learnable queries and determines the number of
+output object-level tokens per object, and d denotes the
+feature dimension. The shared queries provide a com-
+mon aggregation basis for summarizing geometric and
+radiometric information across objects.
+We use Q as the query embeddings in a cross-
+attention operation over the encoded triangle tokens Hn.
+For a given object On, the token aggregation process is
+formulated as:
+Fn = CrossAttn(Q, Hn),
+(10)
+where Fn represents the compact fixed-length represen-
+tation of object On. Finally, the global scene token is
+constructed by concatenating all object-level token se-
+quences: Fglobal = Concat({Fn}N
+n=1).
+Geometry-Guided Decoder
+To predict the final view-dependent radiance, we adopt
+the patch-based decoding architecture of RenderFormer
+(Zeng et al. 2025). The target image is partitioned into
+non-overlapping 4 × 4 patches. For each patch p, we
+construct a query token by encoding a bundle of primary
+rays that pass through the centers of its constituent pixels.
+To provide local scene cues for decoding, we extract
+the corresponding G-buffer attributes (e.g., surface nor-
+mals, albedo, and roughness) from a pre-rendered G-
+buffer image, as commonly adopted in prior rendering
+methods (Ren et al. 2024; Zheng et al. 2024). The ray
+vectors and their spatially aligned G-buffer attributes are
+concatenated and jointly embedded to form a geometry-
+guided patch token V. We design a Transformer-based
+decoder, denoted as VDecoder, to synthesize the HDR
+radiance for each patch by conditioning on both the local
+geometry-guided token V and the globally aggregated
+light transport tokens ˜Fglobal:
+I = VDecoder(V, ˜Fglobal),
+(11)
+where I represents the predicted HDR image. By incor-
+porating G-buffer attributes into the ray-bundle queries,
+the decoder fuses local geometric and material details
+with the global illumination resolved by the transport
+operator.
+Network Architecture
+RenderFormer++
+comprises
+view-independent
+and
+view-dependent stages. In the view-independent stage, a
+four-layer self-attention Transformer first encodes the
+triangle sequence of each object. HOCT then uses
+nq = 8 learnable queries to aggregate these trian-
+gle tokens through three cross-attention layers and two
+self-attention layers, producing compact object-level to-
+kens. The object-level tokens are concatenated into a
+global scene sequence. An emission encoder then gen-
+erates global emission and non-emission tokens, which
+are fed into a two-layer neural transport operator. In
+the view-dependent stage, a six-layer geometry-guided
+Transformer decoder and a DPT head predict the HDR
+image. RenderFormer++ has a parameter count compa-
+rable to that of RenderFormer.
+
+
+===== renderformer-plus-2026 | page 6/9 =====
+
+Loss Function
+We train the network end-to-end in
+a supervised manner. Our final optimization objective
+combines an L1 loss in log-transformed HDR space be-
+tween the rendered reference image and our predicted
+image, an LPIPS loss to minimize perceptual discrepan-
+cies, and the transport consistency loss:
+L = L1 + λlpipsLlpips + λconsLcons
+(12)
+where we empirically set the weighting hyperparameters
+to λlpips = 0.05 and λcons = 0.1.
+Experiments
+Experimental Setup
+Dataset.
+We construct a large-scale synthetic dataset
+of 500K scenes following the RenderFormer data gener-
+ation pipeline (Zeng et al. 2025). Each scene randomly
+samples object instances, materials, lighting, and cam-
+era viewpoints, and contains 5–70 objects with approxi-
+mately 200–1200 triangles each. Rendering every scene
+from four viewpoints yields 2M training images.
+These randomized configurations provide diverse spa-
+tial layouts and lighting conditions. Reference images
+are rendered in Blender at 256 × 256 resolution using
+adaptive sampling with 4096 samples per pixel (spp),
+followed by denoising. Surface reflectance is modeled
+by a microfacet BRDF with a GGX normal distribu-
+tion (Walter et al. 2007), using diffuse albedo, specular
+albedo, and roughness.
+To evaluate scalability, we evenly split the dataset into
+small-scale and large-scale subsets of 250K scenes each.
+The former contains approximately 3K–10K triangles
+per scene, while the latter contains 10K–80K.
+For evaluation, we define train and test splits, each
+containing 1,000 small-scale and 1,000 large-scale
+scenes with four views per scene. The train split con-
+tains newly rendered views of scene instances used dur-
+ing training, with camera viewpoints disjoint from those
+in the training set, whereas the test split contains entirely
+unseen scene instances.
+Training Details.
+We train the full model for 500k
+iterations using AdamW with cosine learning-rate decay
+from 1.0 × 10−4. Training takes 7 days on 8 NVIDIA
+A100 80GB GPUs with a batch size of 32, using Flash
+Attention (Dao 2024) and bfloat16 precision.
+Main Results
+We report both reconstruction metrics (L1 and MAPE)
+and perceptual metrics (LPIPS and SSIM). These met-
+rics are evaluated on HDR images spanning a wide dy-
+namic range.
+Table 1 compares RenderFormer++ with Render-
+Former, which is additionally fine-tuned on our small-
+scale dataset for fairness. RenderFormer++ achieves
+stronger perceptual quality on small-scale scenes and
+consistent performance across the train and test splits.
+Unlike RenderFormer, whose triangle-level tokenization
+precludes large-scale training, HOCT enables Render-
+Former++ to train on large-scale scenes with improved
+quality and scalability.
+Figure 3 compares RenderFormer++ with Render-
+Former variants on unseen test splits from the Render-
+Former dataset and our small- and large-scale datasets;
+further results and details are provided in the ancillary
+supplementary material.
+Efficiency Analysis
+Under a controlled setting with 50 objects (25,600 tri-
+angles) per scene, RenderFormer++ achieves 3.60× and
+3.86× speedups in inference and per-step training, re-
+spectively, while reducing peak training memory by
+55.6% and maintaining comparable inference memory.
+Detailed efficiency profiling is provided in the ancillary
+supplementary material.
+Ablation Study
+We evaluate the ablation variants on the test splits of the
+RenderFormer dataset and our small- and large-scale
+datasets. For experiments on the RenderFormer dataset,
+G-buffer inputs are disabled for all variants to follow the
+original RenderFormer protocol.
+Effect of Physics-Informed Transport Guidance. To
+evaluate PITG under both triangle-level and object-
+level tokenization settings, we conduct experiments on
+the RenderFormer dataset and Small- and Large-scale
+datasets. Under the triangle-level setting, we integrate
+PITG into RenderFormer and train it on the Render-
+Former dataset. Under the object-level setting, we com-
+pare RenderFormer++ with and without PITG on our
+small- and large-scale datasets. As shown in Table 2,
+PITG consistently improves L1, MAPE, and LPIPS un-
+der both settings. SSIM does not exhibit a consistent
+gain because it is not directly optimized by our train-
+ing objective. These results demonstrate the benefit of
+incorporating rendering-equation-inspired inductive bi-
+ases into light transport modeling. Further qualitative
+comparisons are provided in the ancillary supplemen-
+tary material.
+Effect of Transport Consistency Loss. As shown in
+Table 2, removing TCL degrades reconstruction perfor-
+mance, showing it benefits iterative transport refinement
+during training. As a training-only component of PITG,
+TCL provides modest improvement without additional
+inference overhead.
+Effect of Transport Iterations K. The transport itera-
+tion number K controls the depth of recursive feature-
+space transport propagation. As reported in Table 2,
+we compare reconstruction performance under K = 1,
+K = 3, and K = 5. Performance varies only slightly
+across different values of K. K = 3 achieves the best
+MAPE and LPIPS and ties for the best SSIM, while
+K = 1 achieves the best L1. Since additional iterations
+increase computational cost and K = 5 provides no
+further overall improvement, we choose K = 3 as a
+practical trade-off between quality and efficiency.
+
+
+===== renderformer-plus-2026 | page 7/9 =====
+
+Figure 3: Qualitative comparisons on the test splits of the RenderFormer dataset and our small- and large-scale
+datasets; all scenes are unseen during training. Rows show the ground truth (GT), RenderFormer (RF), fine-tuned
+RenderFormer (RF*), RenderFormer with PITG, RenderFormer++ without PITG, and the full RenderFormer++. Insets
+show corresponding local error visualizations. The results demonstrate that PITG improves rendering fidelity, while
+HOCT maintains comparable quality on small-scale scenes and enables RenderFormer++ to handle substantially larger
+scenes. On large-scale scenes, both RF and RF* exhibit severe prediction degradation.
+Effect of Geometry-Guided Decoder. As reported in
+Table 2, incorporating G-buffer geometric attributes into
+the decoder consistently improves reconstruction qual-
+ity. These geometry-guided features provide additional
+structural cues that help the decoder better recover fine-
+grained illumination details and surface appearance.
+These attributes can be efficiently generated using a
+standard rasterization pass, incurring negligible over-
+head. Notably, RenderFormer++ maintains a parameter
+count comparable to RenderFormer while supporting
+substantially larger scenes.
+Effect of Hierarchical Object-Centric Tokenization.
+To isolate HOCT, we compare RenderFormer with and
+without HOCT under the same protocol on the Render-
+Former dataset. As shown in Table 2, HOCT introduces
+measurable degradation across the reconstruction and
+perceptual metrics. Adding PITG partially recovers this
+loss. In return, HOCT substantially improves runtime
+and memory scalability and enables large-scale train-
+ing, demonstrating an accuracy–efficiency trade-off.
+Conclusion
+In this work, we propose RenderFormer++, a scal-
+able and physics-informed feed-forward neural ren-
+dering framework for global illumination in triangle-
+mesh scenes. By introducing Physics-Informed Trans-
+port Guidance, our method incorporates rendering-
+equation-inspired inductive biases into Transformer-
+based light transport modeling. In addition, Hierarchi-
+cal Object-Centric Tokenization aggregates triangle-
+level features into compact object-level representations,
+reducing the computational cost of global transport mod-
+eling for complex scenes. Experimental results and abla-
+tion studies demonstrate the effectiveness and scalability
+of the proposed framework.
+Limitations and Future Work. The current dataset
+does not include textured objects, and material prop-
+erties are shared across triangles within each object.
+Preliminary experiments on simple textured scenes, pro-
+vided in the ancillary supplementary material, further
+suggest that the encoding scheme is compatible with
+richer appearance variations. In future work, we plan
+to extend the feature encoding module to support more
+diverse material properties and textured objects while
+
+
+===== renderformer-plus-2026 | page 8/9 =====
+
+Dataset
+Method
+Train split
+Test split
+L1↓
+MAPE↓
+LPIPS↓
+SSIM↑
+L1↓
+MAPE↓
+LPIPS↓
+SSIM↑
+Small-scale dataset
+RenderFormer
+0.0895
+0.1345
+0.0886
+0.8394
+0.0905
+0.1383
+0.0907
+0.8332
+RenderFormer*
+0.0746
+0.1140
+0.0820
+0.8836
+0.0776
+0.1119
+0.0807
+0.8822
+RenderFormer++
+0.0886
+0.1265
+0.0590
+0.9542
+0.0861
+0.1270
+0.0601
+0.9479
+Large-scale dataset
+RenderFormer
+0.5449
+0.8551
+0.4531
+0.3575
+0.5402
+0.9020
+0.4470
+0.3558
+RenderFormer*
+0.2765
+0.7694
+0.4383
+0.3718
+0.2984
+0.8073
+0.4322
+0.3703
+RenderFormer++
+0.0860
+0.3298
+0.1769
+0.8305
+0.0899
+0.3294
+0.1766
+0.7820
+Table 1: Quantitative evaluated on large and small scene subsets. L1 and MAPE are computed in linear HDR space,
+while LPIPS and SSIM are computed in the perceptual tone-mapped space. Note: The asterisk (*) indicates the fine-
+tuned version.
+Method
+L1↓
+MAPE↓
+LPIPS↓
+SSIM↑
+RenderFormer Dataset
+RenderFormer*
+0.0761
+0.1129
+0.0814
+0.8829
+RenderFormer w/ PITG
+0.0706
+0.1071
+0.0806
+0.8775
+RenderFormer w/ HOCT
+0.0868
+0.1246
+0.0895
+0.8552
+RenderFormer++ (K = 3)
+0.0793
+0.1208
+0.0843
+0.8600
+Small- and Large-scale Datasets
+RenderFormer++ w/o PITG
+0.0899
+0.2303
+0.1203
+0.8743
+RenderFormer++ w/o TCL
+0.0883
+0.2290
+0.1183
+0.8757
+RenderFormer++ w/o GGD
+0.1198
+0.2451
+0.1276
+0.8088
+RenderFormer++ (K = 1)
+0.0875
+0.2289
+0.1196
+0.8702
+RenderFormer++ (K = 3)
+0.0876
+0.2281
+0.1182
+0.8758
+RenderFormer++ (K = 5)
+0.0877
+0.2283
+0.1183
+0.8758
+Table 2: Ablation study on PITG, HOCT, and GGD.
+Unless otherwise specified, RenderFormer++ uses K =
+3 as its configuration. The asterisk (*) indicates the fine-
+tuned version.
+maintaining scalability.
+References
+Coomans, A.; Dominci, E. A.; Döring, C.; Mueller, J. H.;
+Hladky, J.; and Steinberger, M. 2024. Real-time neural
+rendering of dynamic light fields. In Computer graphics
+forum, volume 43, 1–13.
+Dao, T. 2024. Flashattention-2: Faster attention with bet-
+ter parallelism and work partitioning. In International
+Conference on Learning Representations, volume 2024,
+35549–35562.
+Devlin, J.; Chang, M.-W.; Lee, K.; and Toutanova, K.
+2019. Bert: Pre-training of deep bidirectional transform-
+ers for language understanding. In Proceedings of the
+2019 conference of the North American chapter of the
+association for computational linguistics: human lan-
+guage technologies, volume 1 (long and short papers),
+4171–4186.
+Diolatzis, S.; Philip, J.; and Drettakis, G. 2022. Active
+exploration for neural global illumination of variable
+scenes. ACM Transactions on Graphics, 41(5): 1–18.
+Dong, H.; Wang, G.; and Li, S. 2023. Neural parametric
+mixtures for path guiding. In ACM SIGGRAPH 2023
+Conference Proceedings, 1–10.
+Dosovitskiy, A.; Beyer, L.; Kolesnikov, A.; Weis-
+senborn, D.; Zhai, X.; Unterthiner, T.; Dehghani, M.;
+Minderer, M.; Heigold, G.; Gelly, S.; Uszkoreit, J.; and
+Houlsby, N. 2021. An Image is Worth 16x16 Words:
+Transformers for Image Recognition at Scale. In Inter-
+national Conference on Learning Representations, 1–
+21.
+Eslami, S. A.; Jimenez Rezende, D.; Besse, F.; Viola,
+F.; Morcos, A. S.; Garnelo, M.; Ruderman, A.; Rusu,
+A. A.; Danihelka, I.; Gregor, K.; et al. 2018. Neural
+scene representation and rendering. Science, 360(6394):
+1204–1210.
+Gao, D.; Mu, H.; and Xu, K. 2023. Neural Global Il-
+lumination: Interactive Indirect Illumination Prediction
+under Dynamic Area Lights.
+IEEE Transactions on
+Visualization and Computer Graphics, 29(12): 5325–
+5341.
+Goral, C. M.; Torrance, K. E.; Greenberg, D. P.; and
+Battaile, B. 1984.
+Modeling the interaction of light
+between diffuse surfaces. ACM SIGGRAPH computer
+graphics, 18(3): 213–222.
+
+
+===== renderformer-plus-2026 | page 9/9 =====
+
+Granskog, J.; Rousselle, F.; Papas, M.; and Novák, J.
+2020. Compositional neural scene representations for
+shading inference.
+ACM Transactions on Graphics,
+39(4): 135–1.
+Hadadan, S.; Chen, S.; and Zwicker, M. 2021. Neural
+radiosity. ACM Transactions on Graphics, 40(6): 1–11.
+Huang, J.; Iizuka, A.; Tanaka, H.; Komura, T.; and Kita-
+mura, Y. 2024. Online neural path guiding with normal-
+ized anisotropic spherical Gaussians. ACM Transactions
+on Graphics, 43(3): 1–18.
+Immel, D. S.; Cohen, M. F.; and Greenberg, D. P. 1986.
+A radiosity method for non-diffuse environments. Acm
+Siggraph Computer Graphics, 20(4): 133–142.
+Jiang, L.; Mao, Y.; Xu, L.; Lu, T.; Ren, K.; Jin, Y.; Xu,
+X.; Yu, M.; Pang, J.; Zhao, F.; et al. 2025. Anysplat:
+Feed-forward 3d gaussian splatting from unconstrained
+views.
+Kajiya, J. T. 1986. The rendering equation. In Pro-
+ceedings of the Conference on Computer Graphics and
+Interactive Techniques, 143–150.
+Majercik, Z.; Guertin, J.-P.; Nowrouzezahrai, D.; and
+McGuire, M. 2019. Dynamic diffuse global illumination
+with ray-traced irradiance fields. Journal of Computer
+Graphics Techniques, 8(2): 1–30.
+Müller, T.; Rousselle, F.; Novák, J.; and Keller, A. 2021.
+Real-time neural radiance caching for path tracing. ACM
+Transactions on Graphics, 40: 1–16.
+Nicodemus, F. E.; Richmond, J. C.; Hsia, J. J.; Ginsberg,
+I. W.; Limperis, T.; et al. 1977. Geometrical consider-
+ations and nomenclature for reflectance, volume 160.
+US Department of Commerce, National Bureau of Stan-
+dards Washington, DC, USA.
+Ren, H.; Huo, Y.; Peng, Y.; Sheng, H.; Xue, W.; Huang,
+H.; Lan, J.; Wang, R.; and Bao, H. 2024.
+Light-
+Former: Light-oriented global neural rendering in dy-
+namic scene. ACM Transactions on Graphics, 43(4):
+1–14.
+Ren, P.; Wang, J.; Gong, M.; Lin, S.; Tong, X.; and Guo,
+B. 2013. Global illumination with radiance regression
+functions. ACM Transactions on Graphics., 32(4): 130–
+1.
+Sillion, F. X.; Arvo, J. R.; Westin, S. H.; and Greenberg,
+D. P. 1991. A global illumination solution for general
+reflectance distributions. In Proceedings of the 18th an-
+nual conference on Computer graphics and interactive
+techniques, 187–196.
+Soler, C.; Molazem, R.; and Subr, K. 2022. A theoretical
+analysis of compactness of the light transport operator.
+In ACM SIGGRAPH 2022 Conference Proceedings, 1–
+9.
+Su, R.; Dong, H.; Ren, J.; Jin, H.; Chen, Y.; Wang,
+G.; and Li, S. 2024.
+Dynamic neural radiosity with
+multi-grid decomposition. In SIGGRAPH Asia 2024
+Conference Papers, 1–12.
+Tewari, A.; Thies, J.; Mildenhall, B.; Srinivasan, P.;
+Tretschk, E.; Yifan, W.; Lassner, C.; Sitzmann, V.;
+Martin-Brualla, R.; Lombardi, S.; et al. 2022. Advances
+in neural rendering.
+Vaswani, A.; Shazeer, N.; Parmar, N.; Uszkoreit, J.;
+Jones, L.; Gomez, A. N.; Kaiser, Ł.; and Polosukhin,
+I. 2017. Attention is all you need. Advances in Neural
+Information Processing Systems, 30: 1–11.
+Walter, B.; Marschner, S. R.; Li, H.; and Torrance, K. E.
+2007. Microfacet models for refraction through rough
+surfaces. Rendering techniques, 2007: 1–18.
+Wang, J.; Chen, M.; Karaev, N.; Vedaldi, A.; Rup-
+precht, C.; and Novotny, D. 2025. Vggt: Visual geometry
+grounded transformer. In Proceedings of the Computer
+Vision and Pattern Recognition Conference, 5294–5306.
+Zeng, C.; Dong, Y.; Peers, P.; Wu, H.; and Tong, X. 2025.
+RenderFormer: Transformer-based Neural Rendering of
+Triangle Meshes with Global Illumination.
+In ACM
+SIGGRAPH 2025 Conference Papers, 1–11.
+Zhang, B.; Tang, J.; Niessner, M.; and Wonka, P. 2023.
+3dshape2vecset: A 3d shape representation for neural
+fields and generative diffusion models. ACM Transac-
+tions On Graphics, 42(4): 1–16.
+Zheng, C.; Huo, Y.; Huang, H.; Sheng, H.; Huang, J.;
+Tang, R.; Zhu, H.; Wang, R.; and Bao, H. 2024. Neural
+Global Illumination via Superposed Deformable Feature
+Fields. In SIGGRAPH Asia 2024 Conference Papers, 1–
+11.

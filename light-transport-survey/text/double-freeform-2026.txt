@@ -1,0 +1,1120 @@
+
+
+===== double-freeform-2026 | page 1/17 =====
+
+Double-Freeform Lens Design for Angular-Spatial
+Control of Light Fields
+YUOU SUN,1 BAILIN DENG,2 AND JUYONG ZHANG1,*
+1School of Mathematical Sciences, University of Science and Technology of China, Hefei, China
+2School of Computer Science and Informatics, Cardiff University, Cardiff, UK
+*juyong@ustc.edu.cn
+Abstract:
+Precise simultaneous control of both angular and spatial light-field distributions
+remains a longstanding challenge in optical design, often requiring complex multi-element
+configurations. In this work, we propose a compact single-lens solution that achieves unified
+angular-spatial modulation through the co-optimization of double freeform surfaces. The problem
+is formulated as an extended caustic design that enforces prescribed irradiance patterns on two
+distinct receptive planes, where the dual-plane constraint implicitly defines the directional
+characteristics of the light field while preserving spatial accuracy. This framework eliminates
+the need for auxiliary optical components while delivering performance comparable to that of
+conventional multi-lens systems. Comprehensive numerical simulations verify the method’s
+effectiveness, demonstrating accurate and stable control of both angular and spatial light-field
+properties.
+The proposed approach establishes a practical foundation for compact, high-
+performance optical systems and provides a promising route toward integrated angular-spatial
+light-field engineering.
+1.
+Introduction
+Achieving simultaneous control over both the angular and spatial characteristics of light fields
+remains a central challenge in computational optics and illumination design. Angular control
+dictates how light propagates through space, whereas spatial control determines the irradiance
+distribution on a receptive plane. Although many studies report impressive results, they often
+address these two objectives separately, leaving joint control within a single compact element
+challenging to achieve in practice.
+This separation becomes a practical limitation in applications requiring both “what pattern” and
+“in which direction”. In particular, most freeform-lens and caustic-design formulations prescribe
+a target irradiance on a single receptive plane only, leaving the outgoing angular distribution
+underconstrained and limiting flexibility for tasks such as controlled divergence, beam steering,
+or maintaining collimation. A common workaround is to stack multiple optical components (such
+as lens arrays [1], microlens stacks [2] or multi-plane light conversion systems [3]) or to cascade
+spatial light modulators [4] and diffractive elements [5]. While these multi-stage solutions address
+the missing degrees of freedom at the system level, they complicate alignment and calibration,
+increase optical path length, and raise both fabrication cost and system complexity.
+Meanwhile, substantial progress has been made along each axis of control individually. On
+the angular side, recent methods can explicitly shape propagation behavior. For example, Wei
+et al. [6] sculpt optical fields into prescribed three-dimensional caustic trajectories, enabling
+fine control of where and how light travels through space. On the spatial side, freeform surface
+design has been widely used to produce prescribed irradiance patterns on a receptive plane. A
+representative example is the physical-optics-aware freeform light shaping model of Yang et
+al. [7], which realizes complex caustic images under uniform parallel illumination.
+Beyond optics, similar light-control goals—caustic design in particular—have also been widely
+studied in computer graphics [8–11]. These approaches often represent the freeform geometry
+as a triangle mesh and optimize the illumination pattern by directly updating vertex positions.
+Their formulations are typically mesh-based and ray-driven, closely related to the differentiable
+arXiv:2604.00831v1  [physics.optics]  1 Apr 2026
+
+
+===== double-freeform-2026 | page 2/17 =====
+
+mesh-and-ray pipelines that we build upon in this work.
+A natural question then arises: how can joint angular and spatial control be achieved without
+resorting to cascaded hardware? Double-freeform optical elements provide a promising direction
+because two surfaces offer additional degrees of freedom beyond single-plane irradiance control.
+Early work demonstrated beam shaping with double-freeform surfaces, e.g., transforming a
+Gaussian beam into a uniform distribution [12]. Subsequent methods extended this idea to
+simultaneously realize a prescribed wavefront and receptive-plane irradiance [13], typically by
+first constructing a suitable ray mapping and then recovering the two freeform surfaces accordingly.
+Subsequent methods extended this line into Monge–Ampère–based formulations, improving
+numerical stability and generality for laser beam shaping [14], where the double-freeform design
+problem is cast into a PDE-based framework coupling energy conservation, refraction, and
+optical-path constraints. The concept was later broadened to illumination design [15], with
+PDE formulations generalized to prescribed irradiances and wavefronts under more general
+input/output conditions. Complementary to these PDE-based approaches, supporting-quadric
+methods provide a more constructive route: instead of solving directly for the freeform surfaces
+through a global PDE, they build the solution geometrically from local supporting quadrics and
+have also been shown effective for designing double-surface refractive elements with prescribed
+irradiance distributions and wavefronts [16]. Another related line is iterative wavefront tailoring
+(IWT), which introduces an intermediate outgoing wavefront and iteratively updates it to simplify
+freeform design for prescribed irradiance [17]. This idea was later extended to optical-field
+control, where the iterative framework is used to regulate not only output irradiance but also
+phase-related field behavior [18]. More recent differentiable frameworks further enhanced
+modeling flexibility [19], enabling gradient-based optimization of compact double-freeform
+lenses under more flexible forward models. Related two-target designs have also been explored
+in other optical settings. Braam et al. [20] considered the inverse design of two reflectors for a
+parallel-to-two-target system by deriving optical mappings to the two targets and reconstructing
+the reflector surfaces through generating functions. This framework was later extended in [21]
+to handle both refractive and reflective systems under a broader class of zero-étendue sources,
+unifying the treatment of lens and reflector configurations within a single design methodology.
+Importantly, Romijn et al. [22] showed that a double-freeform lens design for a prescribed far-field
+intensity admits a free parameter that produces a family of distinct solutions; this indicates that
+the two-surface geometry offers more flexibility than a single target constraint requires, which
+can be exploited to regulate directionality or to satisfy constraints on multiple planes.
+Motivated by this insight, we formulate a design approach that exploits this additional flexibility
+to achieve simultaneous angular and spatial control via dual-plane constraints. Our goal is
+to design a single double-freeform lens whose refracted field forms prescribed irradiance
+distributions on two distinct receptive planes, 𝐴and 𝐵. By doing so, we shift the emphasis from
+generating alternative solutions for one-plane shaping to leveraging the additional degrees of
+freedom for multi-plane constraints. Moreover, the resulting coupling between planes naturally
+links angular regulation to spatial shaping between 𝐴and 𝐵. In contrast to methods that recover
+the double-freeform geometry indirectly through ray mappings, PDE solutions, supporting
+quadrics, or iteratively tailored intermediate wavefronts, our approach proceeds by constructing
+a target exiting light field consistent with the desired dual-plane constraints and then directly
+optimizing the lens surface shapes to realize it. This viewpoint retains the physical intuition
+behind prior double-freeform design methods, while the additional design flexibility offered by
+the two-surface geometry explicit and directly usable for joint angular–spatial regulation.
+Our framework builds on the mesh-based double-freeform design pipeline of Sun et al. [23],
+adopting its mesh representation and local ray tracing for differentiable optimization. The key
+conceptual advancement is that we do not treat the two target images as independent endpoints
+connected only through unconstrained differentiable rendering. Instead, we first establish an
+
+
+===== double-freeform-2026 | page 3/17 =====
+
+explicit geometric relationship between the two receptive planes via a dual-plane mapping prior
+computed by optimal transport. This structured prior provides per-ray guidance that regularizes
+the otherwise highly nonlinear, nonconvex optimization away from non-physical high-frequency
+local minima, and it promotes lens surfaces with larger, more physically meaningful relief
+variations. Moreover, because ray directions are inherently tied to how energy is transported
+between planes 𝐴and 𝐵, our formulation enables explicit control over propagation directions—a
+capability typically absent in single-plane caustic objectives.
+This capability is relevant in applications where both the pattern and direction of light
+are important, including advanced illumination (e.g., automotive headlamps and directional
+projection), industrial laser processing (where shaped beams must impinge at controlled angles),
+volumetric displays, structured-light 3D scanning, and optical trapping or lithography. By
+reducing hardware complexity while expanding controllability, our approach supports more
+compact and cost-effective optical systems without sacrificing performance.
+2.
+Method
+Our goal is to design a double-freeform lens that transforms an incident uniform collimated
+beam into two prescribed irradiance distributions, 𝑔𝐴and 𝑔𝐵, on two receptive planes 𝐴and 𝐵,
+respectively. We cast this design task as an optimization problem in which the incident and exit
+surface geometries are jointly adjusted so that the simulated irradiance on both planes matches
+the targets while satisfying the physical and geometric constraints induced by refraction and
+surface realizability. In the following, we first describe our forward light-transport model, then
+construct a target outgoing light field via an optimal-transport-based preprocessing step, and
+finally formulate the objective function and its constituent terms together with the numerical
+optimization procedure used to minimize the resulting energy.
+2.1.
+Forward light-transport model
+We begin by discretizing both the incident and exit surfaces of the lens into triangular meshes,
+where three-dimensional vertices are connected by edges to form triangular facets. We apply
+this triangulation process identically to both surfaces, each consisting of 𝑁vertices with the
+same connectivity. This yields two mesh surfaces whose vertices and edges are in one-to-one
+correspondence. We denote the 𝑖-th vertex on the incident surface and the corresponding vertex
+on the exit surface by v𝑖
+1 ∈R3 and v𝑖
+2 ∈R3, respectively, for 𝑖∈S = {1, 2, . . . , 𝑁} (see Fig. 1).
+In this way, the 𝑁pairs of corresponding vertices establish a bijective map between the two
+surfaces, which facilitates the subsequent computation of light propagation.
+For an incident collimated beam with direction din = (0, 0, −1) and spatially uniform irradiance
+across the lens aperture, we connect each pair of corresponding vertices (v𝑖
+1, v𝑖
+2) by a ray segment
+𝑙𝑖
+mid = v𝑖
+1v𝑖
+2, which serves as the assumed internal propagation direction in our discrete formulation.
+Initially, this segment may not coincide with the physically correct refracted ray inside the lens;
+however, as the optimization proceeds, the integrability condition imposed on the surface normal
+fields (detailed in Section 2.3) enforces agreement between the surface normals derived from 𝑙𝑖
+mid
+and those required by Snell’s law at the entrance surface, so that the assumed paths progressively
+converge to physically valid refracted trajectories. This formulation eliminates the need for
+explicit ray tracing to locate the intersection of each refracted ray with the exit surface at every
+iteration, thereby greatly reducing computational complexity while maintaining a consistent
+geometric mapping framework.
+Next, we consider the refraction at the exit surface. For a given incident ray 𝑙𝑖
+mid = v𝑖
+1v𝑖
+2 and
+an auxiliary variable n𝑖
+2 representing the surface normal at the vertex v𝑖
+2, the outgoing ray 𝑙𝑖
+out
+can be computed according to Snell’s law. The intersections of 𝑙𝑖
+out with the receptive planes 𝐴
+and 𝐵yield the corresponding imaging points p𝑖
+𝐴and p𝑖
+𝐵, respectively. In general, the three rays
+
+
+===== double-freeform-2026 | page 4/17 =====
+
+Lens
+Receptive Plane 𝐴
+𝑥
+𝑦
+𝑧
+Receptive Plane 𝐵
+𝐩𝐵
+𝑖
+𝐩𝐵
+𝑗
+𝐩𝐵
+𝑘
+𝐩𝐴
+𝑖
+𝐩𝐴
+𝑗
+𝐩𝐴
+𝑘
+𝐯1
+𝑖
+𝐯1
+𝑗
+𝐯1
+𝑘
+𝐯2
+𝑖
+𝐯2
+𝑗
+𝐯2
+𝑘
+Target Image 𝑔𝐴
+Target Image 𝑔𝐵
+Fig. 1. Overview of the forward light-transport model. A collimated light beam
+passing through an incident-surface triangle △v𝑖
+1v𝑗
+1v𝑘
+1 is refracted toward its corre-
+sponding exit-surface triangle △v𝑖
+2v𝑗
+2v𝑘
+2. After the second refraction, the outgoing
+rays intersect receptive planes 𝐴and 𝐵, forming imaging triangles △p𝑖
+𝐴p 𝑗
+𝐴p𝑘
+𝐴and
+△p𝑖
+𝐵p𝑗
+𝐵p𝑘
+𝐵, respectively. Each imaging triangle carries the same luminous flux as its
+corresponding incident-surface triangle. The per-pixel irradiance on each plane is
+obtained by accumulating the flux contributions from all overlapping imaging triangles
+and then converting to pixel values via gamma encoding, producing simulated images
+that can be directly compared with the prescribed target images 𝑔𝐴and 𝑔𝐵.
+passing through the vertices of an incident-surface triangle △v𝑖
+1v𝑗
+1v𝑘
+1 are refracted through the
+corresponding vertices of the exit-surface triangle △v𝑖
+2v𝑗
+2v𝑘
+2, and then intersect planes 𝐴and 𝐵at
+p𝑖
+𝐴, p𝑗
+𝐴, p𝑘
+𝐴and p𝑖
+𝐵, p𝑗
+𝐵, p𝑘
+𝐵, respectively, forming the imaging triangles △p𝑖
+𝐴p𝑗
+𝐴p𝑘
+𝐴and △p𝑖
+𝐵p 𝑗
+𝐵p𝑘
+𝐵
+(see Fig. 1). Assuming zero energy loss during propagation, all four triangles—on the incident
+surface, exit surface, and the two receptive planes—carry identical luminous flux Φ𝑖𝑗𝑘, which is
+directly proportional to the projected area of the initial incident triangle △v𝑖
+1v𝑗
+1v𝑘
+1 on the 𝑥𝑦-plane.
+Finally, to obtain per-pixel flux without stochastic ray sampling, we compute the exact overlap
+area between each imaging triangle and every pixel cell it intersects on the two receptive planes
+𝐴and 𝐵, following the area-accumulation approach for per-pixel flux computation in [24].
+For 𝑋∈{𝐴, 𝐵}, let 𝑃𝑋,𝑝be the (axis-aligned) square region of pixel 𝑝on plane 𝑋, and let
+△p𝑖
+𝑋p𝑗
+𝑋p𝑘
+𝑋be the corresponding imaging triangle induced by the surface triangle △v𝑖
+1v𝑗
+1v𝑘
+1.
+We assume that the flux density is uniform within △p𝑖
+𝑋p𝑗
+𝑋p𝑘
+𝑋; therefore, the contribution of
+this triangle to pixel 𝑝is proportional to the area of their overlap. Specifically, we compute
+the intersection area 𝐴𝑖𝑗𝑘
+𝑋,𝑝= area
+ △p𝑖
+𝑋p𝑗
+𝑋p𝑘
+𝑋
+ ∩𝑃𝑋,𝑝
+
+, and accumulate the pixel flux by
+ΔΦ𝑋,𝑖𝑗𝑘→𝑝= Φ𝑖𝑗𝑘
+𝐴𝑖𝑗𝑘
+𝑋,𝑝
+area(△p𝑖
+𝑋p𝑗
+𝑋p𝑘
+𝑋)
+, yielding Φ𝑋,𝑝= Í
+(𝑖, 𝑗,𝑘) ΔΦ𝑋,𝑖𝑗𝑘→𝑝. Here Φ𝑋,𝑝denotes
+the flux accumulated on pixel 𝑝of plane 𝑋. Since the pixel area is normalized to one in our
+implementation, this quantity is numerically equivalent to the irradiance on that pixel. We finally
+map the simulated irradiance to pixel value via gamma encoding 𝐼𝑋,𝑝=  Φ𝑋,𝑝
+1/𝛾with 𝛾= 2.2,
+
+
+===== double-freeform-2026 | page 5/17 =====
+
+producing the simulated images {𝐼𝐴,𝑝}𝑝and {𝐼𝐵,𝑝}𝑝.
+2.2.
+Construction of the target outgoing light field
+Our goal is to realize two prescribed irradiance distributions 𝑔𝐴and 𝑔𝐵on two receptive planes
+𝐴and 𝐵using a single double-freeform lens. Unlike single-plane caustic design, where one
+may construct a single correspondence between the incident distribution and a target image
+(e.g., [10]), our dual-plane setting requires richer guidance: each ray must be steered so that the
+transported energy matches the desired allocation on both planes. We therefore first construct
+a target outgoing light field, which in our setting denotes the angular and spatial distribution
+of the refracted rays after leaving the lens. The prescribed patterns on planes 𝐴and 𝐵are the
+corresponding irradiance distributions induced by this outgoing light field. Specifically, we
+construct it by assigning each ray sample 𝑖a pair of target intersection positions ( ˜p𝑖
+𝐴, ˜p𝑖
+𝐵) on
+planes 𝐴and 𝐵, which together define the desired propagation direction between the two planes
+via the target optical-path line ˜𝑙𝑖
+out. At the same time, the collection of these target intersections
+is constructed so that the transported energy matches the prescribed irradiance distributions on
+both receptive planes (Fig. 2).
+෥𝐩𝐴
+𝑖
+෥𝐩𝐵
+𝑖
+෥𝐩𝐴
+𝑗
+෥𝐩𝐵
+𝑗
+𝐯1
+𝑖
+𝐯1
+𝑗
+𝐯2
+𝑖
+𝐯2
+𝑗
+Lens
+Receptive Plane 𝐴
+Receptive Plane 𝐵
+Target Outgoing Light Field
+Fig. 2. Target outgoing light field. For each ray sample (vertex index) 𝑖on the
+double-freeform lens, we assign a pair of OT-derived target locations ( ˜p𝑖
+𝐴, ˜p𝑖
+𝐵) on the
+two receptive planes 𝐴and 𝐵. Each pair defines a target optical-path line ˜𝑙𝑖
+out (yellow),
+specifying both the desired landing locations on the two planes and the corresponding
+propagation direction between them; these per-ray targets provide structured guidance
+for the subsequent surface optimization.
+A proper target light field should be globally consistent with the target images while remaining
+geometrically well behaved. In particular, we prefer correspondences that induce minimal
+displacement from a uniform incident sampling, since highly irregular, clustered, or strongly
+crossing assignments would require large ray rearrangements and impose a high fitting cost
+on the subsequent geometric optimization. This consideration is especially important in our
+setting.
+Purely rendering-driven surface optimization pipelines (e.g., [23]) typically start
+from a planar or weakly perturbed surface and minimize an image-domain discrepancy by
+backpropagating through refraction and rasterization. Such objectives provide supervision
+primarily at the image/distribution level and do not explicitly specify where individual rays should
+land; consequently, the optimizer must infer a global energy reallocation from local gradient
+signals. In a highly nonlinear and nonconvex landscape, this often makes the result sensitive to
+initialization and increases optimization difficulty.
+These requirements motivate using optimal transport (OT) as a preprocessing step.
+In
+the continuous formulation, OT is closely related to Monge–Ampère-type formulations; here,
+however, we use it purely as a discrete preprocessing tool to construct target correspondences.
+More specifically, OT computes a mass-preserving mapping that matches a target distribution
+
+
+===== double-freeform-2026 | page 6/17 =====
+
+while minimizing a global transport cost, thereby producing coherent correspondences with
+small, well-structured motion. Concretely, we solve two OT problems with a common uniform
+source measure over the incident aperture. For each 𝑋∈{𝐴, 𝐵}, we transport the uniform source
+irradiance to the target image distribution 𝑔𝑋on plane 𝑋, obtaining a transport map that assigns
+each ray sample 𝑖to a target location ˜p𝑖
+𝑋. We compute both transport maps using the Fast-OT
+algorithm [25], a fast discrete OT solver that computes an approximate transport solution rather
+than the exact optimum, which makes it efficient in practice. We perform OT independently
+for 𝐴and 𝐵(rather than transporting 𝑔𝐴to 𝑔𝐵) for two complementary reasons. First, we seek
+correspondences that remain close to the uniform incident sampling on each plane, yielding
+geometrically regular assignments with small overall motion; solving OT from the uniform source
+to 𝑔𝐴and to 𝑔𝐵directly minimizes these source-to-target transport costs, whereas transporting 𝑔𝐴
+to 𝑔𝐵does not constrain the displacement with respect to the incident parameterization. Second,
+our imaging model and objective evaluate the two planes separately, so per-plane OT avoids
+imposing an arbitrary coupling between 𝑔𝐴and 𝑔𝐵during preprocessing while still producing
+targets consistent with each image. Thus, we do not compute a transport map from plane 𝐴to
+plane 𝐵; instead, for each ray sample 𝑖, the two OT solutions provide a pair of target intersections
+( ˜p𝑖
+𝐴, ˜p𝑖
+𝐵) on planes 𝐴and 𝐵, respectively. This pair defines the target optical-path line ˜𝑙𝑖
+out, which
+is used to guide the subsequent surface optimization. The overall pipeline is illustrated in Fig. 3.
+2.3.
+Optimization Process
+Optimize
+𝐯1
+𝑖
+𝐯2
+𝑖
+𝐩𝐵
+𝑖
+𝐩𝐴
+𝑖
+෥𝐩𝐴
+𝑖
+෥𝐩𝐵
+𝑖
+𝐧2
+𝑖
+෥𝐩𝐴
+𝑗
+෥𝐩𝐵
+𝑗
+𝐧2
+𝑗
+𝐯1
+𝑗
+𝐯2
+𝑗
+𝐩𝐵
+𝑗
+𝐩𝐴
+𝑗
+Incident 
+Surface
+Exit 
+Surface
+Receptive 
+Plane 𝐴
+Receptive 
+Plane 𝐵
+෥𝐩𝐵
+𝑗
+𝐩𝐵
+𝑗
+෥𝐩𝐴
+𝑗
+෥𝐩𝐴
+𝑖
+𝐯1
+𝑗
+𝐯2
+𝑗
+𝐩𝐵
+𝑖
+𝐩𝐴
+𝑖
+෥𝐩𝐵
+𝑖
+𝐯1
+𝑖
+𝐯2
+𝑖
+𝐩𝐴
+𝑗
+𝐧2
+𝑖
+𝐧2
+𝑗
+Incident 
+Surface
+Exit 
+Surface
+Receptive 
+Plane 𝐴
+Receptive 
+Plane 𝐵
+Fig. 3. Side view of the OT-guided optimization process. The red points ˜p𝑖, 𝑗
+𝐴and
+˜p𝑖, 𝑗
+𝐵denote the fixed OT-derived target intersections on planes 𝐴and 𝐵, respectively,
+while the blue points p𝑖, 𝑗
+𝐴and p𝑖, 𝑗
+𝐵denote the actual intersections of the refracted rays.
+During optimization, the incident and exit surfaces evolve through updates of the vertex
+positions v𝑖, 𝑗
+1
+and v𝑖, 𝑗
+2 , together with the exit-surface normals n𝑖, 𝑗
+2 , so that the actual ray
+intersections progressively approach the OT-derived targets on both receptive planes.
+Our optimization variables are the collections {v𝑖
+1}𝑖∈S (incident-surface vertices), {v𝑖
+2}𝑖∈S
+(exit-surface vertices), and {n𝑖
+2}𝑖∈S (auxiliary exit-surface normals), as previously defined.
+Using the OT-derived targets {˜p𝑖
+𝐴, ˜p𝑖
+𝐵}𝑖and the associated target lines {˜𝑙𝑖
+out}𝑖, we formulate a
+nonlinear optimization problem that deforms the two lens surfaces to match the desired dual-plane
+constraints while enforcing physical and geometric validity. We minimize a weighted energy
+that combines (i) dual-plane ray-target consistency, (ii) Snell-consistent integrable normal fields,
+(iii) incident-side mass (projected-area) consistency with the OT source measure, and (iv) a
+geometric barrier to prevent invalid surface configurations. The individual terms are introduced
+below and finally combined into a single objective.
+Dual-plane ray-target consistency.
+We require that the outgoing ray originating from the
+exit-surface vertex v𝑖
+2 sequentially pass through the target points ˜p𝑖
+𝐴and ˜p𝑖
+𝐵on the two receptive
+planes, where ˜p𝑖
+𝐴and ˜p𝑖
+𝐵are obtained from an optimal-transport (OT) preprocessing step
+
+
+===== double-freeform-2026 | page 7/17 =====
+
+described after the formulation. Accordingly, we impose two complementary penalties: (1)
+v𝑖
+2 should lie close to the target optical-path line ˜𝑙out defined by ˜p𝑖
+𝐴and ˜p𝑖
+𝐵, and (2) the actual
+intersection p𝑖
+𝐵on plane 𝐵should match ˜p𝑖
+𝐵. This yields a distance term
+𝐸dist =
+∑︁
+𝑖∈S dist(v𝑖
+2, ˜𝑙out)2,
+(1)
+and an alignment term
+𝐸align =
+∑︁
+𝑖∈S ∥p𝑖
+𝐵−˜p𝑖
+𝐵∥2.
+(2)
+Here dist(·) denotes the point-to-line distance and S is the set of mesh vertices, where each
+vertex index 𝑖∈S corresponds to one ray sample used in the OT preprocessing.
+Snell-consistent integrability.
+To ensure physical realizability of the two surfaces, we enforce
+Snell’s law compliance at both the incident and exit surfaces by constraining their derived unit
+normal fields {n𝑖
+1} and {n𝑖
+2} to satisfy an integrability condition. We first prescribe the incoming
+direction as din = (0, 0, −1) and the intermediate refracted direction as d𝑖
+mid =
+v𝑖
+2−v𝑖
+1
+∥v𝑖
+2−v𝑖
+1∥. For this
+pair of directions, the incident-side unit normal n𝑖
+1 is obtained analytically from the vector form
+of Snell’s law:
+n𝑖
+1 =
+𝜂d𝑖
+mid −din
+∥𝜂d𝑖
+mid −din∥,
+where 𝜂≈1.49 is the relative refractive index. This formula is equivalent to Eq. (2.1) in [26].
+For the exit surface, we use the normalized auxiliary variable n𝑖
+2 =
+n𝑖
+2
+∥n𝑖
+2∥. Following [27], we
+adopt the integrability term
+𝐸int =
+∑︁
+(𝑖, 𝑗)∈E
+e1 · (n𝑖
+1 + n𝑗
+1)
+∥n𝑖
+1 + n𝑗
+1∥
++ 𝜆
+e2 · (n𝑖
+2 + n 𝑗
+2)
+∥n𝑖
+2 + n 𝑗
+2∥
+,
+(3)
+where E is the edge set, e1 and e2 are unit edge vectors, and 𝜆is a user-defined parameter.
+Intuitively, this term encourages the average normal across each edge to be orthogonal to the
+edge direction, promoting an integrable normal field.
+Incident-side mass consistency.
+Our OT preprocessing is solved on a fixed discretization of
+the incident aperture under uniform illumination: each incident-surface triangle △v𝑖
+1v𝑗
+1v𝑘
+1 carries
+a flux weight proportional to its projected area on the 𝑥𝑦-plane, i.e., Φ𝑖𝑗𝑘∝𝐴(△v𝑖
+1v𝑗
+1v𝑘
+1). The
+OT targets are therefore computed with respect to this fixed discretized source measure. During
+surface fitting, if the projected area of an incident triangle changes significantly, its associated
+flux weight changes accordingly, which alters the source measure and makes the OT-derived
+correspondences inconsistent. To maintain consistency with the OT construction throughout
+optimization, we penalize deviations of each triangle’s projected area from its initialization 𝐴0
+𝑖𝑗𝑘:
+𝐸area =
+∑︁
+△v𝑖
+1v𝑗
+1v𝑘
+1 ∈F1
+
+𝐴(△v𝑖
+1v𝑗
+1v𝑘
+1) −𝐴0
+𝑖𝑗𝑘
+2
+.
+(4)
+Here F1 contains all incident-surface triangles, 𝐴(·) denotes the signed projected area on the
+𝑥𝑦-plane, and 𝐴0
+𝑖𝑗𝑘is the initial projected area of triangle △v𝑖
+1v 𝑗
+1v𝑘
+1 used to define the OT source
+measure.
+
+
+===== double-freeform-2026 | page 8/17 =====
+
+Geometric barrier.
+To prevent degenerate or flipped triangles during optimization, we define
+𝐸barr =
+∑︁
+△v𝑖
+1v𝑗
+1v𝑘
+1 ∈F1 𝑓barr
+
+𝐴(△v𝑖
+1v𝑗
+1v𝑘
+1)
+
++
+∑︁
+△v𝑖
+2v 𝑗
+2v𝑘
+2 ∈F2 𝑓barr
+
+𝐴(△v𝑖
+2v 𝑗
+2v𝑘
+2)
+
+,
+(5)
+where
+𝑓barr(𝑎) =
+
+
+1
+𝑎,
+𝑎> 0,
++∞,
+𝑎≤0.
+(6)
+Here F2 denotes the set of all exit-surface triangles. This barrier penalizes excessively small
+triangles and prevents triangle flips by restricting the step size during line search.
+Total objective.
+The total energy is a weighted sum of the above terms:
+𝐸= 𝑤1𝐸dist + 𝑤2𝐸align + 𝑤3𝐸int + 𝑤4𝐸area + 𝑤5𝐸barr.
+(7)
+Here 𝑤1, . . . , 𝑤5 are user-specified weighting parameters that balance the contributions of the
+above terms.
+2.4.
+Implementation Details
+We minimize Eq. (7) using the limited-memory BFGS (L-BFGS) algorithm [28]. Unless
+otherwise specified, we use fixed weights (𝑤1, 𝑤2, 𝑤3, 𝑤4, 𝑤5) = (105, 109, 103, 104, 10−5) and
+𝜆= 10−2 in Eq. (3) for all experiments. These values were chosen empirically through preliminary
+experiments to balance the numerical scales and relative roles of the loss terms. In particular, 𝑤2
+is set relatively large because the corresponding term directly affects the ray–plane intersection
+positions and therefore influences the irradiance distributions. 𝑤5 is kept small because the
+geometric barrier is only intended to prevent invalid configurations. The choice 𝜆= 10−2 places
+more emphasis on the incident-surface term in the Snell-consistent integrability loss, since errors
+on the incident surface change where rays reach the exit surface; if rays do not arrive at the
+intended exit-surface vertices, enforcing Snell’s law there becomes less meaningful.
+The target images are specified at a resolution of 256 × 256 pixels, which provides sufficient
+spatial sampling for accurate light field reconstruction while maintaining computational efficiency
+in our optimization framework. We initialize the lens as a rectangular cuboid with a 10 cm base
+length and a thickness of 2 cm, where the boundary vertex coordinates along the 𝑥−or 𝑦−axis
+are fixed to maintain both the lens shape and the total incident luminous flux.
+The location range of the two receptive planes 𝐴and 𝐵is pattern-dependent, as significant
+differences between the desired irradiance distributions 𝑔𝐴and 𝑔𝐵require sufficient propagation
+distance for the light field to transform. Furthermore, plane 𝐴must be positioned sufficiently close
+to the exit surface. Excessive separation would lead to physically unrealistic surface geometries
+when reconstructing the exit surface profile through backward ray tracing (by intersecting the
+extensions of ˜p𝑖
+𝐵˜p𝑖
+𝐴segments with the exit surface), inevitably resulting in triangle flipping that
+makes the optimization problem infeasible.
+For the basic case involving the text transformation from "OPTICS EXPRESS" to "LIGHT
+CONTROL", we position the receptive planes 𝐴and 𝐵at 2 cm and 10 cm from the initial exit
+surface, respectively. For the more complex pattern transformation from the word "Butterfly" to
+an actual butterfly image, the planes are placed at 1 cm and 17 cm respectively to accommodate
+the increased optical modulation complexity and required light field evolution distance.
+We adopt a coarse-to-fine optimization strategy to improve optimization stability and efficiency.
+The main idea is to first optimize a coarse mesh to capture the overall lens shape, and then
+progressively refine the mesh resolution and optimize its geometry to recover finer surface
+details. Although optimization starts from the coarsest stage, we first construct the finest-stage
+discretization so that all stages are derived consistently from a common reference. Specifically,
+
+
+===== double-freeform-2026 | page 9/17 =====
+
+Target Positions
+Mesh Vertices
+Before Optimization
+After Optimization
+Before Optimization
+After Optimization
+Coarse Stage
+Fine Stage
+Downsampling
+Subdivide
+Fig. 4. A local example of the first two stages. The target positions are obtained by
+downsampling from the finest-stage, while the mesh for the finer stage is initialized by
+subdividing the optimized mesh from the coarser stage.
+we solve Fast-OT on a regular 1024 × 1024 quadrilateral mesh representing the incident aperture,
+which yields two sets of target positions {˜p𝑖
+𝐴}𝑖and {˜p𝑖
+𝐵}𝑖on planes 𝐴and 𝐵, respectively. We then
+insert a weighted barycenter into each quad, thereby converting both the finest-stage mesh and the
+corresponding target positions into a triangular discretization. Starting from this finest-stage data,
+we repeatedly downsample the mesh vertices and the target positions to construct progressively
+coarser stages until reaching the coarsest stage. In this way, each stage uses a subset of the vertices
+and target positions defined at the finest resolution. After convergence at a stage, the optimized
+mesh is subdivided to initialize the next finer stage: for each quadrilateral patch triangulated into
+four triangles, we insert the midpoints of every edge and connect them according to the pattern
+shown in Fig. 4, thereby splitting one such patch into four quadrilateral patches. This finer stage
+is then optimized against the corresponding denser subset of target positions. Fig. 4 shows a
+local example of the downsampling/subdivision process between the first two stages. In this way,
+the global lens shape is determined first at low resolution and then progressively refined at higher
+resolutions. Fig. 5 demonstrates the progressive improvement of the simulated images across
+stages: the upper-right subplot shows the result after coarse-stage optimization on both receptive
+planes, and the lower-right subplot shows the subsequent refinement at the finest stage.
+All optimizations are performed on a single NVIDIA GeForce RTX 4090 with 24GB VRAM.
+In the coarse-to-fine scheme, the maximum number of iterations at each stage is set to 20,000.
+Overall, optimizing the incident and exit surfaces of the lens takes about one hour, with the
+highest-resolution stage accounting for approximately 50 minutes.
+3.
+Experiments
+In this section, we comprehensively evaluate our algorithm through multiple perspectives. First,
+Fig. 6 demonstrates the accuracy of our propagation model described in the previous section.
+We compare our simulation results with those generated by LuxCoreRender [29], a physically-
+accurate ray-tracing engine. While the LuxCoreRender output for Plane 𝐵exhibits faint blur,
+attributable to minor discrepancies in surface normal estimation between our auxiliary variables
+and LuxCoreRender’s refraction calculations, the overall irradiance distributions demonstrate
+remarkable consistency. Notably, the rays that form the letter ‘O’ on Plane 𝐴become fully merged
+into the background after propagating to Plane 𝐵, leaving no visible residual contour of the
+letter ‘O’. This behavior provides further evidence for the physical accuracy of our light transport
+model and validates that the designed lens correctly redistributes energy between distinct spatial
+patterns across the two planes.
+
+
+===== double-freeform-2026 | page 10/17 =====
+
+Energy function (First 300 Steps)
+Stage 0
+Stage 5
+Subdivision × 5
+Before
+After
+Plane 𝐴
+Plane 𝐵
+Plane 𝐴
+Plane 𝐵
+Fig. 5. Optimization progress across stages: the left panels show the energy reduction
+over the first 300 iterations at the coarsest and finest stages, while the right panels
+compare the simulated images on planes A and B before and after optimization for each
+stage.
+Plane 𝐴
+Plane 𝐵
+Target Images
+Our Rendering Model
+0.0063
+0.0062
+LuxCoreRender
+0.0093
+0.0098
+Fig. 6. Accuracy of our propagation model. The numerical value in the lower right
+corner of each image indicates the MAE with the target image.
+
+
+===== double-freeform-2026 | page 11/17 =====
+
+Plane 𝐴
+Plane 𝐵
+1 cm
+5 cm
+9 cm
+13 cm
+17 cm
+2 cm
+4 cm
+6 cm
+8 cm
+10 cm
+Fig. 7. Light field evolution from Plane 𝐴to Plane 𝐵. The intermediate images illustrate
+the progressive transformation of the light field at three equidistant planes located at
+25%, 50%, and 75% of the propagation distance between the two planes.
+In the lower-right corner of each image in Fig. 6, we also show a quantitative measure between
+the simulated and target images using the Mean Absolute Error (MAE), which is defined as:
+MAE = 1
+𝑛𝑝
+𝑛𝑝
+∑︁
+𝑖=1
+|𝑝𝑖−˜𝑝𝑖|
+𝐼max
+(8)
+where 𝑛𝑝denotes the total pixel count, 𝑝𝑖and ˜𝑝𝑖represent the 𝑖-th pixel values in the simulated
+and target images respectively, and 𝐼max = 255 is the maximum possible pixel value that
+normalizes the error to the range [0, 1]. The MAE values show close agreement between both
+our propagation model and reference ray tracing simulations with the target images, quantitatively
+validating the accuracy of our approach.
+Fig. 7 further demonstrates the continuous evolution of the light field as it propagates between
+Target Image
+0.05
+0
+0.1
+Simulated Image
+Error
+Plane 𝐴
+0.05
+0
+0.1
+Target Image
+Simulated Image
+Error
+Plane 𝐵
+Fig. 8. Target and simulated irradiance distributions on planes 𝐴and 𝐵. The top row
+compares one-dimensional profiles sampled along the indicated horizontal lines. The
+bottom row shows the corresponding target images, simulated images, and pixel-wise
+error maps.
+
+
+===== double-freeform-2026 | page 12/17 =====
+
+Incident-side View
+Exit-side View
+0.72
+0.20
+-0.32
+-2.50
+-1.98
+-1.45
+Fig. 9. Optimized geometries of the incident and exit freeform surfaces of the designed
+double-freeform lens.
+The top row shows the surface height profiles, where the
+colormaps indicate the relative height along the optical axis 𝑧. The bottom row shows
+the corresponding full lens geometries from the same viewing directions, providing a
+more complete visualization of the optimized incident and exit surfaces.
+receptive Planes 𝐴and 𝐵, capturing the spatial redistribution of irradiance while maintaining
+energy conservation throughout the optical path. The visualization confirms our method’s ability
+to precisely control the light field transformation between the two planes.
+Fig. 8 shows the simulated irradiance distributions on two target planes. For both planes, the
+simulated irradiance distributions exhibit excellent agreement with the target patterns: “OPTICS
+EXPRESS” for Plane 𝐴and “LIGHT CONTROL” for Plane 𝐵, accurately reproducing the
+overall irradiance shapes and fine-scale contrast details. The cross-sectional profiles show that
+the simulated curves closely follow the target values, with slight deviations observed in certain
+regions. These discrepancies arise because the irradiance distributions on Plane 𝐴and Plane 𝐵
+are difficult to satisfy simultaneously. The optimization therefore yields a physically realizable
+solution that minimizes the global fitting error in a "least-squares" sense. The error maps confirm
+that the residual differences remain small (mostly below 0.05), indicating that the proposed
+double-freeform design effectively balances the dual-plane irradiance objectives. Overall, the
+results verify that the optimized lens can reproduce distinct target irradiance distributions on
+
+
+===== double-freeform-2026 | page 13/17 =====
+
+Target Images
+Rendered Images
+Plane 𝐴(2 cm)
+Target Images
+Rendered Images
+Plane 𝐵(10 cm)
+Error
+Error
+0.1
+0
+0.2
+0.1
+0
+0.2
+Fig. 10. Additional simulation examples demonstrating the effectiveness of the proposed
+method. The optimized double-freeform lens accurately reproduces two distinct target
+images on Plane 𝐴and Plane 𝐵, respectively.
+separate axial planes, demonstrating precise and stable angular-spatial light-field control through
+a single optical element.
+Fig. 9 further demonstrates the shape of the lens. Both the incident and exit surfaces exhibit
+smoothly varying freeform features that encode the complex angular-spatial mapping required to
+project the prescribed patterns on the two target planes. Since Plane 𝐴is positioned closer to
+the lens and is designed to form the “OPTICS EXPRESS” pattern first, subtle structural traces
+of that pattern can be discerned on both the incident and exit surfaces. These features locally
+modulate the optical path length to guide the rays into the correct spatial configuration. More
+importantly, through the precise optimization of the shape and thickness of the lens, we can also
+manipulate the propagation direction of the rays such that, after further propagation, the light
+reconstructs the second pattern “LIGHT CONTROL” on Plane 𝐵. This visualization provides an
+intuitive understanding of how the double-freeform geometry encodes both directional and spatial
+control, revealing the physical mechanism by which the dual-plane constraints are simultaneously
+satisfied.
+We further conducted additional experiments using multiple target image pairs to validate the
+robustness and generality of our method. As illustrated in Fig. 10, the proposed model successfully
+reconstructs two distinct irradiance patterns on Plane 𝐴and Plane 𝐵, respectively, demonstrating
+consistent performance across different target configurations. The simulated results clearly show
+that the lens can accurately reproduce the prescribed images on both planes, confirming the
+effectiveness of the double-freeform optimization in handling diverse angular-spatial mappings.
+It is worth noting that, in the last row of Fig. 10, the image on Plane 𝐵appears to have a lower
+overall brightness compared with that on Plane 𝐴. This difference, however, does not imply any
+
+
+===== double-freeform-2026 | page 14/17 =====
+
+Plane 𝐴(10 cm)
+Plane 𝐵(24 cm)
+Plane 𝐵(48 cm)
+Plane 𝐴(18 cm)
+0
+0
+Target Images
+Fig. 11. High-contrast dual-plane design example. The target irradiance distributions
+are shown in the upper right. In each row, the perspective view shows the designed
+double-freeform lens together with representative ray paths, while the images on planes
+𝐴and 𝐵are the simulated irradiance results. The distances indicate the positions of
+planes 𝐴and 𝐵relative to the reference position 0, for a lens with side length 10 cm.
+physical loss of optical power during propagation. Instead, it reflects the redistribution of the
+available light energy according to the normalized irradiance level defined by the target pattern
+on Plane 𝐵. The total flux is conserved; only the relative irradiance has been rescaled to match
+the specified target brightness distribution.
+Fig. 11 provides a more challenging example, where the two images from the last row of Fig. 10
+are contrast-enhanced and used as the target irradiance distributions. Owing to the higher contrast
+and increased complexity of the targets, this case requires longer propagation distances than the
+previous example. As shown in Fig. 11, when the overall optical system is more compact, the
+rays undergo stronger deflection and the optimized freeform surfaces exhibit more pronounced
+relief. In contrast, increasing the lens thickness and enlarging the separation between the two
+receptive planes significantly reduces the ray deflection, leading to smoother surface geometries.
+This example further demonstrates the effectiveness of our model for high-contrast and complex
+target patterns.
+Our method can also be extended from collimated illumination to a point-source setting. For
+a Lambertian point source, the luminous flux is proportional to the solid angle rather than the
+projected area. Accordingly, Eq. (4) is replaced by
+𝐸area =
+∑︁
+△v𝑖
+1v 𝑗
+1v𝑘
+1 ∈F1
+
+𝑆(△v𝑖
+1v𝑗
+1v𝑘
+1) −𝑆0
+𝑖𝑗𝑘
+2
+.
+(9)
+Here 𝑆(·) denotes the solid angle subtended by the triangle with respect to the point source, and
+𝑆0
+𝑖𝑗𝑘is the corresponding initial solid angle of triangle △v𝑖
+1v𝑗
+1v𝑘
+1. As shown in Fig. 12, the incident
+and exit surfaces are initialized as two spherical surfaces with radii 7 cm and 9.5 cm, respectively,
+both centered at the point source, so that the initialization is consistent with the spherical
+
+
+===== double-freeform-2026 | page 15/17 =====
+
+𝑥
+𝑦
+𝑧
+Point Source
+(𝑧= 0 cm)
+Plane 𝐵
+(𝑧= −20 cm)
+Plane 𝐴
+(𝑧= −10 cm)
+Fig. 12. Point-source extension of our method. The black dashed line indicates the
+optical axis. The yellow rays form a quadrangular pyramid that defines the propagation
+range, and the angle between the yellow boundary rays and the optical axis is set to 40◦.
+The receptive planes are placed at 𝑧= −10 cm and 𝑧= −20 cm, respectively, and the
+images shown on the planes are the simulated irradiance results.
+Input Distribution
+Target Distribution
+20 cm (Plane 𝐵)
+10 cm (Plane 𝐴)
+30 cm 
+Uniform To Gaussian
+Gaussian To Uniform
+Fig. 13. Demonstration of bidirectional beam shaping using the proposed double-
+freeform lens. Top row: the lens is optimized to transform a uniform collimated
+beam into a Gaussian irradiance distribution while maintaining collimation during
+propagation. Bottom row: without re-optimization, the same lens is directly used in
+reverse to convert an incident Gaussian beam back into a uniform collimated beam.
+Together, these results demonstrate the optical reversibility and physical consistency of
+the proposed design.
+
+
+===== double-freeform-2026 | page 16/17 =====
+
+wavefront emitted by the source. The outermost extent of the lens subtends an angle of 40◦with
+respect to the optical axis, thereby forming a quadrangular pyramid of rays. The imaging regions
+are defined by intersecting this pyramid with the planes 𝑧= −10 cm and 𝑧= −20 cm. Under
+these modifications, the proposed framework can still realize two prescribed irradiance patterns
+from a point-source input, demonstrating its extensibility to more general source configurations.
+Transforming a Gaussian beam into a uniform collimated beam is a fundamental topic in beam
+shaping. Our method can readily address this task in a straightforward manner. In the design
+stage, we set identical Gaussian irradiance distributions as the target patterns on both Planes
+𝐴and 𝐵, leading the optimization to naturally yield a self-consistent mapping that preserves
+collimation. As illustrated in Fig. 13, the optimized double-freeform lens first converts a uniform
+collimated beam into a Gaussian irradiance profile (top row), which remains stable over a certain
+propagation distance. The same lens is then applied in reverse—without any modification or
+re-optimization—to transform a Gaussian input beam back into a uniform collimated output
+(bottom row). This bidirectional experiment demonstrates the physical reversibility and versatility
+of the proposed design in realizing Gaussian–uniform beam conversion through a single optical
+element.
+4.
+Conclusion
+In conclusion, this study presents a unified double-freeform lens design framework that enables
+simultaneous angular and spatial control of light within a single refractive element. By jointly
+optimizing the geometries of the incident and exit surfaces under dual-plane irradiance constraints,
+the proposed method precisely modulates light propagation without requiring complex multi-
+element systems. Comprehensive simulations demonstrate accurate irradiance reproduction
+and physically consistent directional control across diverse target configurations, validating the
+effectiveness of the approach. Beyond reducing system complexity, the framework establishes a
+versatile foundation for compact, high-performance optical systems in illumination engineering,
+beam shaping, and laser processing. Future research will extend this methodology toward
+wavelength-dependent and polarization-sensitive designs, as well as machine-learning-assisted
+optimization, further advancing the integration of computational and physical optics.
+Funding
+This research was supported by the National Natural Science Foundation of China (No.62272433),
+Anhui Provincial Natural Science Foundation (No.2508085ZD011) and the Fundamental Research
+Funds for the Central Universities.
+Disclosures
+The authors declare no conflicts of interest.
+Data Availability
+Data underlying the results presented in this paper are not publicly available at this time but may
+be obtained from the authors upon reasonable request.
+References
+1.
+Y. Li, M. Knöchelmann, and R. Lachmayer, “Beam pre-shaping methods using lenslet arrays for area-based
+high-resolution vehicle headlamp systems,” Appl. Sci. 10, 4569 (2020).
+2.
+M. Prossotowicz, D. Flamm, A. Heimes, et al., “Dynamic focus shaping with mixed-aperture coherent beam
+combining,” Opt. Lett. 46, 1660–1663 (2021).
+3.
+H. Kupianskyi, S. A. Horsley, and D. B. Phillips, “High-dimensional spatial mode sorting and optical circuit design
+using multi-plane light conversion,” Apl Photonics 8 (2023).
+
+
+===== double-freeform-2026 | page 17/17 =====
+
+4.
+S. Pinilla, S. R. Miri Rostami, I. Shevkunov, et al., “Hybrid diffractive optics design via hardware-in-the-loop
+methodology for achromatic extended-depth-of-field imaging,” Opt. Express 30, 32633–32649 (2022).
+5.
+D. V. Soshnikov, L. L. Doskolovich, G. A. Motz, et al., “Design of cascaded diffractive optical elements for optical
+beam shaping and image classification using a gradient method,” in Photonics, vol. 10 (MDPI, 2023), p. 766.
+6.
+S. Wei, Y. Li, and D. Ma, “Sculpting optical fields into caustic patterns based on freeform optics,” Optica 10,
+1688–1699 (2023).
+7.
+L. Yang, I. Badar, C. Hellmann, and F. Wyrowski, “Light shaping by freeform surface from a physical-optics point of
+view,” Opt. express 28, 16202–16210 (2020).
+8.
+T. Kiser, M. Eigensatz, M. M. Nguyen, et al., “Architectural caustics—controlling light with geometry,” in Advances
+in architectural geometry 2012, (Springer, 2013), pp. 91–106.
+9.
+Y. Yue, K. Iwasaki, B.-Y. Chen, et al., “Poisson-based continuous surface generation for goal-based caustics,” ACM
+Trans. on Graph. (TOG) 33, 1–7 (2014).
+10. Y. Schwartzburg, R. Testuz, A. Tagliasacchi, and M. Pauly, “High-contrast computational caustic design,” ACM
+Trans. on Graph. (TOG) 33, 1–11 (2014).
+11. J. Meyron, Q. Mérigot, and B. Thibert, “Light in power: a general and parameter-free algorithm for caustic design,”
+ACM Trans. on Graph. (TOG) 37, 1–13 (2018).
+12. Z. Feng, L. Huang, M. Gong, and G. Jin, “Beam shaping system design using double freeform optical surfaces,” Opt.
+express 21, 14728–14735 (2013).
+13. Z. Feng, L. Huang, G. Jin, and M. Gong, “Designing double freeform optical surfaces for controlling both irradiance
+and wavefront,” Opt. express 21, 28693–28701 (2013).
+14. Y. Zhang, R. Wu, P. Liu, et al., “Double freeform surfaces design for laser beam shaping with monge–ampère
+equation method,” Opt. Commun. 331, 297–305 (2014).
+15. C. Bösel and H. Gross, “Double freeform illumination design for prescribed wavefronts and irradiances,” J. Opt. Soc.
+Am. A 35, 236–243 (2018).
+16. D. A. Bykov, L. L. Doskolovich, E. V. Byzov, et al., “Supporting quadric method for designing refractive optical
+elements generating prescribed irradiance distributions and wavefronts,” Opt. Express 29, 26304–26318 (2021).
+17. Z. Feng, D. Cheng, and Y. Wang, “Iterative wavefront tailoring to simplify freeform optical design for prescribed
+irradiance,” Opt. Lett. 44, 2274–2277 (2019).
+18. Z. Feng, D. Cheng, and Y. Wang, “Iterative freeform lens design for optical field control,” Photonics Res. 9,
+1775–1783 (2021).
+19. H. Tang, H. Li, Z. Feng, et al., “Differentiable design of a double-freeform lens with multi-level radial basis functions
+for extended source irradiance tailoring,” Optica 11, 653–664 (2024).
+20. P. A. Braam, J. H. M. ten Thije Boonkkamp, M. J. H. Anthonissen, et al., “Inverse freeform design of a parallel-to-
+two-target reflector system,” J. Opt. Soc. Am. A 42, 1133–1143 (2025).
+21. P. A. Braam, J. H. M. ten Thije Boonkkamp, M. J. H. Anthonissen, et al., “Inverse design method for generalized
+zero-étendue sources and two targets,” J. Opt. Soc. Am. A 43, 464–473 (2026).
+22. L. B. Romijn, M. Anthonissen, J. ten Thije Boonkkamp, and W. L. IJzerman, “Generating-function approach for
+double freeform lens design,” J. Opt. Soc. Am. A 38, 356–368 (2021).
+23. Y. Sun, B. Deng, and J. Zhang, “Mesh-based double-sided freeform lens optimization,” in EPJ Web of Conferences,
+vol. 309 (EDP Sciences, 2024), p. 03016.
+24. Y. Sun, B. Deng, and J. Zhang, “End-to-end surface optimization for light control,” ACM Trans. on Graph. 44, 1–19
+(2025).
+25. G. Nader and G. Guennebaud, “Instant transport maps on 2D grids,” ACM Trans. on Graph. 37, 1–13 (2018).
+26. C. E. Gutiérrez and H. Mawi, “The refractor problem with loss of energy,” Nonlinear Anal. Theory, Methods & Appl.
+82, 12–46 (2013).
+27. X. Sun, C. Jiang, J. Wallner, and H. Pottmann, “Vertex normals and face curvatures of triangle meshes,” in Advances
+in Discrete Differential Geometry, (Springer, 2016), pp. 267–286.
+28. D. C. Liu and J. Nocedal, “On the limited memory bfgs method for large scale optimization,” Math. programming 45,
+503–528 (1989).
+29. LuxCoreRender Project, “Luxcorerender – open source physically based renderer,” https://luxcorerender.org/.
+Accessed: 2026-03-23.

@@ -1,0 +1,1868 @@
+
+
+===== active-caustics-2023 | page 1/15 =====
+
+Active Caustics
+Rahul Chajwa 1,2, Rajarshi 2, Rama Govindarajan 2, Sriram Ramaswamy 3,2
+1Department of Bioengineering, Stanford University, Stanford, CA 94305 USA.
+2International Centre for Theoretical Sciences, Tata Institute of Fundamental Research, Bengaluru 560 089
+3Centre for Condensed Matter Theory, Department of Physics, Indian Institute of Science, Bengaluru 560 012.
+Inertial particles (IPs) in vortical fluid flow cluster strongly, forming singular structures termed
+caustics for their resemblance to focal surfaces in optics. Here we show that such extreme aggre-
+gation onto low-dimensional submanifolds can arise without mechanical inertia for self-propelled
+particles (SPPs), through a formal correspondence between the dynamics of IPs and SPPs in a
+generic background flow. We establish that a singular perturbation underlies caustics formation
+by SPPs around a single vortex, and numerical studies of SPPs in two-dimensional Navier-Stokes
+turbulence reveal intense caustics in straining regions of the flow, peaking at intermediate levels of
+self-propulsion. Our work offers a route to singularly high local concentrations in a macroscopi-
+cally dilute suspension of zero-Reynolds-number swimmers. Caustics generate burst-like encounters
+through large relative velocities between neighboring swimmers, with potentially significant impli-
+cations for communication and sexual reproduction. An intriguing open direction is whether the
+active turbulence of a suspension of swimming microbes could serve to generate caustics in its own
+concentration.
+I.
+INTRODUCTION
+In geometrical optics, the boundary of a family of fo-
+cused light rays is termed a caustic. The extremal char-
+acter of such a limiting surface or curve (in three or two
+dimensions, respectively) implies a divergent intensity [1]
+By precise analogy the term caustic is applied to singu-
+larities in particle concentration arising from the cross-
+ing of trajectories – of dark matter on cosmic scales [2]
+or of solute in suspensions [3], the latter being the focus
+here.
+The growth of raindrops in clouds [4], the set-
+tling of atmospheric pollutants [5], the strength of the
+biological pump in the oceans [6], and a wide range of in-
+dustrial processes [7], hinge on collisions and coalescence
+between particles or droplets suspended in background
+flows. When particles have appreciable inertia, the cou-
+pling between their velocity and the local flow profile
+can lead to inhomogeneities in their spatial distribution
+[8]. Heavy particles in a turbulent flow are known to get
+centrifuged out of regions of high vorticity, displaying
+finite-time singularities in particle trajectories that am-
+plify collision rates, aggregation, and caustics [3, 9–11],
+offering a mechanism for droplet growth in clouds [12, 13],
+for example. In this article we explore theoretically the
+possibility of such singular enhancement of encounters in
+suspensions of motile particles [14] without particle iner-
+tia.
+Swimmers in vortical and turbulent flows, through the
+coupling of their orientation to velocity gradients, present
+rich dynamical behaviors: accumulation at vortex bound-
+aries [15], gyrotactic patchiness in vortical and turbulent
+flows [16–18], crossing of transport barriers in chaotic
+flows [19], and preferential sampling of downwelling re-
+gions by marine microorganisms [17, 20, 21].
+Micro-
+swimmers in externally driven flows display focusing [22],
+aggregation [23, 24], and expulsion out of vortical regions
+[25], in a manner reminiscent of inertial particles [3, 11].
+These works established that motility and shape when
+coupled to background vortical flows generate cluster-
+ing and transport phenomena absent for passive tracers.
+Durham et al. [17], for example, remark on the visual
+similarity of fractal clustering of active particles in flow
+and cloud formation by droplets [12]. Here, we establish
+a more formal correspondence by identifying caustics as
+a unifying dynamical mechanism.
+Biological motility in a fluid medium [30] is dynamic,
+and flows can strongly influence the dispersal of swim-
+mers [31, 32]. The competition between autonomous mo-
+tion and systematic reorientation by the ambient flow
+field U is characterized by the local ratio β/∥∇U∥where
+1/β is the time it takes for a swimmer to move its own
+body length. When U is unsteady and/or spatially het-
+erogeneous, this ratio is dynamic along a swimmer tra-
+jectory, and thus it is convenient to define an average
+quantity β/κ, where κ ≡
+p
+⟨∇U : ∇U⟩is the root mean
+square value. Fig. 1 (a) depicts typical values of β/κ and
+Reynolds (Re) numbers for various swimmers, based on
+published data on swimming speed and size, and typical
+shear-rates in the upper mixed layer of the open ocean
+[29] [see Appendix B]. In complex natural environments,
+such as oceans, neither particle inertia nor activity can
+be directly controlled, and ‘collisional’ aggregation [33]
+may arise from both inertia and activity [hence Re as a
+separate axis in Fig. 1 (a)]. We focus on swimmers for
+which Re and Stokes numbers St are vanishingly small,
+with self-propelling stresses small compared to those cre-
+ated by the ambient flow. We therefore ignore particle
+inertia as well as the effect of the particles on the flow,
+neglecting interparticle hydrodynamic and steric interac-
+tions. Although their inertia is negligible, their motion
+is persistent because of self-propulsion [17].
+We ask whether inertialess swimmers in flow [20] can
+display caustics analogous to those of inertial particles
+(IPs) [3, 11], where the calculated world lines of sus-
+pended particles cross, rendering the solute velocity field
+multivalued. We investigate this previously unexplored
+arXiv:2310.01829v3  [cond-mat.soft]  9 Oct 2025
+
+
+===== active-caustics-2023 | page 2/15 =====
+
+2
+FIG. 1.
+Active dimer model for self-propelled particles in ambient flow (a) We depict typical values of the ratio of
+flow time scale 1/∥∇U∥to swimming time scale 1/β, and Reynolds number Re for a marine bacterium Vibrio alginolyticus [26],
+various dinoflagellates, ciliates [27], invertebrate larvae [28] and copepods [28]. For ∥∇U∥we substitute the Kolmogorov shear
+rate for the range of previously measured energy dissipation rates in the upper mixed layer of the ocean 10−8 −10−6 m2s−3
+[29] [see Appendix B]. (b) Schematic of an active dimer of extension w in a flow U. (c) Caustics based on the inner solution
+are marked by the intersection of representative trajectories (blue circles) of particles starting at closely separated initial radial
+distances, with α = 0.1. A continuous variation in ˜r0 would give a continuous curve. The inset (Photo credit: R. Chajwa) is
+an image of optical caustics with a similar cusp on the surface of coffee in a mug.
+possibility theoretically, and show that a mathematically
+divergent particle number-density can emerge in the min-
+imal setting of a dilute suspension of neutrally buoyant
+self-propelled particles, without particle inertia, in two-
+dimensional vortical flows. We examine the flow-coupled
+dynamics of two simple models of single motile parti-
+cles: Hookean and preferred-length active dimers.
+In
+the presence of external noise, these correspond to ac-
+tive Ornstein-Uhlenbeck particles (AOUPs) [34, 35], and
+active Brownian particles (ABPs) [36], respectively. Us-
+ing a singular perturbation analysis, we show that non-
+inertial active particles, like passive IPs, can display caus-
+tics even near a single vortex, a building block of turbu-
+lence. We establish how far the analogy with IPs may
+be carried, and where the two differ fundamentally. We
+extend these findings to a continuous particle phase of
+dimer suspensions, which removes interparticle separa-
+tion as a free parameter and allows an unambiguous de-
+marcation of the regimes of caustic formation.
+The dynamics around a single vortex forms the ba-
+sis for understanding the behavior of active particles
+in unsteady vortical flows.
+We study the dynamics of
+preferred-length active dimers in homogeneous, isotropic
+turbulence through a pseudospectral direct numerical
+simulation, and establish caustic formation, with an in-
+tensity that peaks at an intermediate value of β/κ and
+show bounds on its structural stability with respect to
+orientational noise.
+The coupling of motility to ambi-
+ent flow plays a central role in the lives of microscopic
+marine plankton [30, 37, 38]. By cataloging previously
+collected data on β/κ of such microswimmers in marine
+environments, we predict that they can display caustics
+in a vortex-laden turbulent ecosystem in the upper ocean.
+Our study reveals that active caustics can arise generi-
+cally in vortical flows even in the absence of turbulence,
+or organism-specific sensory mechanisms like gyrotaxis or
+chemotaxis [39]. Active caustics produces sudden burst-
+like encounters between nearby particles, offering a new
+route to increased opportunities for communication and
+sexual reproduction [40] among swimmers in marine en-
+vironments [29, 30].
+II.
+CORRESPONDENCE BETWEEN ACTIVE
+AND INERTIAL PARTICLES IN A FLOW
+The motion of an IP with position vector X in a back-
+ground flow-field U is governed by the Maxey-Riley [9]
+
+
+===== active-caustics-2023 | page 3/15 =====
+
+3
+equation which, to leading order in gradients, reads
+˙X = v and St ˙v = (U −v), when non-dimensionalised
+using a characteristic particle length scale d and a flow
+velocity scale U0.
+The Stokes number St = τU0/d is
+a non-dimensional measure of inertia, characterised by
+the relaxation time τ (= mass/Stokes drag coefficient)
+of a particle. The centrifugation of these particles away
+from the vortex center results in the formation of caus-
+tics within a critical distance from the vortex origin [11].
+Setting St = 0 yields tracer particles, which move with
+v = U.
+The Hamiltonian structure of bound orbits of mi-
+croswimmers in certain flows [41–44] points to an effec-
+tive inertial character in the dynamics of active Stokesian
+suspensions under imposed flows, wherein the orienta-
+tion vector plays a role analogous to momentum [45–47].
+Building on this observation, we construct below an effec-
+tive inertial description for active particles in a generic
+background flow. The active particles of interest to us
+are orientable objects with negligible inertia, whose dy-
+namics involves a centroid position X and an end-to-end
+vector w that describes their spatial extension and the di-
+rection in which they propel themselves [Fig. 1 (b)]. The
+case of fixed or preferred length |w| and self-propulsion
+at a constant speed along ˆw corresponds to the ABP
+[36] mentioned above. However, to demonstrate analyti-
+cally that caustics and the consequent discontinuities in
+particle number densities can arise due to activity, even
+without inertia, we will begin with a simple and ana-
+lytically tractable dynamical model for w, namely, the
+Hookean active dimer, placed in an imposed background
+flow field U.
+When Gaussian white noise is added to
+the dynamics of w, the correlations of the relative co-
+ordinate of the dimer will decay exponentially in time,
+and the dynamics of its centroid will be that of an ac-
+tive Ornstein-Uhlenbeck [34, 35] particle, an instructive
+and analytically tractable test bed for the development
+of ideas in active matter.
+We work at zero Stokes number and thus neglect par-
+ticle inertia, but, as we see below, self-propulsion allows
+the particle to cross streamlines. In the absence of trans-
+lational diffusion the equations of motion for X and w
+then take the first-order form
+˙X = µF + U + βw ≡v,
+(1a)
+˙w = −w
+τ + (α S + A ) · w −ℓ2∇2U +
+√
+2Dη,
+(1b)
+where µ is the Stokesian mobility of the particle, and
+U, ∇2U and the external force field F are evaluated at
+X(t). In (1a) β, with units of inverse time but indefinite
+sign, endows a dimer with self-propulsion proportional
+to its extension, parallel or antiparallel to w depending
+on sgn(β). The polar flow-alignment parameter ℓ, with
+units of length, orients the dimer along a locally parabolic
+flow, and vanishes for an apolar, i.e., fore-aft symmetric,
+particle. A term of the ℓtype appears in the context of
+the dynamics of a collective orientation vector, in [48].
+Mathematically, in a gradient expansion, it is the lowest-
+order coupling of orientation to flow that is sensitive to
+the orientation vector rather than simply the headless
+axis of the particle. Physically: locally in an unbounded
+fluid an object characterized by a vector w can align not
+with U itself, as that is not a frame-invariant notion, but
+with a Galilean-invariant vector made from U, the sim-
+plest being ∇2U. For a system confined between planar
+walls, which provide an absolute frame of reference, a
+term simply proportional to U is permitted, as discussed
+in [49–51]. For a review of microswimmers in imposed
+flow-fields, though without the polar coupling ℓ, see [41].
+Apolar flow-orientation couplings [52] enter through the
+strain-rate and vorticity tensors S ≡(∇U + ∇U⊤)/2
+and A ≡(∇U −∇U⊤)/2 respectively, with a response
+parameter α.
+While the original Jeffery equations are
+for a rigid ellipsoid, in this study w does not follow a
+rigidity constraint, relaxing the requirement of a trans-
+verse projection operator (I −ww) [52] in (1b) . Since
+the shape of the dimer depends on |w|, α in our model
+does not admit the direct geometric interpretation that
+underlies the shape-dependent coupling in [52]. In (1b)
+η is a zero-mean, isotropic, gaussian white noise with
+unit variance. With this preamble we proceed to derive
+an effective inertial equation of an active particle in a
+background flow.
+For β ̸= 0, (1a) and (1b) yield an equation for the total
+active-particle velocity v [see (1a)] viewed as a dynamical
+variable
+dv
+dt =µv · ∇F + v · ∇U −β
+τ w + β (αS + A) · w
++ ∂tU −βℓ2∇2U + β
+√
+2Dη
+=
+
+−1
+τ I + (αS + A)
+
+· (v −U −µF)
++
+
+µ(∇F)⊺+ (∇U)⊺
+· v + ∂tU −βℓ2∇2U + β
+√
+2Dη.
+Using
+A · v + (∇U)⊺· v = 1
+2
+
+∇U −(∇U)⊺
+· v + (∇U)⊺· v
+= 1
+2
+
+∇U + (∇U)⊺
+· v
+= S · v,
+and multiplying both sides by τ/µ, gives
+τ
+µ
+dv
+dt =
+
+I −τ(αS + A)
+
+· (F + 1
+µU) + τ
+µ(∂t −βℓ2∇2)U
++
+
+−1
+µI + τ
+µ(α + 1)S + τ(∇F)⊺
+
+· v
++ τβ
+µ
+√
+2Dη,
+(2)
+where the first two terms on the right hand side present
+a generalized reversible force, the third term is a general-
+ized velocity-dependent force and the last term contains
+the noise. Thus (2) becomes:
+
+
+===== active-caustics-2023 | page 4/15 =====
+
+4
+τ
+µ ˙v =
+
+−1
+µI + τ
+µ(α + 1)S
+
+· (v −U) + Feff + τ
+µ(Dt −βℓ2∇2)U + τβ
+µ
+√
+2Dη
+(3)
+where Dt = ∂t +U·∇, Feff = F+τ ˙F−τ (αS + A)·F, is
+the effective external force on the particle, and all fields
+are evaluated at X(t). In the absence of ℓ2∇2U and η
+(1b) is homogeneous, so that β can be absorbed into w
+in (1). This is why β appears only as a prefactor of ∇2U
+and η in (3). However, (1) can be recast as (3) only if w,
+i.e., self-propulsion, enters (1a); the degree to which it
+does so is governed by τ in (1b). For τ →0, (1b) implies
+w = 0.
+The presence in (3) of the external force and the drag,
+unmodified by prefactors, means that τ/µ plays the role
+of an effective mass for this inertia-less active system.
+Indeed (3) resembles the Maxey-Riley equation for iner-
+tial particles in a flow [9]. There are differences, such as
+the absence in (3) of the Basset-Boussinesq history term
+[9, 53], but the similarities prompt us to explore analogs
+to passive inertial-particle behavior in the dynamics of
+active inertia-less particles in external flows.
+III.
+CAUSTICS NEAR A POINT VORTEX
+FLOW: SINGULAR PERTURBATION ANALYSIS
+We begin with the classical case of motion in the flow
+field of a point vortex. In plane polar coordinates (r, θ),
+U = ˆθ˜Γ/r, with circulation 2π˜Γ. Note that A = 0 for this
+flow everywhere except at the origin.
+To demonstrate
+caustics even for simple fore-aft symmetric particles in
+the absence of external forcing and noise, we set ℓ= 0,
+η = 0, and F = 0. Non-dimensionalizing (3) using the
+natural length
+p
+˜Γτ [11] and time τ, we get the coupled
+equations
+¨r −L2
+r3 = −˙r + α
+r3 −(1 + α)L
+r3
+,
+(4a)
+˙L = 1 −L −(1 + α) ˙r
+r
+,
+(4b)
+where the overdot denotes d/dt.
+Eqs.
+(4) govern the
+Lagrangian dynamics of an active particle whose centroid
+is at a radial distance of r from a point vortex. Here,
+L ≡r2 ˙θ is the angular momentum per unit mass of the
+particle. For a detailed derivation of (4), visit Appendix
+C.
+An effective centrifugal acceleration, reinforcing the
+similarity to an IP, arises through the L2/r3 term. Due
+to the terms containing α, our equations are distinct from
+those for true IP [11]. We treat the nonlinearities in (4a)
+& (4b) perturbatively. A regular perturbation approach
+yields absurd solutions near the origin; in fact equations
+(4a) and (4b) constitute a singular perturbation problem
+[54]. The behaviour at very small times and small dis-
+tances away from the vortex is singular, and relatively vi-
+olent, unlike the more gentle relaxation to the final state
+at late times. We exploit this feature to understand the
+different physics at small and large time.
+We seek an inner solution at the lowest order for t ≪
+1 and r ≪1, and an outer solution for t ≫1, where
+r could be O(1) or larger. In contrast to an IP which
+centrifuges out forever, the outer solution for an active
+Hookean dimer is steady rotation with w and ˙θ = 1/r2
+f at
+a constant final distance rf from the vortex, rendering the
+particle passive at large times. The unexpected physics
+that appears in the inner region sets the stage for the
+rest of this article.
+A.
+Inner solution, r ≪1
+A particle starting near the vortex origin spends lit-
+tle time in its vicinity, centrifuging out quickly to large
+distances. We may write a dominant balance equation
+applicable to this region. As is standard in singular per-
+turbation theory, we recast (4a) and (4b) in the stretched
+spatial ˜r ≡r/δi and temporal ˜t ≡t/ϵi variables, where ϵi
+and δi are as yet unknown, but will be selected to ensure
+that all derivatives in the stretched variables are O(1).
+This rescaling preserves the angular momentum per unit
+mass, ˜L = L. Examining equation (4a) and (4b) tells
+us that, for centrifugation to occur, the time derivatives
+must be much larger than O(1) in the r →0 limit. Dom-
+inant balance gives the following asymptotic equation for
+L,
+˙L = −(1 + α) ˙˜r
+˜r
+,
+(5)
+with solution L(˜r) = L0 −(1 + α) log ˜r/˜r0, where L = L0
+when r = r0, a constant. The subscript 0 indicates an
+initial value. Similarly, the equation for ˜r becomes
+δi
+ϵ2
+i
+ 
+¨˜r −L2
+˜r3
+!
+= δi
+ϵi
+˙˜r +
+1
+δ3
+i ˜r3
+ 
+α −δ2
+i
+ϵi
+(α + 1)L
+!
+.
+(6)
+which immediately provides the relationship ϵi ∼δ2
+i be-
+tween the two small quantities. Making the choice ϵi = δ2
+i
+in (6) leads, at O(1), to the autonomous equation
+˜r3¨˜r = (L −1)(L −α).
+(7)
+Equations (5) and (7) yield the dynamics ˙˜r = ∂H/∂p and
+˙p = −∂H/∂˜r with an effective Hamiltonian
+H = p2
+2 + α + [L(˜r) −1 −α]2
+2˜r2
+(8)
+
+
+===== active-caustics-2023 | page 5/15 =====
+
+5
+where p ≡d˜r/d˜t is the radial momentum per unit
+mass of the particle. Hamiltonian structure in an over-
+damped dynamical system has been observed earlier in
+self-propelled [41–44, 46] and externally driven [45, 47]
+particles. Integrating equation (7), using the chain rule
+¨˜r = pdp/d˜r and the inner solution L(˜r) of (5) gives the
+constant-energy manifolds
+p2 = p0
+2 −α + (L −1 −α)2
+˜r2
++ α + (L0 −1 −α)2
+˜r2
+0
+, (9)
+in the effective (˜r, p) phase space, where each level set
+corresponds to a ray in the (t, r) plane, acquired by inte-
+grating (9). We start with two rings of particles around
+the vortex at initial radii r0 and r0+∆r. The intersection
+of their rays in the r, t plane represents an overtaking of
+the outer ring by the inner, i.e., the occurrence of caus-
+tics.
+Caustics for a few chosen r0 are shown by the blue
+circles in Fig.1(c), along with the envelope (continuous
+line) for all r0, representing the smallest radial distance
+at a given time for the occurrence of caustics. For the
+purpose of demonstration we have taken L0 = −(1 +
+α) log ˜r0, and equal initial speeds. This picture is akin
+to geometrical optics, where caustics form an envelope
+tangent to the light rays [55].
+Panels (a) and (b) in Fig. 2 compare the inner solu-
+tion with the full solution obtained by numerically time-
+integrating (4) in the form of particle trajectories for dif-
+ferent αs averaged over initial particle velocity. For all
+activity values, the inner solution in dashed lines matches
+well when r ≪1. Around r of order unity, the inner so-
+lution expectedly deviates from the numerical solution as
+higher order corrections of ϵi become significant. Follow-
+ing Fig. 2(a), we see that particles with higher activity
+centrifuge out with larger velocities.
+This is expected
+from (4a), as α is involved in terms that have r3 in the
+denominator, which control centrifugation. α also con-
+trols the slope in (4b), and therefore we see L decreases
+faster with larger α in Fig. 2(b).
+B.
+Outer solution, r ≫1
+At long times, particles move far away from the vortex
+origin i.e. r ≫1 for t ≫1. This motivates us to rescale r
+and t in (4) such that the rescaled outer variables ˜t = tϵo
+and ˜r = rδo, are O(1) for small ϵo and δo. Substituting
+this in (4a) gives a constant ˜r(t), with no caustics, and no
+activity. Thus, there is a critical initial radial distance r0
+above which particles asymptotically approaches a final
+radius rf, without caustics with final angular momentum
+per unit mass, Lf = 1.
+To explore this dynamics in
+detail, we expand r in series of δo,
+r(t) = erf
+δo
+−er(t) + O(δo),
+(10)
+FIG. 2.
+Comparison between asymptotic analysis
+and full numerical solution:(a,b) Comparing trajecto-
+ries obtained analytically from the inner solution in (9)
+(dashed lines), and from evolving the full system following (4)
+(curves). Both the radial velocity in (a) and angular momen-
+tum in (b) follow the analytical solution till particles reach
+O(1) distance from the vortex origin, where the inner solution
+is no longer valid. (c,d) The outer solution in black dotted
+lines following (12) also matches well with the numerical solu-
+tion of the full system at late times. At such times, particles
+are far away from the vortex origin (c), and their angular mo-
+mentum saturates to the background fluid angular velocity
+(d).
+where erf = rfδo, and δo ≪1.
+The non-dimensional
+equation (4) can be recast as
+−¨er = ˙er + O(δ3
+o),
+˙L = 1 −L + δo(α + 1)
+erf
+˙er + O(δ2
+o) .
+(11)
+Using the boundary conditions r(t∗) = r∗, ˙r(t∗) = v∗
+r,
+and L(t∗) = L∗, we obtain the leading order solution of
+r and L,
+L = 1 −(1 −L∗(α))e−(t−t∗) + (t −t∗)
++ (α + 1) v∗
+r
+rf
+e−(t−t∗) + O(δ2
+o),
+(12a)
+r = rf −v∗
+re−(t−t∗) + O(δ2
+o) .
+(12b)
+For every particle, rf, L∗, and v∗
+r vary with α, as shown
+in Fig. 2 (c) and (d) which compares the above outer
+solution to the full numerical solution for various values
+of α. Choosing the t∗carefully such that the particle is
+far away from the origin, we see that the outer solution in
+dotted lines matches well with the full numerical solution.
+The inner and outer solutions uncover two qualitatively
+distinct dynamics, one near and the other far away from
+the vortex origin. The inner solution presents rapid cen-
+trifugation and caustics, whereas the outer solution yields
+
+
+===== active-caustics-2023 | page 6/15 =====
+
+6
+FIG. 3.
+Centrifugation and caustics of a Hookean
+dimers in point vortex:
+(a) Time frames showing the
+positions of the particles (blue dots) around a point vor-
+tex at the origin for IP and noiseless AOUP, by numerically
+solving the Maxey-Riley equation, and (1a) & (1b), respec-
+tively [see Appendix A Video 1].
+N = 105 particles were
+initialised with uniformly random initial positions and ori-
+entations/velocities. (b) An initially homogeneous number-
+density (grey circles) peaks near a critical radial distance
+(green) in the steady state, compared to unsteady density of
+IP (purple) at a representative t ≫1. (c) Trajectory (rays) of
+particles averaged over all initial orientations. The envelope
+of rays, for particles starting at various initial r, gives rise to
+caustics (red circles). The green curve shows R = tν, with
+ν = 2/3. In (b), (c) & (d), α = 1. (d) The crossing time
+of adjacent rays separated by ∆r = 0.001 starting at various
+radial distances r, averaged over uniformly random initial ori-
+entations, diverges at a finite critical radius rc for an active
+particle (red) and for an inertial particle (blue) averaged over
+uniformly random initial velocity of unit magnitude. (e) For
+various α, plotting rc demarcates the region of caustics, which
+is the radial distance below which adjacent rays cross each
+other in a finite time.
+exponential relaxation of the particle trajectories to the
+background flow. We explore the caustics in the inner
+region and their dependency on α in the next section.
+IV.
+ACTIVE DIMER CLOUD IN A POINT
+VORTEX: NUMERICAL SOLUTION
+We now numerically solve the full equations (1a) and
+(1b), with the noise, the external force F, and the polar
+flow coupling λ set to zero (see Appendix A Video 1).
+In this case the self-propulsion β can be absorbed in the
+definition of w. Early in the process, for times t less than
+or comparable to τ, we find that noiseless AOUP, i.e., ac-
+tive Hookean dimers, behave similar to IP, in that they
+both display centrifugation close to the vortex [see mid-
+dle panel of Fig. 3(a)]. Such voiding of vortical regions
+has been observed previously for rigid gyrotactic swim-
+mers [16] and bacteria [25], and is shown to be critical for
+their transport in turbulent environments [15, 18]. How-
+ever, the identification of a singularity, namely caustics,
+for this flow- and motility-induced dynamics was missing.
+At long times, the radial profile of number density reaches
+a steady state, with a peak at a particular radius [Fig.
+3(b)] The extension of the dimer relaxes to zero, so in
+the absence of noise, the AOUP at long time behaves like
+a tracer particle, consistent with our asymptotic analy-
+sis. In contrast, IPs centrifuge out forever, though more
+slowly as time progresses [see Appendix A Video 1] since
+the drag force balances the centrifugal force and radial
+velocity decays as r−3 [56]. This feature of IPs is closely
+mimicked by a more robust motile particle [see Appendix
+A Video 2], which we discuss below. The sharp peak in
+the number density at a particular radial distance co-
+incides with the formation of caustics, which we obtain
+by averaging over uniformly random initial orientations.
+The caustics are seen in Fig. 3(c) with an envelope as
+predicted by the inner solution in the paragraph leading
+up to (8).
+The scaling of this caustics curve near the
+vortex singularity is r ∼t2/3 [green curve in Fig. 3(c)],
+similar to the power-law scaling of the optical caustics
+near its singular tip [55] [Fig. 1(c) inset], and distinct
+from the scaling in IP.
+We demarcate the regions in the r0 −α plane where
+caustics occur as those where an intersection of adjacent
+rays (see Fig.
+3(e)) takes place in finite time, tx.
+At
+a particular r0 = rc, tx diverges [see Fig. 3 (d)], and
+caustics do not occur when the initial particle position is
+beyond this critical radius. This behaviour is similar to
+that of IPs [11]. The flow coupling α has a dual role at
+small to moderate distances from the vortex: (i) it aligns
+the dimer along the stable principal axis of S, which has
+a non-zero radial component; (ii) once aligned, it extends
+the dimer along this axis, thus competing with the 1/τ
+relaxation to zero motility. However, when the dimers
+have been centrifuged out to large r, the relaxation term
+takes over, leading to tracer-like dynamics, and the caus-
+tics radii lie at intermediate values of r [see Fig. 3 (b)].
+
+
+===== active-caustics-2023 | page 7/15 =====
+
+7
+V.
+CAUSTICS FROM THE CONTINUUM
+LIMIT OF ACTIVE PARTICLES
+Thus far, we have obtained caustics by evolving pairs
+of particles close to each other and then checking if their
+paths cross, where the initial separation between the two
+particles, ∆r, is a free parameter that is fixed arbitrarily.
+In this section, by turning to an alternative formulation
+of caustics, we establish that our choice of ∆r does not
+affect our answers. We transition from a discrete parti-
+cle system to a continuous particle phase, an approach
+common for studying IP caustics [12, 57, 58]. Consider
+a continuum of Hookean active dimers, each obeying (3)
+without noise. Their dynamics can be described by a ve-
+locity field v = v(x, t), whose equation follows directly
+from (3),
+τ
+µdtvi = −
+ 1
+µ −τ
+µ (α + 1) Sik
+
+(vk −Uk) + (Feff)i
++ τ
+µ
+
+Dt −βℓ2∇2
+Ui,
+(13)
+using the Einstein summation convention, where dt ≡
+∂t + vk∂k is the particle-phase material derivative. Note
+that (13) is identical in form to (3) except in the defi-
+nition of dt. The particle velocity field generally has a
+non-zero divergence since the particle flow is compress-
+ible. However, it is continuous everywhere except in caus-
+tics regions where this divergence ∇· v →−∞[59], that
+is, Tr(Z) →−∞where Z = τ∇v is a non-dimensional
+particle-velocity gradient tensor.
+The dynamics of Z
+readily follows from equation (13),
+dtZij = −1
+τ
+
+Zij −˜Oij + ZikZkj
+
++ µ∂j(Feff)i +
+
+Dt −βℓ2∇2
+˜Oij + 1
+τ
+˜Oik ˜Okj
++ α + 1
+2
+
+(vk −Uk) .∂k ˜Oij + (vk −Uk) ∂i ˜Okj + 2Sik
+
+Zkj −˜Okj
+
+,
+(14)
+where ˜O = τ∇u = τ (S + A) is the non-dimensional fluid
+gradient tensor with ˜S = τS and ˜A = τA being its sym-
+metric and anti-symmetric part, respectively. The ben-
+efit of equation (14) is that it can be solved in the La-
+grangian frame of individual particles and can thus pre-
+dict whether a given particle will experience a caustic.
+Furthermore, Z at a single point quantifies the differ-
+ences in particle velocities in the neighbourhood of that
+point.
+In the following, we show caustics formation by active
+Hookean Dimers near a point vortex using both equations
+(13) and (14) and confirm that they both yield the same
+result. We consider fore-aft symmetric particles without
+external forcing i.e., ℓ= Feff = 0, just as in Section
+FIG. 4.
+(a) Caustics times for particles starting from differ-
+ent initial radii as calculated from equations (15) (triangles)
+and (17) (squares). The two definitions of caustics give the
+same answer. (b) Average final radius for a range of initial
+radius, for different activity levels α, of particles starting near
+a point vortex.
+III. Using the characteristic length and timescale of
+p
+˜
+Γτ
+and τ, respectively, equation (13) reduces to the non-
+dimensional form
+dtvi = −
+h
+1 −(α + 1) ˜Sik
+i
+(vk −Uk) + DtUi ,
+(15)
+where, for a point vortex
+˜S ≡−1
+r2
+
+−sin 2θ cos 2θ
+cos 2θ
+sin 2θ
+
+= ˜O ,
+(16)
+which is well defined everywhere except at the origin,
+with θ = tan−1 y/x in terms of Cartesian x, y coordi-
+nates. Similarly, equation (14) becomes
+dtZ = −
+
+Z −˜S + Z2
++ Dt˜S + ˜S
+2
++ (α + 1)
+
+(v −U) .∇˜S + ˜S ·
+
+Z −˜S
+
+.
+(17)
+For a stationary background flow, such as a point vortex,
+DtUi = U.∇Ui
+and
+Dt˜S = U.∇˜S.
+(18)
+With these equations, we initialize active Hookean par-
+ticles at different radii, with initial velocity v(0) =
+sin(r)U, and evaluate where and when they form caus-
+tics. Fig. 4 (left) shows the time taken for different parti-
+cles to form caustics starting from a radius r0 for different
+values of α. The caustics detected by the Tr Z →−∞
+(squares) practically overlap with those obtained from
+crossing of particle trajectories (triangles).
+
+
+===== active-caustics-2023 | page 8/15 =====
+
+8
+Another way of looking at whether particles starting
+from a particular radius formed caustics is the following.
+If two rings of particles start with initial radii r01 and
+r02 with r01 < r02 and end at final radii rf1 and rf2
+respectively, with rf1 > rf2, they must have undergone
+caustics during their evolution.
+We can thus identify,
+from the regions of negative slope, that caustics occur
+almost everywhere in the range of initial locations shown
+in Fig. 4 (right) for particles with different activity with
+r0 ≪1.
+VI.
+ACTIVE PREFERRED-LENGTH DIMER IN
+A POINT VORTEX
+Although Active Hookean dimers are analytically
+tractable and offer a conceptual understanding of the
+coupling between flow and the activity of deformable
+swimmers, their extension, and hence their intrinsic
+speed, relax to zero in the absence of noise and flow.
+The motility parameter β defines a speed only when mul-
+tiplied by a preferred scale of w, say its RMS value. In
+nature, motile organisms generally possess an intrinsic
+speed independent of noise. To study such a case, we
+consider the equations for position X and extension w
+for an active dimer with a strongly preferred value of
+|w| = w0 and speed v = βw0,
+˙X = µF + U + βw
+(19)
+˙w = 1
+τ
+ 
+1 −|w|2
+w2
+0
+!
+w + (αS + A) · w
+−ℓ2∇2U +
+√
+2Dη(t).
+(20)
+Equations (19) and (20) describe an active Brownian par-
+ticle (ABP) in a flow. Note that instead of a projection
+operator I −ww on (αS + A) · w that imposes a rigidity
+constraint [52], the τ dependent term in (20) allows soft
+distortions about the preferred length w0. This difference
+between our preferred-length model and the traditional
+ABP, in which |w| is constant, is unimportant.
+Similar to Section III and IV, we study the dynamics of
+a suspension of active preferred-length dimers in a point
+vortex [see Appendix D]. Setting ℓ= 0 and η = 0, and
+integrating equations (19) - (20) with uniformly random
+initial orientations and positions, distributed on a disk of
+radius 4
+p
+˜Γτ, gives rise to caustics in the inner region,
+with the motility β playing a more conspicuous role than
+in the active Hookean case. Fig. 5 (a) & (b) compare
+the effective centrifugation of inertial and active parti-
+cles, with ˜β = 0.5 and α = 1.0 for various time frames,
+where ˜β ≡β
+q
+τ/˜Γ is the non-dimensional motility. The
+radial number density of a preferred-length dimer does
+not have a steady state [see Fig.
+5 (c)], and particles
+keep drifting radially outward on average, akin to inertial
+particles, and unlike the Hookean dimers. A crucial dis-
+tinction is the display of sharper caustics by the inertial
+FIG.
+5.
+Centrifugation
+and
+caustics
+of
+active
+preferred-length dimers in a point vortex: (a) & (b)
+show time frames of particle positions around a point vor-
+tex for inertial particles and preferred-length dimers (or ABP
+without noise) respectively, shown for ˜β = 0.5 and α = 1.0
+in (19) - (20). (c) radial number-density of active particles
+(green) compared with inertial particles (purple) shown for
+time 10τ, and the number-density at t = 0 (grey). Arrows
+schematically depict the radial drift of the unsteady state.
+(d) Intersections of adjacent trajectories marking the caus-
+tics curve (red circles) obtained for ˜β = 0.5, α = 1.0 and
+∆r = 0.01.
+particles, with a complete expulsion of particles within a
+ring that expands radially outwards with a velocity that
+asymptotically decays to 0 as r →∞[11]. In contrast,
+the radial drift of active particles approaches a constant
+velocity for r ≫1 [Appendix A Video 2]. The outer so-
+lution from the asymptotic analysis of (D6) - (D9) [see
+Appendix D] predicts this constant radial velocity to be
+the non-dimensional motility ˜β of a “free” particle inde-
+pendent of α, consistent with the linearity of the rays at
+late times in Fig 5 (d). We also find a caustics curve in
+the r −t plane by measuring the intersection of adjacent
+trajectories with ∆r = 0.01, where the critical radius for
+caustics [defined in Fig. 3 (d)] also depends on α and ˜β.
+VII.
+ACTIVE CAUSTICS IN TURBULENCE:
+DIRECT NUMERICAL SIMULATION
+To study the dynamics of a collection of ABPs in un-
+steady vortical flows, we write a pseudospectral code to
+solve the Navier-Stokes equations with a deterministic
+
+
+===== active-caustics-2023 | page 9/15 =====
+
+9
+FIG. 6.
+Caustics in turbulent flow. The blue-yellow colorbar represents the vorticity magnitude in the ambient turbulent
+flow scaled by the root-mean-square velocity gradient κ = 0.8454s−1 and black speckles are the locations of the geometric
+centers of 105 active dimers with preferred length w0 = 500µm. (a) ℓ2/w2
+0 = 2 × 103 with (from left to right) β/κ = 23.6,
+236, and 2360. (b) ℓ2/w2
+0 = 0 with (left to right) β/κ = 23.6, 236, and 2360. For intermediate activity the particles display
+pronounced caustics [see Appendix A Video 3 & Video 4].(c) heat-map of the number-density fluctuation plotted in (β/κ, ℓ2/w2
+0)
+plane. For comparison with plankton motility see Fig. 1 (a). (d) number-density fluctuation as a function of activity, showing
+pronounced agglomeration for intermediate levels of activity. (e) Okubo-Weiss parameter plotted for ℓ= 0 and various values
+of activity β/κ. (f) For ℓ2/w2
+0 = 0, β/κ = 236, the colliding pairs of particles are colored red; pronounced in caustics regions.
+external forcing F0q cos qx on the background flow U,
+in the stream-function-vorticity formulation [60]. In two
+dimensions, the inverse cascade feeds energy into long
+wavelengths, which we avoid by including an Ekman fric-
+tion µ [61], in addition to the viscous dissipation ν. The
+spectral Direct Numerical Simulations (DNS) are per-
+formed in a 2π periodic domain with 512×512 collocation
+points, and the parameters given in Table 1. This gives
+the flow velocity field U that drives the particle dynam-
+ics. A one-way coupling is assumed, wherein the ambient
+flow stirs the particles but particles do not generate flows.
+We use w0 and the inverse of the root-mean-square veloc-
+Domain
+kf
+F0
+ν
+µ
+5122
+3 m−1
+0.1 ms−2
+5 × 10−6 m2s−1
+0.01 s−1
+TABLE I. Spectral parameters for the Direct Numerical Sim-
+ulations
+ity gradient κ ≡
+p
+⟨∇U : ∇U⟩of the background flow in
+the turbulent steady state as length and time scales re-
+spectively, which gives the non-dimensional parameters,
+
+
+===== active-caustics-2023 | page 10/15 =====
+
+10
+(β/κ, τκ, α, ℓ2/w2
+0) and noise strength
+p
+2D/w2
+0κ.
+We
+fix α = 1, which in the geometric interpretation of [52]
+corresponds to a needle-shaped particle, and τ = 1, with
+τκ = 0.8454. This leaves a two-dimensional parameter
+space (β/κ, ℓ2/w2
+0) of activity and polar alignability, re-
+spectively.
+In a turbulent steady state, we initialise the particles
+with uniformly random initial positions and orientations.
+In the steady state of particle dynamics, we find tracer-
+like behavior for small values of motility strength β/κ in
+which swimmers get trapped within the vortices, consis-
+tent with the single vortex study. For large values of β/κ,
+swimmers exhibit ballistic dynamics, leading to a homo-
+geneous number density of particles.
+Caustics appear
+sharply at intermediate values of β/κ [see Appendix A
+Video 3], where we see preferential sampling and cluster-
+ing [see Fig. 6 (a) & (b)]. We quantify caustics-induced
+clustering by measuring the density fluctuation with re-
+spect to the initial homogeneous state [see Appendix E],
+and find pronounced caustics for a range of ℓ2/w2
+0 and
+β/κ [see Fig. 6 (c)]. We find that for intermediate values
+of activity β/κ, increasing ℓ2/w2
+0 sharpens the caustics
+filaments [see Appendix A Video 4]. The density fluc-
+tuation exhibits a peak around β/κ ≃102 [see Fig. 6
+(d)], which is similar to the dynamics of IP, where for
+intermediate values of Stokes number St, particles dis-
+play clustering [62] and sharp caustics [3], as compared
+to large and small values of St.
+We quantify how swimmers sample the flow by calcu-
+lating the Okubo-Weiss parameter, W = ω2 −2S : S at
+the location of particles, where S is the symmetric part
+of the velocity gradient tensor [63] and ω the vorticity.
+W > 0 implies that the particles are in a vortical re-
+gion, and W < 0 indicates localization of particles in the
+straining region. The distribution of the Okubo-Weiss
+parameter W sampled over all particle locations gives
+the deviation from homogeneous sampling of the flow;
+when compared with the distribution of W over the en-
+tire flow domain [see Fig. 6 (e)]. We find that particles
+cluster preferentially in the straining regions, in a man-
+ner similar to that of gyrotactic swimmers [17, 21]. This
+clustering coincides with pronounced collisions or path-
+crossing (see Fig. 6 f and Appendix A Video 5), that
+marks caustics of active particles in flow, akin to the in-
+ertial case [3], as might have been anticipated from our
+stationary vortex studies, and as argued to arise for gy-
+rotactic swimmers in turbulence [21]. Furthermore, to
+demonstrate the robustness of caustics to noise in equa-
+tion (20), we include a uniformly random, uncorrelated
+noise η with zero mean and unit width. For realistic lev-
+els of non-dimensional noise strength
+p
+2D/w2
+0κ, we find
+softening of caustics that retains its qualitative features
+[see Fig. 7, and Appendix A Video 6 ], and high values
+of noise strength
+p
+2D/w2
+0κ ≃O(102), randomizes the
+particle positions to produce a uniform state.
+To explore the relevance of our results in marine
+ecosystems, we plot the typical values of β/κ and Re
+for various swimmers [see Fig. 1 (a)], based on published
+FIG. 7. Effect of Orientational Noise. Dynamics with
+noise in equation (20) for (a)
+p
+2D/w2
+0κ = 0.91 and (b)
+p
+2D/w2
+0κ = 9.19, shows softening of caustics with the coarse
+structure retained [see Appendix A Video 6].
+The color-
+bar for the background vorticity field is the same as Fig. 6
+(a)&(b).
+data on swimming speed and size, and typical shear-rates
+in the upper mixed layer of the open ocean [29] [See Ap-
+pendix B]. For small swimming organisms, like ciliates,
+invertebrate larvae, and copepods, when turbulence en-
+ergy dissipation rates are towards the lower end of the
+range of values observed in the upper mixed layer of the
+ocean 10−8 −10−6 m2s−3 [29], β/κ can be in the inter-
+mediate regime, and from the comparison of β/κ in Fig.
+1(a) and Fig. 6(c) we expect some manifestation of active
+caustics in these natural biological suspensions. Interpar-
+ticle collisions, which can be central to sexual reproduc-
+tion in suspension of swimming organisms, formally oc-
+cur in our framework through a phase-space singularity,
+which is missing in the prior descriptions of clustering in
+turbulence [17, 18].
+VIII.
+CONCLUSIONS
+We have shown how advection, rotation and alignment
+by an ambient vortical flow can lead to a divergence
+in the number density of suspended self-propelled parti-
+cles without mechanical inertia. We have considered two
+dimer models of motile particles, Hookean and preferred-
+length, in vortical flows, corresponding, when noise is in-
+cluded to active Ornstein-Uhlenbeck [34, 35] and active
+Brownian particles [36]. To facilitate future studies in-
+cluding exploration of the possible dependence of caustic
+structure on the specific microswimmer model, we have
+made our simulation codebase publicly available in [60].
+By recasting the dynamics of motile inertialess parti-
+cles in a form close to that of the classic Maxey-Riley
+equations of inertial particles (IPs), we highlight the
+similarities and differences between the centrifugation of
+these two types of particle, in the illustrative setting of a
+single point vortex. We show the formation of caustics in
+both the dimer types mentioned above, by analysing the
+intersection of rays in the r −t plane. For a range of the
+flow-coupling parameter α, we demarcate the regimes in
+the α−r plane where caustics occur. We study the effect
+
+
+===== active-caustics-2023 | page 11/15 =====
+
+11
+of advection by more general vortical flows in the form
+of two-dimensional Navier-Stokes turbulence generated
+by direct numerical simulation, characterizing the pref-
+erential sampling of straining regions by the swimmers
+by means of the Okubo-Weiss parameter. We find that
+for intermediate values of the dimensionless motility β/κ,
+clustering and caustics are more pronounced, similar to
+the dynamics of IP as the Stokes number St is varied,
+suggesting that β/κ plays the same role as St. This hith-
+erto unexplored caustics regime is of interest formally be-
+cause crossing of active-particle worldlines renders their
+velocity field multiple-valued, and practically because the
+resulting rapid, transient collisions offer a strikingly ef-
+fective natural mechanism for close encounters between
+organisms. These encounters can increase mating oppor-
+tunities or contact-dependent interactions at low mean
+concentrations, beyond the effects of elevated local con-
+centration [17, 18]. The eco-physiological impact of clus-
+tering and caustics is expected to be organism-specific
+and awaits experimental verification.
+The biological implications of active caustics in ma-
+rine ecosystems may take time to be fully understood,
+but the theoretical framework developed here can be of
+immediate value for conceptualizing field observations.
+As mentioned in the beginning of this article, in complex
+natural environments, neither inertia nor activity can be
+directly controlled, and collisional aggregation [33] can
+arise from both inertial and active caustics. Disentan-
+gling their respective contributions, both their similari-
+ties and distinctions, is therefore essential for interpreting
+swimmer dynamics in field settings. A unified mechanis-
+tic framework for particle aggregation (and disaggrega-
+tion) in marine environments [64] remains an open prob-
+lem, to which our article contributes new insights. Our
+study reveals the minimal conditions for the occurrence
+of active caustics: (i) activity acts as a singular pertur-
+bation to the dynamics, that is, an arbitrarily small level
+of activity is sufficient to generate caustics, (ii) vortical
+flows with Jeffery-type coupling between swimmer orien-
+tation and flow (α ̸= 0) are adequate to induce caustics;
+turbulence is not a prerequisite, and (iii) active caustics
+can arise even in the absence of organism-specific be-
+haviors such as gyrotaxis or chemotaxis, which are not
+included in our model. We further demonstrate that (iv)
+fore–aft asymmetry (characterized by ℓ̸= 0) and particle
+rigidity are not essential, and that (v) caustics remain
+robust to orientational noise. In three dimensions, accu-
+mulation is known to be weaker than in two dimensions
+[18], but we expect the criteria for caustics formation to
+remain valid, with extremal surfaces rather than curves.
+While optical caustics can be engineered [65], whether
+an analogous framework can be developed for controlling
+active suspensions remains a question.
+Although coarse-graining eliminates multivaluedness
+of the velocity field, the accompanying singularity in the
+density field persists. In natural systems, however, the
+divergence in particle number density would likely be reg-
+ularised by inter-particle hydrodynamic, steric and/or
+behavioral interactions.
+Whether condensation driven
+by caustics in active suspensions constitute a bona fide
+nonequilibrium phase transition, and whether active tur-
+bulence generated by swimming microbes can produce
+caustics in their own concentration fields, remains to be
+explored.
+IX.
+ACKNOWLEDGEMENTS
+SR acknowledges a JC Bose Fellowship from the
+ANRF, India, support from the Tata Education and De-
+velopment Trust, an ICTS Endowed Visiting Professor-
+ship, and discussions in the Program on Complex La-
+grangian Problems of Particles in Flows, ICTS-TIFR,
+Bangalore, and RC & RG acknowledge support from the
+Department of Atomic Energy, Government of India, un-
+der project no. RTI4001. SR thanks the Isaac Newton
+Institute for Mathematical Sciences, Cambridge, for sup-
+port and hospitality during the programme Anti-diffusive
+dynamics: from sub-cellular to astrophysical scales where
+work on this paper was undertaken, supported by EPSRC
+grant no EP/R014604/1. R thanks Saumav Kapoor and
+Samriddhi Sankar Ray at ICTS for insightful discussions.
+RC acknowledges support from the International Human
+Frontier Science Program Organization, and discussions
+in Active Matter in Complex Environments Conference
+at the Aspen Center for Physics, and thanks Prakash Lab
+for valuable insights into marine ecology.
+APPENDIX A: Supplementary Videos
+Video 1: Active Hookean dimers with α = 1, λ = 0
+in a point vortex flow. It is compared with the dynamics
+of inertial particles.
+Video 2: Active Preferred-length dimers with α = 1,
+λ = 0, β
+p
+τ/Γ = 0.5 in a point vortex flow.
+Video 3: Preferred-length dimers in turbulence with
+flow parameters given by Table I of methods section, and
+with α = 1, τ = 1, ℓ2/w2
+0 = 0, β/κ = 23.6, 236, and 236
+(increasing from left to right). The intermediate values
+of activity β/κ presents the regime of most pronounced
+caustics as shown in Fig. 3 (b).
+Video 4: Preferred-length dimers in turbulence with
+α = 1, τ = 1, β/κ = 236, and ℓ2/w2
+0 = 0 (left) and
+ℓ2/w2
+0 = 2 × 103 (right). Increasing the polar aligning
+parameter ℓ2/w2
+0 intensifies the caustics [comparison be-
+tween the middle column of Fig. 3 (a) & (b)].
+Video 5: Preferred-length dimers in turbulence with
+α = 1, τ = 1, β/κ = 236, and ℓ2/w2
+0 = 0, where the
+pairs of particles whose trajectories intersect within the
+numerical time step 10−3 s are coloured red; showing ex-
+treme path-crossing events in the regions of high number
+density.
+Video 6: Preferred-length dimers in turbulence with
+
+
+===== active-caustics-2023 | page 12/15 =====
+
+12
+Data used to make Fig.1 (a)
+Creature
+size (µm)
+Speed
+(µm
+s−1)
+β
+Re
+Data Source
+Dinoflagellate
+63.7
+261.6
+9.7
+0.01
+M. Lisicki et al., eLife 8:e44907
+(2019).
+Ciliate
+180.2
+1184.2
+13.1
+0.2
+M. Lisicki et al., eLife 8:e44907
+(2019).
+Larvae
+396.6
+2275
+8.2
+0.9
+1) H. L. Fuchs and G. P. Gerbi,
+Progress in Oceanography, vol. 141,
+pp.
+109–129, 2016, 2) D. Wendt,
+The Biological Bulletin, vol.
+198,
+no.
+3, pp.
+346–356, 2000, 3)
+H. L. Fuchs et al., Limnology and
+Oceanography, vol. 49, no. 6, pp.
+1937–1948, 2004
+Copepod
+1284
+3440
+2.5
+4.4
+H.
+L.
+Fuchs
+and
+G.
+P.
+Gerbi,
+Progress in Oceanography, vol. 141,
+pp. 109–129, 2016
+Marine Bacteria
+3
+40
+13.3
+0.0001
+1)
+M. Chen et al.
+eLife, vol.
+6,
+p. e22140, jan 2017. 2) K. Son et
+al.
+PNAS, vol.
+113, no.
+31, pp.
+8624–8629, 2016
+α = 1, τ = 1, β/κ = 236, ℓ2/w2
+0 = 0, and non-
+dimensional noise strength
+p
+2D/w2
+0κ = 9.19.
+APPENDIX B: Plotting Reynolds number and
+β/∥∇U∥for various marine organisms
+We use the kinematic viscosity of water, ν = 10−6
+m2s−1 with previously measured energy dissipation rates
+in the upper mixed layer of the ocean, ϵ = 10−8 −10−6
+m2s−3 [29], to calculate the Reynolds number and shear-
+rate using the relation ⟨∥∇U∥⟩rms = (ϵ/ν)1/2.
+The Table A is a compilation of data-sets published
+previously by other researchers (source is given in the
+table). Each creature type exhibits a distribution of size
+and swimming speed.
+We use the average value from
+the known data. There is limited data on the size and
+swimming statistics of marine bacteira; we use the data
+for Vibrio alginolyticus, which is studied due to its bio-
+medical importance.
+APPENDIX C: Active Hookean Dimer in a Point
+Vortex
+In the absence of external force field F, and redefining
+a flow-dependent relaxation time, ˜τ −1 ≡I/τ −(α S+A ),
+gives the equation
+dv
+dt −v · ∇U = (U −v) · ˜τ −1.
+(C1)
+The velocity field generated by a point-vortex in polar
+coordinates is
+U =
+Γ
+2πr
+ˆθ ≡
+¯Γ
+r
+ˆθ.
+(C2)
+In polar coordinates the position derivatives are
+X = rˆr,
+dX
+dt = dr
+dtˆr + rdθ
+dt
+ˆθ,
+(C3)
+and
+d2X
+dt2 = d2r
+dt2 ˆr + 2dr
+dt
+dθ
+dt
+ˆθ −r
+dθ
+dt
+2
+ˆr + rd2θ
+dt2 ˆθ.
+(C4)
+To demonstrate the emergence of an effective centrifu-
+gal force due to the coupling of activity with the back-
+ground flow, we neglect the external force, and the Gaus-
+sian white noise in (3), and consider fore-aft symmetric
+particles such that ℓ= 0. For a point vortex, the an-
+tisymmetric tensor A is zero everywhere except at the
+origin, and the symmetric part is
+S =
+ 
+0
+−˜Γ/r2
+−˜Γ/r2
+0
+!
+.
+(C5)
+Using (C2)-(C5) in (C1) gives
+τ
+"
+d2r
+dt2 ˆr + 2dr
+dt
+dθ
+dt
+ˆθ −r
+dθ
+dt
+2
+ˆr + rd2θ
+dt2 ˆθ +
+˜Γ
+r
+dθ
+dtˆr +
+˜Γ
+r2
+dr
+dt
+ˆθ
+#
+=
+¯Γ
+r
+ˆθ −dr
+dtˆr −rdθ
+dt
+ˆθ + ατ ˜Γ
+r3 ˆr −τα˜Γ
+r
+dθ
+dtˆr −τα˜Γ
+r2
+dr
+dt
+ˆθ.
+(C6)
+
+
+===== active-caustics-2023 | page 13/15 =====
+
+13
+Separating equations in the ˆr and ˆθ directions in (C6),
+we get two coupled equations
+τ d2r
+dt2 −τr
+dθ
+dt
+2
+= −dr
+dt + ατ ˜Γ2
+r3
+−τ(1 + α)˜Γ
+r
+dθ
+dt , (C7)
+2τ dr
+dt
+dθ
+dt + τrd2θ
+dt2 =
+¯Γ
+r −rdθ
+dt −τ(1 + α)˜Γ
+r2
+dr
+dt .
+(C8)
+Choosing
+p
+˜Γτ and τ as the length and time scales re-
+spectively, we arrive at the following non-dimensional
+equations involving non-dimensional variables r, t and
+L = r2 ˙θ.
+¨r −L2
+r3 = −˙r + α −(1 + α)L
+r3
+˙L = 1 −L −(1 + α) ˙r
+r ,
+(C9)
+where ˙(.) ≡d(.)/dt.
+APPENDIX D: Active Preferred-length Dimer in a
+Point Vortex
+The equations for an active dimer which has a preferred
+length are given by
+˙X = U + βw
+(D1)
+˙w = 1
+τ
+ 
+1 −|w|2
+w2
+0
+!
+w + (αS + A) · w
+−ℓ2∇2U +
+√
+2Dη(t).
+(D2)
+With ℓ= 0 and η = 0, (D1) and (D2) can be recast as
+dv
+dt −v · ∇U = (U −v) · ˜τ −1
+(D3)
+where ˜τ −1 ≡
+I
+τ
+
+||V −U||
+β2
+−1
+
+−(α S + A ).
+The non-
+dimensional equations with R =
+p
+˜Γτ and T = τ, in
+cylindrical polar coordinates become
+˜β2 d2r
+dt2 = ˜β2r
+dθ
+dt
+2
++ dr
+dt
+(
+2dθ
+dt −
+dr
+dt
+2
+−r2
+dθ
+dt
+2
++ ˜β2 −1
+r2
+)
++
+˜β2α
+r3 −
+˜β2(1 + α)
+r
+dθ
+dt ,
+(D4)
+˜β2rd2θ
+dt2 = −2˜β2 dθ
+dt
+dθ
+dt + +
+
+rdθ
+dt −1
+r
+
+×
+(
+2dθ
+dt −
+dr
+dt
+2
+−r2
+dθ
+dt
+2
++ ˜β2 −1
+r2
+)
+−
+˜β2(1 + α)
+r2
+dr
+dt ,
+(D5)
+where ˜β ≡β
+q
+τ/˜Γ is the non-dimensional motility.
+These may be recast as a system of first-order equations
+as
+dr
+dt = vr,
+(D6)
+˜β2 dvr
+dt = ˜β2rω2 + vr
+
+2ω −vr
+2 −r2ω2 + ˜β2 −1
+r2
+
++
+˜β2α
+r3 −
+˜β2(1 + α) ω
+r
+,
+(D7)
+dθ
+dt = ω,
+(D8)
+˜β2 dω
+dt = −2˜β2 vr ω
+r
++
+
+ω −1
+r2
+ 
+2ω −vr
+2 −r2ω2 + ˜β2 −1
+r2
+
+−
+˜β2(1 + α) vr
+r3
+.
+(D9)
+By calculating the divergence of crossing time, for a
+fixed ˜β = 1.0, we get the caustics phase in the r −α
+plane, similar to the hookean case. We find that rigid
+spheroidal microswimmers [41, 66] in vortical flow also
+display caustics, which we do not explore here.
+APPENDIX E: Number density fluctuation,
+clustering and collisions
+Local number density fluctuations can be used as a
+statistical measure for the intensity of caustic-induced
+clustering. The space is numerically discretized into N ×
+N cells such that there is on an average 1 particle per
+FIG. 8. Number-density fluctuations: The fluctuations
+saturate as a function of time as the particulate structure
+evolves from a uniformly random state to exhibiting caus-
+tics. Red and blue curves correspond to ℓ2/w2
+0 = 2 × 103 and
+ℓ2/w2
+0 = 0 respectively. The activity β/κ = 236 in both cases.
+The top and bottom panels on the right correspond to the top
+and bottom curves on the left respectively.
+
+
+===== active-caustics-2023 | page 14/15 =====
+
+14
+cell in the initial uniformaly random state
+∆ρij
+2 =
+1
+N 2
+X
+i,j
+(ρij −1)2.
+(E1)
+Here, i, j are the cell index corresponding to a given spa-
+tial location. The initial state itself contributes a residual
+density fluctuation, which we subtract to obtain purely
+caustic-induced clustering. To measure collisions, we find
+pairs of particles whose trajectories intersect within the
+numerical time step ∆t = 10−3, as shown in 9. Such par-
+ticles are colored red in Supplementary Video 5; where
+we one finds that the regions with high number-density
+coincide with the crossing of particle trajectories.
+FIG. 9. Collisions: A schematic of (a) colliding (red) and (b)
+non-colliding (grey) pairs of particles, where the intersection
+of paths within the numerical time step ∆t marks the collision
+event.
+[1] M. V. Berry and J. F. Nye, Nature 267.
+[2] J. Feldbrugge, R. v. de Weygaert, J. Hidding, and J. Feld-
+brugge, Journal of Cosmology and Astroparticle Physics
+2018 (05), 027–027.
+[3] M. Wilkinson and B. Mehlig, Europhysics Letters (EPL)
+71, 186 (2005).
+[4] M. Pinsky and A. Khain, Journal of Aerosol Science 28,
+1177 (1997).
+[5] H. J. S. Fernando, D. Zajic, S. Di Sabatino, R. Dim-
+itrova, B. Hedquist, and A. Dallman, Physics of Fluids
+22, 051301 (2010), https://doi.org/10.1063/1.3407662.
+[6] P. W. Boyd, H. Claustre, M. Levy, D. A. Siegel, and
+T. Weber, Nature 568, 327 (2019).
+[7] K. Samborska, S. Poozesh, A. Bara´nska, M. Sobulska,
+A. Jedli´nska, C. Arpagaus, N. Malekjani, and S. M. Ja-
+fari, Journal of Food Engineering 321, 110960 (2022).
+[8] G. Boffetta, F. De Lillo, and A. Gamba, Physics of Fluids
+16, L20 (2004), https://doi.org/10.1063/1.1667807.
+[9] M.
+R.
+Maxey
+and
+J.
+J.
+Riley,
+The
+Physics
+of
+Fluids
+26,
+883
+(1983),
+https://aip.scitation.org/doi/pdf/10.1063/1.864230.
+[10] M. R. Maxey and S. Corrsin, Journal of Atmospheric
+Sciences 43, 1112 (1986).
+[11] S. Ravichandran and R. Govindarajan, Physics of Fluids
+27, 033305 (2015), https://doi.org/10.1063/1.4916583.
+[12] G. Falkovich, A. Fouxon, and M. Stepanov, Nature 419,
+151 (2002).
+[13] P. Deepu, S. Ravichandran, and R. Govindarajan, Phys.
+Rev. Fluids 2, 024305 (2017).
+[14] E. Lauga and T. R. Powers, Reports on progress in
+physics 72, 096601 (2009).
+[15] C. Torney and Z. Neufeld, Phys. Rev. Lett. 99, 078101
+(2007).
+[16] W. M. Durham, E. Climent, and R. Stocker, Phys. Rev.
+Lett. 106, 238102 (2011).
+[17] W. M. Durham, E. Climent, M. Barry, F. De Lillo,
+G. Boffetta, M. Cencini, and R. Stocker, Nature Com-
+munications 4, 10.1038/ncomms3148 (2013).
+[18] C. Zhan, G. Sardina, E. Lushi, and L. Brandt, Journal
+of Fluid Mechanics 739, 22–36 (2014).
+[19] N. Khurana, J. Blawzdziewicz, and N. T. Ouellette, Phys.
+Rev. Lett. 106, 198104 (2011).
+[20] T. Pedley and J. O. Kessler, Annual Review of Fluid
+Mechanics 24, 313 (1992).
+[21] K.
+Gustavsson,
+F.
+Berglund,
+P.
+R.
+Jonsson,
+and
+B. Mehlig, Phys. Rev. Lett. 116, 108104 (2016).
+[22] J. O. Kessler, Nature 313, 218 (1985).
+[23] A. Genin, Journal of Marine Systems 50, 3 (2004), the
+Role of Biophysical Coupling in Concentrating Marine
+Organisms Around Shallow Topographies.
+[24] S. Yazdi and A. M. Ardekani, Biomicrofluidics 6, 044114
+(2012), https://doi.org/10.1063/1.4771407.
+[25] A. Sokolov and I. S. Aranson, Nature Communications
+7, 10.1038/ncomms11114 (2016).
+[26] K. Son, F. Menolascina, and R. Stocker, Proceedings
+of the National Academy of Sciences 113, 8624 (2016),
+https://www.pnas.org/doi/pdf/10.1073/pnas.1602307113.
+[27] M. Lisicki, M. F. Velho Rodrigues, R. E. Goldstein, and
+E. Lauga, eLife 8, e44907 (2019).
+[28] H. L. Fuchs and G. P. Gerbi, Progress in Oceanography
+141, 109 (2016).
+[29] J.
+S.
+Guasto,
+R.
+Rusconi,
+and
+R.
+Stocker,
+An-
+nual
+Review
+of
+Fluid
+Mechanics
+44,
+373
+(2012),
+https://doi.org/10.1146/annurev-fluid-120710-101156.
+[30] G. Basterretxea, J. S. Font-Mu˜noz, and I. Tuval, Fron-
+tiers in Marine Science 7, 10.3389/fmars.2020.00185
+(2020).
+[31] R. Monthiller, A. Loisy, M. A. R. Koehl, B. Favier, and
+C. Eloy, Phys. Rev. Lett. 129, 064502 (2022).
+[32] S. A. Berman, J. Buggeln, D. A. Brantley, K. A. Mitchell,
+and T. H. Solomon, Phys. Rev. Fluids 6, L012501 (2021).
+[33] A. Pumir and M. Wilkinson, Annual Review of Con-
+densed Matter Physics 7, 141 (2016).
+[34] E. Fodor, C. Nardini, M. E. Cates, J. Tailleur, P. Visco,
+and F. van Wijland, Phys. Rev. Lett. 117, 038103 (2016).
+[35] L. L. Bonilla, Phys. Rev. E 100, 022601 (2019).
+[36] P. Romanczuk, M. B¨ar, W. Ebeling, B. Lindner, and
+L. Schimansky-Geier, The European Physical Journal
+Special Topics 202, 1 (2012).
+[37] D. Krishnamurthy, H. Li, F. B. du Rey, P. Cambournac,
+A. G. Larson, E. Li, and M. Prakash, Nature Methods
+17, 1040 (2020).
+[38] N. Mousavi, J. Qiu, B. Mehlig, L. Zhao, and K. Gustavs-
+son, Efficient survival strategy for zooplankton in turbu-
+lence (2023), arXiv:2309.09641 [physics.flu-dyn].
+
+
+===== active-caustics-2023 | page 15/15 =====
+
+15
+[39] T.
+J.
+Pedley
+and
+J.
+O.
+Kessler,
+Annual
+Re-
+view
+of
+Fluid
+Mechanics
+24,
+313
+(1992),
+https://doi.org/10.1146/annurev.fl.24.010192.001525.
+[40] E. J. Buskey, Journal of Marine Systems 15, 13 (1998).
+[41] H. Stark, The European Physical Journal Special Topics
+225, 2369–2387 (2016).
+[42] E. Lushi and P. M. Vlahovska, Journal of Nonlinear Sci-
+ence 25, 1111–1123 (2015).
+[43] N. Oppenheimer, D. B. Stein, and M. J. Shelley, Phys.
+Rev. Lett. 123, 148101 (2019).
+[44] J.-A. Arguedas-Leiva and M. Wilczek, New Journal of
+Physics 22, 053051 (2020).
+[45] R. Chajwa, N. Menon, and S. Ramaswamy, Phys. Rev.
+Lett. 122, 224501 (2019).
+[46] A. Bolitho, R. Singh, and R. Adhikari, Phys. Rev. Lett.
+124, 088003 (2020).
+[47] R. Chajwa, N. Menon, S. Ramaswamy, and R. Govin-
+darajan, Phys. Rev. X 10, 041016 (2020).
+[48] A. Maitra, P. Srivastava, M. Rao, and S. Ramaswamy,
+Physical review letters 112, 258101 (2014).
+[49] N.
+Shimoyama,
+K.
+Sugawara,
+T.
+Mizuguchi,
+Y. Hayakawa, and M. Sano, Physical Review Let-
+ters 76, 3870 (1996).
+[50] T. Brotto, J.-B. Caussin, E. Lauga, and D. Bartolo, Phys.
+Rev. Lett. 110, 038101 (2013).
+[51] N. Kumar, H. Soni, S. Ramaswamy, and A. Sood, Nature
+communications 5, 4688 (2014).
+[52] G. B. Jeffery and L. N. G. Filon, Proceedings of the
+Royal Society of London. Series A, Containing Papers of
+a Mathematical and Physical Character 102, 161 (1922).
+[53] S. G. Prasath, V. Vasan, and R. Govindarajan, Journal
+of Fluid Mechanics 868, 428 (2019).
+[54] C.
+M.
+Bender
+and
+S.
+A.
+Orzag,
+Advanced mathematical methods for scientists and engineers
+(Springer, New York, 1999).
+[55] J.
+Eggers
+and
+M.
+A.
+Fontelos,
+Singularities: Formation, Structure, and Propagation,
+Cambridge Texts in Applied Mathematics (Cambridge
+University Press, 2015).
+[56] S. Ravichandran and R. Govindarajan, Physical Review
+Fluids 7, 110512 (2022).
+[57] J. Meibohm, V. Pandey, A. Bhatnagar, K. Gustavsson,
+D. Mitra, P. Perlekar, and B. Mehlig, Physical Review
+Fluids 6, L062302 (2021).
+[58] T. B¨atge, I. Fouxon, and M. Wilczek, Physical Review
+Letters 131, 054001 (2023).
+[59] M. et al., Physical Review Fluids 6, L062302 (2021).
+[60] R. Chajwa, Github repo containing necessary codes for
+evolving active particles in 2d turbulence.
+[61] G.
+Boffetta
+and
+R.
+E.
+Ecke,
+Annual
+Re-
+view
+of
+Fluid
+Mechanics
+44,
+427
+(2012),
+https://doi.org/10.1146/annurev-fluid-120710-101240.
+[62] J. Eaton and J. Fessler, International Journal of Multi-
+phase Flow 20, 169 (1994).
+[63] J. R. Picardo, D. Vincenzi, N. Pal, and S. S. Ray, Phys.
+Rev. Lett. 121, 244501 (2018).
+[64] A. B. Burd and G. A. Jackson, Annual Review of Marine
+Science 1, 65–90 (2009).
+[65] X. Zhou, H. Wang, S. Liu, H. Wang, J. Y. E. Chan,
+C.-F. Pan, D. Zhao, J. K. W. Yang, and C.-W. Qiu,
+Nature Communications 15, 10.1038/s41467-024-48026-
+5 (2024).
+[66] A. Z¨ottl and H. Stark, Phys. Rev. Lett. 108, 218104
+(2012).

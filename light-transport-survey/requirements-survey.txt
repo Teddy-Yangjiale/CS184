@@ -1,0 +1,5 @@
+# Direct dependency versions observed on the source machine, 2026-11-06.
+# This is a survey-tool snapshot, not a renderer / CUDA environment lock.
+requests==2.32.3
+PyMuPDF==1.27.2.3
+numpy==2.1.3

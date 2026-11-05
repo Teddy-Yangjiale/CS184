@@ -1,0 +1,2553 @@
+
+
+===== stiffness-polarization-2015 | page 1/5 =====
+
+Tuning the Stiﬀness Asymmetry of Optical Tweezers via Polarization Control
+Jinmyoung So and Jai-Min Choi∗
+Division of Science Education and Institute of Fusion Sciences,
+Chonbuk National University, Jeonju 54896, Korea
+Optical tweezers that utilize a highly focused, linearly polarized laser beam exhibit strong trap
+stiﬀness asymmetry, which originates from the anisotropic ﬁeld distribution in the transverse plane.
+Based on the previous study of polarization-dependent focused ﬁeld distribution, we explore its
+manifestation in optical trap in terms of trap stiﬀness asymmetry. Our results demonstrate that
+polarization control provides a versatile tuning knob for tailoring optical potential landscape even
+in case of a strongly modiﬁed focused ﬁeld in the presence of dielectric spheres larger than the
+wavelength of a trap beam.
+PACS numbers: 42.50.Wk, 87.80.Cc
+Keywords: optical tweezers, stiﬀness asymmetry, polarization control
+I.
+INTRODUCTION
+A tightly focused laser beam can help overcome radi-
+ation pressure, resulting in the stable optical trapping of
+microscopic particles in an optical potential; this princi-
+ple is physically realized in instruments known as “op-
+tical tweezer” (OTs) [1, 2]. OTs provide a contactless
+optical clamping method and additional means of gov-
+erning the system dynamics (e.g., studying interaction
+dynamics in colloidal systems [3–5] and microgyroscope
+applications [7? ]). Moreover, by harnessing the extreme
+force sensitivity such methods have various applications
+in biophysics and precision control [8]. In these appli-
+cations, tailoring the landscape of the optical potential
+is of signiﬁcant importance, and considerable eﬀorts have
+been devoted to engineering the optical potential in order
+to realize the modeled systems desirable for manifesting
+novel characteristics of research interest (e.g., scanning-
+line OTs [9]).
+Recent studies on this subject in the context of highly
+focused OTs have shown that strong asymmetry in trap
+stiﬀnesses [10–12], which is equivalent to asymmetric trap
+potential, is primarily due to the anisotropic electro-
+magnetic (EM) ﬁeld distribution around a trap region.
+Rohrbach et al. illustrated the trap stiﬀness asymmetry
+in their OT setup based on a water-immersion objec-
+tive lens [10]. Zakharian et al. used the ﬁnite-diﬀerence
+time-domain (FDTD) method to investigate polariza-
+tion eﬀects on the optical potential formed in air and
+in water [11]. Madadi et al. explored the aberration ef-
+fect that is caused by the refractive index mismatch be-
+tween the interfaces of the media involved; more specif-
+ically, they investigated the trap potential asymmetry
+that arises in OTs composed of an oil-immersion objec-
+tive lens [12]. Marag et al. elucidated the trap poten-
+tial anisotropy of OT by analyzing the autocorrelation
+and cross-correlation of the center-of-mass and angular
+motion of optically trapped nanotube bundle [13], and
+∗Electronic address: jaiminchoi@jbnu.ac.kr; Fax: +82-63-270-2806
+Jinxin et al. illustrated the two-dimensional trapping-
+potential proﬁle using the optical bottle method [14].
+While the abovementioned studies [10–12] focused on
+the characterization of trap stiﬀness asymmetry in OTs
+with a linearly polarized trap beam, we address the same
+subject with the aim of achieving a control parameter
+over the stiﬀness asymmetry by using the polarization
+state of the trapping beam.
+To investigate the eﬀect
+of the polarization state of the trap laser beam on the
+trap potential asymmetry, we constructed a custom-built
+OT setup equipped with polarization control. The input
+beam is prepared with linear, elliptic, and circular po-
+larization, and the resulting trap potential asymmetry
+is characterized in terms of the trap stiﬀnesses (spring
+constants) in the transverse plane. The trap stiﬀnesses
+are measured for each polarization state from the motion
+of trapped particles by using the back-focal-plane inter-
+ferometry (BFPI) technique [15]. Theorerical estimation
+for the experimental observations is also presented based
+on the generalized Lorent-Mie theory, which is revised to
+encompass the general polarization state of a trapping
+beam [16].
+II.
+EXPERIMENTAL SETUP AND
+PRELIMINARY MEASUREMENT
+We constructed a custom-built OT setup equipped
+with polarization control, as shown in Fig. 1(a). The
+output of the diode laser system is fed to a tapered am-
+pliﬁer, resulting in 1.6 W of output power with a tuned
+wavelength (λ0) of 780 nm. The power-ampliﬁed beam
+is guided to the experimental region through a single-
+mode polarization-maintaining ﬁber, yielding the trans-
+mitted power of about 250 mW. The ﬁrst half-wave plate
+(HWP1) and polarizing beam splitter (PBS) are used to
+adjust the input beam power, whereas the second half-
+wave plate (HWP2) and the quarter-wave plate (QWP)
+deﬁne the polarization state. As benchmark conditions,
+the maximum power of the incident beam and the col-
+limated beam size before the water-immersion objective
+lens (UPLSAPO 60XW, Olympus) were 150 mW and 4
+arXiv:1509.05908v3  [physics.optics]  26 Nov 2015
+
+
+===== stiffness-polarization-2015 | page 2/5 =====
+
+2
+HWP1
+Obj.L
+QPD
+LED
+Sample
+chamber
+PBS
+DM
+L1
+Iris
+L2
+L3
+HWP2 QWP
+y
+x
+z
+(a)
+(b)
+(c)
+-2
+-1
+0
+1
+2
+-2
+-1
+0
+1
+2
+0.2
+0.4
+0.6
+0.8
+1.0
+-6
+-6
+-
+-6062
+6462426
+242
+-2
+-1
+0
+1
+2
+-2
+-1
+0
+1
+2
+0
+0.2
+0.4
+0.6
+0.8
+1.0
+-6
+-6
+-
+-6062
+6462426
+242
+ɶI CP
+ɶI LP
+FIG. 1: (a) Schematic of the experimental setup. HWP: half-
+wave plate. PBS: polarizing beam splitter. QWP: quarter-
+wave plate. Obj. L: a water-immersion objective lens. L1 and
+L2: condenser lens and relay lens, respectively. QPD: quad-
+rant photodiode.
+LED: light-emitting diode.
+The dichroic
+mirror (DM) is removed during PSD measurements. (b) The
+normalized intensity distribution for a linearly polarized (LP)
+input beam at the focal plane. (c) The normalized intensity
+distribution for a circularly polarized (CP) input beam at the
+focal plane. In (b-c), the dashed white lines outline the (e−1,
+e−2, e−3, e−4, e−5) levels and the frame ticks are given units
+of w0.
+mm (corresponding to a ﬁlling factor of 1), respectively.
+Part of that beam power was reserved for power stabiliza-
+tion. The wave plates were initially aligned to produce
+linearly polarized light along the horizontal direction in
+the laboratory frame: ⃗Ein = E0ˆx . A 170-µm-thick cover
+glass (NO1.5H, ZEISS) and a nominal slide glass were
+sandwiched together as sidewalls in order to construct
+the sample chamber using a 200-µm-thick, double-sided
+3M tape. The polystyrene spheres (Bangs Laboratories)
+of diameter 300 ± 15 nm, with the index of refraction np
+= 1.579 at λ0 = 780 nm, were diluted and dispersed in
+deuterium oxide (D2O) to minimize heat-induced convec-
+tion. Additional procedures for hydrophobic coating of
+the glass surfaces and stabilizing surfactant were made
+following the protocol provided in Ref. [17]. The con-
+denser lens (L1) collects part of the trapping beam to-
+gether with the scattered light. The superposed ﬁeld pat-
+tern in the back focal plane of L1 was imaged onto the
+quadrant photodiode (QPD) via the relay lens L2, which
+is known as the BFPI technique [15]. An iris at the back
+focal plane of L1 was used to optimize the sensitivity of
+BFPI by adjusting the eﬀective numerical aperture (NA)
+of the condenser lens [18], and the auxiliary components
+(LED, L3, and DM) are part of the imaging setup. The
+output signals (δVx, δVy, VSUM) of the QPD were logged
+using a high-speed digital scope (5444B, PicoScope) with
+a 5-µs sampling time; each measurement was performed
+for 2 s.
+Having a diﬀraction-limited spot is crucial for our re-
+search because it ensures exclusion of other contribu-
+tions, e.g., aberration eﬀects, and trap asymmetry it-
+self strongly depends on the spot size.
+We exploited
+the scattered light from the particle to produce a tight
+spot. For this diagnostic purpose, the input trap beam
+was prepared with a circular polarization, i.e.,E0ˆx →
+E0(ˆx + iˆy)/
+√
+2, and part of the scattered light from the
+test sphere being trapped was recollected by the objec-
+tive lens. It passed the QWP again, mostly resulting in
+the polarization that is rotated by 90◦: E0(ˆx−iˆy)/
+√
+2 →
+E0ˆy. The rotated scattered light was redirected by the
+PBS and mode-ﬁltered through a 15-µm pinhole to elim-
+inate the reﬂected light from the other interfaces, ex-
+cept for that of the trapped particle. We maximized the
+guided power by adjusting the trap beam alignment and
+the correction collar of the objective lens [19].
+Figures 1(b) and 1(c) show the numerically calculated
+intensity distribution based on vectorial diﬀraction the-
+ory considering the following experimental parameters
+(as was discussed in our previous study [16] and refer-
+ences are therein): NA of the objective lens is 1.2, focal
+length f = 3 mm, ﬁlling factor = 1.0, vacuum wavelength
+λ0 = 780 nm, and the refractive index (nm) of D2O is
+1.324. The intensity distribution is markedly diﬀerent de-
+pending on the input beam polarization states: an elon-
+gated distribution for linearly (ˆx) polarized beam (Fig.
+1(b)) and an isotropic distribution for circularly polar-
+ized beam (Fig. 1(c)). The minimum spot size (w0) was
+estimated to be 293 nm through a Gaussian ﬁt of the
+numerically calculated ﬁeld pattern [16, 18], whereas the
+conventional deﬁnition of optical resolution (the radius
+of the primary Airy disk) gives the relevant value as 270
+nm. Based on our experimental results, the beam waist
+(w′
+0) is chosen to be 300 nm, which is 2% larger than
+the ideal case, although we elaborated on producing the
+tightest spot size as possible.
+Part of the δVx (red points) and δVy (blue points) data
+are presented in Fig. 2(a), and the corresponding power
+spectral density (PSD) is shown in Fig. 2(b) with the
+linearly (ˆx) polarized trap beam.
+The beam power in
+ç
+ç
+ç
+çç
+ç
+ççç
+ç
+ç
+ç
+çç
+ç
+çççç
+ç
+çç
+ç
+ççç
+ççççç
+çççç
+ççç
+ç
+ççç
+ççççç
+ççççç
+çççç
+ç
+çç
+ç
+ç
+ç
+çççççççççççç
+çççççççççççç
+ç
+ç
+çççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççççç
+á
+áááá
+á
+á
+á
+áá
+á
+áá
+á
+á
+á
+ááááá
+á
+áá
+áááá
+á
+áááá
+áááá
+ááá
+á
+á
+ááá
+ááá
+ááááá
+á
+áááááááááááááá
+áááááááááááááááááááááááááááááááá
+ááááááááááááá
+áááááááááááááááááááááááááááááááááááááááááááááááááááááááááááááááááááááááááááááááááááááááááááááááááááááááááááááááá
+102
+103
+104
+105
+10-10
+10-11
+10-12
+10-13
+frequency @HzD
+PSD @V2HzD
+ç
+çç
+ç
+ç
+ç
+ç
+ç
+çç
+çççç
+ç
+ç
+ç
+ç
+ç
+ç
+çç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+çç
+ç
+ç
+çç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+çç
+ç
+çç
+ç
+çç
+ç
+ç
+çç
+ç
+ç
+çç
+ç
+ç
+ç
+ç
+çç
+ç
+ç
+çç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+çç
+ç
+ç
+ç
+çç
+ç
+ççç
+ç
+ç
+ç
+ç
+ç
+ç
+çç
+çç
+ç
+çççç
+çç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+çç
+ç
+çç
+ç
+ç
+çç
+ç
+ç
+ç
+çç
+ç
+çç
+ç
+ççç
+çç
+ç
+ç
+çç
+ç
+çç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+çç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ççç
+ç
+ç
+ç
+ç
+ç
+ç
+çç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+çççççç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+çç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+çç
+ç
+çç
+ç
+çç
+ç
+ç
+çç
+ç
+ç
+ç
+ç
+ç
+ç
+çç
+ç
+ç
+ç
+çç
+ç
+ç
+ç
+ç
+çç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+çç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+çç
+ç
+ççç
+ç
+ç
+çç
+ç
+ç
+ç
+çç
+çç
+ç
+çç
+ç
+ç
+çç
+ç
+ç
+ç
+çç
+çç
+ç
+ç
+çç
+ç
+ç
+ç
+çç
+çç
+ç
+çç
+çç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ççç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+çç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+çççç
+çç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+çç
+çç
+çç
+ç
+çç
+ç
+ç
+çç
+ç
+ç
+ç
+çç
+ç
+çç
+ç
+ç
+ççç
+çç
+ç
+ç
+çç
+ç
+çç
+ç
+ç
+çç
+çç
+ç
+ç
+çç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+çç
+ççç
+ç
+ç
+çç
+ç
+ç
+ç
+çç
+ç
+ç
+ç
+çç
+ç
+ç
+çç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+çç
+ç
+çç
+ç
+ç
+çç
+ç
+çç
+ç
+ç
+çç
+ççç
+ç
+ç
+ç
+ç
+ç
+ç
+çç
+ç
+ç
+ç
+çç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+çç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+çç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+çç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ççç
+ç
+ç
+ç
+ç
+ç
+ç
+çç
+ççç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+çç
+ç
+ç
+ç
+ç
+ç
+çç
+çç
+ç
+ç
+ç
+ç
+çç
+çç
+ç
+ç
+çç
+ç
+çç
+ç
+ç
+çç
+ç
+ç
+ç
+ç
+ç
+ç
+çç
+ç
+ç
+ç
+ç
+çç
+ççç
+ç
+ç
+ç
+ç
+ç
+ç
+çç
+çç
+ç
+ç
+ç
+ç
+ç
+çç
+ç
+çç
+ççç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ççç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+çç
+çç
+çç
+ç
+ç
+ç
+çç
+ç
+ç
+ç
+çç
+ççç
+ç
+ç
+çç
+ç
+ç
+ç
+çç
+ç
+ç
+çç
+ç
+ç
+ç
+ç
+ç
+çç
+ç
+ç
+ç
+çç
+ç
+çç
+ç
+ç
+ç
+ççç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+çç
+ç
+ç
+ç
+ç
+çç
+ç
+ç
+ç
+ç
+ç
+ç
+çç
+ç
+ç
+ç
+ç
+ççç
+çç
+ç
+ççç
+çç
+çç
+ç
+ç
+ç
+çç
+ç
+çç
+ç
+çç
+çç
+çç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+çç
+ç
+çççç
+ç
+ç
+ç
+çç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+çç
+ç
+ç
+ç
+ç
+çç
+ç
+çç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ççç
+ç
+ççç
+ç
+çç
+ç
+ç
+çç
+ç
+ç
+ççç
+ç
+ç
+ç
+çç
+ç
+ç
+çç
+ç
+çç
+çç
+ç
+ç
+ç
+çç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+çç
+ç
+ç
+ç
+çç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+çç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+çç
+çç
+ç
+ç
+ç
+ç
+ç
+ççç
+çç
+ç
+ççç
+ç
+ç
+çç
+ç
+ç
+ç
+çç
+ç
+ç
+ç
+ç
+çç
+ç
+çç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+ç
+çç
+ç
+ç
+ç
+ç
+çç
+ç
+çç
+ç
+ç
+ç
+ç
+á
+á
+á
+áá
+á
+á
+áá
+á
+á
+á
+á
+á
+á
+ááá
+ááá
+á
+á
+á
+á
+á
+á
+á
+á
+áá
+á
+á
+áá
+á
+áá
+á
+á
+á
+á
+á
+áá
+á
+á
+á
+á
+áá
+á
+á
+á
+áá
+áááá
+á
+á
+á
+áá
+á
+á
+á
+á
+áá
+áá
+á
+á
+áá
+á
+á
+á
+á
+áá
+á
+á
+ááá
+á
+á
+á
+á
+á
+á
+áá
+á
+á
+á
+á
+á
+áá
+á
+á
+á
+á
+á
+á
+á
+á
+áá
+á
+á
+á
+á
+á
+áá
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+áá
+áá
+á
+á
+á
+á
+áá
+áá
+á
+á
+á
+á
+ááá
+áá
+á
+ááá
+á
+áá
+á
+áá
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+ááá
+á
+á
+á
+á
+á
+á
+á
+á
+á
+áá
+á
+á
+á
+á
+á
+á
+á
+á
+áá
+áááá
+á
+á
+á
+á
+á
+áá
+á
+á
+á
+á
+á
+á
+á
+á
+áá
+á
+á
+áá
+á
+á
+áá
+á
+á
+á
+á
+á
+á
+á
+á
+áá
+á
+áá
+áá
+á
+áá
+á
+á
+á
+á
+á
+áá
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+ááá
+á
+á
+á
+á
+á
+á
+á
+á
+á
+ááá
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+áá
+á
+á
+á
+á
+á
+áá
+á
+áá
+á
+áááá
+á
+á
+á
+áá
+á
+á
+áááá
+á
+á
+áá
+á
+á
+á
+á
+áá
+ááá
+á
+á
+á
+á
+á
+á
+áá
+á
+á
+á
+áá
+á
+á
+á
+áá
+á
+áá
+á
+á
+á
+áá
+á
+á
+áá
+á
+áá
+á
+á
+áá
+áá
+áá
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+áá
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+áá
+á
+á
+áá
+á
+á
+á
+á
+á
+ááá
+á
+á
+á
+á
+áá
+á
+áááá
+á
+á
+áá
+á
+á
+á
+á
+áá
+á
+áá
+á
+á
+á
+á
+á
+á
+áá
+á
+á
+áá
+á
+á
+á
+á
+áá
+á
+á
+á
+á
+á
+á
+áá
+á
+á
+áá
+á
+á
+ááá
+á
+áá
+á
+á
+á
+áá
+á
+á
+á
+á
+á
+áá
+á
+á
+áá
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+áá
+á
+á
+á
+á
+á
+á
+áá
+á
+á
+á
+á
+á
+áá
+áá
+á
+á
+áá
+áá
+á
+á
+á
+á
+áá
+áá
+á
+á
+á
+á
+á
+áá
+á
+áá
+á
+á
+á
+á
+áá
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+áááá
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+ááá
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+áááá
+á
+á
+á
+áá
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+áá
+á
+á
+áá
+ááá
+á
+á
+ááá
+á
+áá
+á
+á
+ááá
+á
+á
+á
+ááá
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+áá
+á
+áá
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+áá
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+áá
+á
+á
+á
+áá
+á
+á
+ááá
+á
+áá
+á
+á
+á
+á
+á
+á
+áá
+á
+á
+áá
+á
+á
+á
+áá
+á
+á
+á
+á
+áá
+á
+áá
+áá
+á
+á
+á
+á
+á
+á
+ááá
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+ááá
+á
+á
+á
+á
+á
+á
+á
+áá
+á
+á
+á
+áá
+á
+á
+á
+áá
+á
+á
+áá
+á
+á
+á
+áá
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+áá
+á
+á
+á
+á
+á
+á
+á
+áá
+á
+á
+áá
+á
+á
+á
+á
+á
+á
+á
+á
+á
+ááá
+á
+á
+á
+á
+á
+á
+áá
+á
+á
+á
+á
+á
+ááá
+á
+á
+á
+á
+á
+á
+ááá
+á
+á
+áá
+áá
+á
+áá
+áá
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+áá
+á
+áá
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+áá
+á
+á
+á
+ááá
+á
+á
+áá
+á
+á
+á
+áá
+ááá
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+á
+0
+2.5
+5
+5
+0
+5
+time @msD
+QPD output @mVD
+(a)
+(b)
+FIG. 2: (a) Part of QPD outputs: δVx (red) and δVy (blue).
+(b) PSD of QPD outputs: ⃝(red) and □(blue) represent
+the PSD of δVx and δVy, respectively. Black and gray lines
+represent the noise levels of OT. The two vertical lines indicate
+the corner frequencies: fc,x (red solid line) and fc,y (blue
+dotted line).
+
+
+===== stiffness-polarization-2015 | page 3/5 =====
+
+3
+the trap region was estimated to be P0 = 40 mW. The
+stochastic motion of the trapped particle can be mod-
+eled in the form of the Langevin equation with an addi-
+tional Hookean force term, where the restoring force in
+a speciﬁc direction is characterized by the correspond-
+ing stiﬀness ki, where i ∈(x, y, z). The power spectra
+for each degree of freedom can be approximated to the
+Lorentzian function Si(f) = (D/2π2)/(f 2
+c,i + f 2) [20],
+where D is the diﬀusion constant. The corner frequency
+fc,i is given by ki/2πγ and γ is the frictional constant
+given by Stokes’ law, γ = 6πηa. The dynamic viscosity
+(η) of D2O is 1.12×10−3 kg/m/s and the nominal radius
+of the PS spheres is a = 150 nm. The thick solid lines (red
+and blue curves in Fig. 2(b)) represent the results of the
+Lorentzian ﬁt following the procedures reported in Ref.
+[20, 21], which give the corner frequencies for each degrees
+of freedom in the transverse plane; (fc,x, fc,y) = (2497 ±
+25, 3616 ± 33) Hz, respectively. The associated trap stiﬀ-
+nesses (kx, ky) are (49, 71) pN/µm and the corresponding
+stiﬀness asymmetry factor, sT = 1 −kx/ky, in the trans-
+verse plane is sLP
+T,EXP = 0.31 for the linearly (ˆx) polar-
+ized trap beam. Our previous numerical study based on
+the revised generalized Lorenz-Mie theory (GLMT) pre-
+dicted the transverse asymmetry factor sLP
+T,GLMT = 0.3
+under an aberrations-free condition [16], which is in a
+reasonable agreement with the experimentally measured
+value.
+III.
+CHARACTERIZATION AND CONTROL OF
+STIFFNESS ASYMMETRY
+The landscape of the optical potential depends not
+only on the EM ﬁled distribution in the trapping re-
+gion, but also on the characteristics of the particle be-
+ing trapped, i.e., its size, shape, and index of refraction,
+and the index of refraction of the suspension medium
+as was demonstrated in the previous studies [10–12, 16].
+We focused on the systematic investigation of the polar-
+ization eﬀect on the trap potential asymmetry using the
+polystyrene (PS) spheres with the diameters of 300 ±
+15 nm (< λ0) and 1000 ± 30 nm (> λ0). Polarization-
+induced stiﬀness asymmetry was investigated as a func-
+tion of the prepared input polarization state. The exper-
+imental parameters used in the preliminary experiment
+are used here again.
+The angular variation of the trap stiﬀnesses kx and ky
+are estimated from PSD measurements for the linearly
+polarized input beam rotated by θR using HWP2, where
+kx and ky are stiﬀnesses along the horizontal (ˆx) and ver-
+tical (ˆy) directions in the laboratory frame, respectively
+(referred to as the QPD segmentation axes).
+GLMT
+calculation results are compared with the experimental
+results in terms of the normalized stiﬀness, ˜ki = ki/¯k,
+where the average stiﬀness is deﬁned as ¯k = (¯kx + ¯ky)/2.
+For the 300-nm PS spheres presented in Fig. 3, the sym-
+bols ( , ■) and the gray (solid, dashed) curves denote
+the experimental and theoretical values of the normal-
+æ æ
+æ æ
+æ
+æ
+æ
+æ
+æ
+æ
+æ
+æ
+æ
+æ
+æ
+æ
+æ
+æ
+æ
+æ æ æ
+æ
+æ
+à
+à
+à
+à
+à
+à
+à
+à
+à
+à
+à
+à à
+à
+à
+à
+æ
+à
+à
+à
+à
+à
+à
+à
+à
+ç ç
+ç
+ç
+ç
+ç ç ç ç
+ç ç ç ç
+ç ç ç
+ç ç
+ç
+ç ç ç ç
+ç
+á á á
+á á
+á á
+á
+á
+á á á á
+á á
+á á
+á
+á á
+á
+á á á
+æ
+æ
+æ
+æ
+æ
+æ
+æ
+æ
+æ
+æ
+æ
+æ
+æ
+ç
+á
+ç
+æ
+á
+à
+à
+à
+à
+à
+à à
+à
+à
+à
+à
+ç
+ç
+ç
+áçà
+0
+90 °
+180 °
+0.8
+1.0
+1.2
+ΘR@degreesD
+normalized stiffness Hk
+x, k
+yL
+FIG. 3: Angular dependence of the normalized trap stiﬀness,
+˜kx and ˜ky. Results of the 300-nm PS sphere: The ﬁlled gray
+(circle, square) symbols and gray (solid, dashed) curves rep-
+resent the experimental and theoretical values of ˜kx and ˜ky,
+respectively. Results of the 1-µm PS sphere: The empty red
+(circle, square) symbols and red (solid, dashed) curves rep-
+resent the experimental and theoretical values of ˜kx and ˜ky,
+respectively.
+ized transverse stiﬀnesses, ˜kx and ˜ky, respectively. The
+orthogonal pair of ˜kx and ˜ky shows periodic variation as
+the input beam polarization angle θR is rotated, which
+could be inferred from the rotation of the elongated in-
+tensity distribution in Fig. 1(b). The average value of
+the experimentally measured trap stiﬀness was ¯kEXP =
+59 pN/µm, and the GLMT calculation with the minimum
+spot size (w′
+0 = 300 nm) predicts ¯kGLMT = 60 pN/µm,
+showing good agreement with the experimental results.
+From the angular measurements, the stiﬀness asymme-
+try is estimated to be sT,EXP = 0.29, and the GLMT
+calculation gives sT,GLMT = 0.28.
+Figure 3 also contains the results of the 1-µm PS
+spheres: the symbols ( , □) and the red (solid, dashed)
+curves denote the experimental and theoretical values of
+the normalized transverse stiﬀnesses, ˜kx and ˜ky, respec-
+tively. We note the inversion of the angular stiﬀnesses,
+˜kx and ˜ky, between the 300-nm and 1-µm PS spheres;
+for the 300-nm PS spheres, ˜kx < ˜ky at θR = 0◦owing
+to the elongated intensity distribution of the linearly po-
+larized beam, whereas ˜kx > ˜ky in case of the 1-µm PS
+spheres with the same polarization conﬁguration. This
+implies signiﬁcant EM ﬁeld redistribution by the pres-
+ence of a large dielectric particle, even in spherical shape.
+The average value of the experimentally measured trap
+stiﬀness and the theoretical estimation of the 1-µm PS
+spheres were (¯kEXP, ¯kGLMT) = (97, 125) pN/µm, and
+the stiﬀness asymmetry factors were (sT,EXP, sT,GLMT)
+= (-0.1, -0.12), respectively.
+Although the experimen-
+tal results and theoretical estimations show qualitative
+agreement (sign change of asymmetry factor), there is
+about 20% discrepancy in the 1-µm PS spheres results,
+which probably originates from the ﬁfth-order Gaussian
+beam method used in GLMT calculation [16, 22, 23].
+
+
+===== stiffness-polarization-2015 | page 4/5 =====
+
+4
+High-order Gaussian beam method provides the focused
+EM ﬁeld distribution in the transverse plane with errors
+of within a few percentages; however, it renders a steeper
+intensity variation along the axial direction compared to
+the vectorial diﬀraction theory [24].
+Figure 4(a) shows a demonstration of trap asymme-
+try control, which proceeds by adjusting the polariza-
+tion state of the input beam. The polarization state of
+the input beam is prepared as ⃗Ein = E0(cosθQWPˆx +
+i sinθQWPˆy), where θQWP is the angle between the slow
+axis of the QWP and the horizontal (ˆx) axis. As the po-
+larization state becomes circular polarization at θQWP =
+45◦, the strong asymmetry of trap stiﬀness diminishes
+for both the 300-nm and 1-µm PS spheres. In partic-
+ular, the inverted stiﬀness asymmetry (sT < 0) of the
+1-µm PS spheres could also be readjusted to be isotropic
+with a circularly polarized trap beam, which can be in-
+ferred from the rotational symmetry of the isotropic ﬁeld
+distribution of a circularly polarized beam and the PS
+spheres. To explore the trap potential landscape in the
+transverse plane, we investigated the angular variation
+in the balanced trap stiﬀnesses as follows. For each an-
+gles of HWP2, the direction of the input beam polar-
+ization is rotated to θR = 2θHWP2, and the QWP is
+rotated to produce a circularly polarized beam for the
+given polarization angle: θQWP = θR + 45◦. Figure 4(b)
+shows moderate variation in the normalized stiﬀnesses
+compared to the previously discussed angular variation in
+the trap stiﬀnesses for linearly polarized light (presented
+as light curves for comparison).
+The average stiﬀness
+for the 300-nm (1-µm) PS spheres was 59 (98) pN/µm
+with the 1σ-level standard deviation of 0.9 (0.9) pN/µm,
+corresponding to ﬂuctuations of 1.4 (1) %, respectively.
+Figure 5 shows the linear dependence of trap stiﬀness
+on the beam power for linear and circular polarization at
+a ﬁxed trap depth of 50 µm from the inner wall of the
+cover glass. Other measurements (not presented) of trap
+stiﬀness as a function of the trap depth over the range
+of 10–150 µm show a few percentages of random ﬂuctu-
+ations, as is typical for a water-immersion objective lens
+[12, 25]. The trap stiﬀness per beam power for each de-
+gree of freedom is found by the linear ﬁt of the experimen-
+tal data: (k′
+x, k′
+y, k′
+z)LP = (1.21, 1.74, 0.27) pN/µm/mW
+and (k′
+x, k′
+y, k′
+z)CP = (1.47, 1.48, 0.27) pN/µm/mW for
+the 300-nm PS spheres; and (k′
+x, k′
+y, k′
+z)LP = (2.58, 2.30,
+0.84) pN/µm/mW and (k′
+x, k′
+y, k′
+z)LP = (2.47, 2.46, 0.83)
+pN/µm/mW for the 1-µm PS spheres, where the super-
+script denotes the polarization states.
+IV.
+CONCLUDING REMARKS
+The anisotropic ﬁeld distribution of a highly focused
+EM ﬁelds manifests as dramatically modiﬁed optical po-
+tential landscape depending on the participating dielec-
+tric spheres, i.e., in terms of the sign and magnitude of
+stiﬀness asymmetry factor: sLP
+T,EXP = (0.29, -0.1) for 300-
+æ æ æ
+æ
+æ æ
+æ
+æ
+æ
+æ
+æ
+æ æ æ
+æ
+æ
+æ
+æ
+æ
+æ æ æ
+æ
+æ
+à
+à à à à
+à
+à
+à
+à
+à
+à à
+à
+æ
+à
+à
+à
+à
+à
+à à à à
+à
+à
+ç
+ç ç ç
+ç ç ç ç ç
+ç ç ç ç ç ç ç
+ç
+ç ç
+ç ç
+ç ç ç
+á á á
+á á á á
+á
+á á á á
+á
+á á á
+á á
+á á á
+á
+á á
+æ
+æ
+æ
+æ
+æ
+æ
+æ æ
+à
+æ æ
+à
+æáæ
+à
+à
+à
+à
+à
+ç ç ç
+áçáç
+0
+45 °
+90 °
+0.8
+1.0
+1.2
+ΘQWP @degreesD
+normalized stiffness Hk
+x, k
+yL
+æ æ æ
+æ æ æ æ æ
+æ
+æ
+æ æ
+æ
+æ
+æ æ æ
+æ æ
+æ æ æ æ æ
+à
+à
+æ
+à
+æ àæàæàæ à à
+æ
+à à à àæàæ à
+æ
+à æ àæàæàæ
+àæàæàæ
+àæàæàæ à à
+æ
+à à à
+æ
+à
+æ
+à à à à à
+ç ç ç ç ç ç ç ç ç ç ç ç ç
+ç ç ç ç ç
+ç ç ç ç ç ç
+á á á á
+á á á á á
+á á á á á á á á
+á á á á á á á
+æ
+à
+ç
+ç
+á
+æ
+æ
+ç
+áà
+àçà
+æ
+à à
+æ
+çà
+ç
+á
+àáàáà
+ç
+æ
+æá
+æçæçæ
+ç
+à
+à
+0
+90 °
+180 °
+0.8
+1.0
+1.2
+ΘR @degreesD
+normalized stiffness Hk
+x, k
+yL
+(a)
+(b)
+FIG. 4: Trap stiﬀness control via the polarization state of
+trap beam. Results of the 300-nm PS sphere: The ﬁlled gray
+(circle, square) symbols and gray (solid, dashed) curves rep-
+resent the experimental and theoretical values of ˜kx and ˜ky
+respectively. Results of the 1-µm PS sphere: The empty red
+(circle, square) symbols and red (solid, dashed) curves rep-
+resent the experimental and theoretical values of ˜kx and ˜ky,
+respectively. (b) Trap stiﬀnesses, ˜kx and ˜ky, variation of the
+balanced potential. Same symbols are used. The horizontal
+gray (red) lines represent the 1 σ-level standard deviation of
+the 300-nm (1-µm) PS spheres, respectively.
+æ
+æ
+æ
+æ
+æ
+æ
+à
+à
+à
+à
+à
+à
+ç
+ç
+ç
+ç
+ç
+ç
+á
+á
+á
+á
+á
+á
+ò
+ò
+ò
+ò
+ò
+ò
+ó
+ó
+ó
+ó
+ó
+ó
+10
+20
+30
+40
+50
+0
+20
+40
+60
+80
+power @mWD
+trap stiffness @pNÐmD
+æ
+æ
+æ
+æ
+æ
+æ
+à
+à
+à
+à
+à
+à
+ç
+ç
+ç
+ç
+ç
+ç
+á
+á
+á
+á
+á
+á
+ò
+ò
+ò
+ò
+ò
+ò
+ó
+ó
+ó
+ó
+ó
+ó
+10
+20
+30
+40
+50
+0
+20
+40
+60
+80
+100
+120
+power @mWD
+trap stiffness @pNÐmD
+(a)
+(b)
+FIG. 5: Trap stiﬀness as a function of trap beam power: (a)
+300-nm and (b) 1-µm PS spheres. The (square, circle, trian-
+gle) symbols denote (kx, ky, kz), respectively, and the (ﬁlled,
+empty) status of the symbols distinguishes the polarization
+state (LP, CP), respectively. For most data points, the error
+bars (±1σ level) are smaller than the size of the symbols.
+
+
+===== stiffness-polarization-2015 | page 5/5 =====
+
+5
+nm and 1-µm PS spheres, respectively. In case of the ad-
+justed optical trap realized by a simple polarization con-
+trol, the angular measurements of the orthogonal stiﬀness
+pair show less than 1.5% variation in a statistical sense
+(|sCP
+T,EXP| < 0.03). Our research translates the polariza-
+tion state of the trap laser beam, which is responsible for
+trap potential asymmetry, into a control parameter for
+tailoring the optical potential landscape of OTs in the
+transverse directions.
+Acknowledgments
+Authors
+acknowledge
+the
+careful
+reading
+of
+the
+manuscript by Prof. D. Cho and the valuable comments
+from the optics community. This work was supported by
+the Basic Science Research Program (No. 2011-0014908)
+of the National Research Foundation of Korea (NRF),
+which has been funded by the Ministry of Education,
+Science, and Technology.
+[1] A. Ashkin, Phys. Rev. Lett. 24, 156 (1970).
+[2] A. Ashkin, J. M. Dziedzic, J. E. Bjorkholm, and S. Chu,
+Opt. Lett. 11, 288 (1986).
+[3] J. C. Crocker, J. A. Matteo, A. D. Dinsmore, and A. G.
+Yodh, Phys. Rev. Lett. 82, 4352 (1999).
+[4] B. Tr¨ankle, M. Speidel, and A. Rohrbach, Phys. Rev. E
+86, 021401 (2012).
+[5] M. N. Romodina, M. D. Khokhlova, E. V. Lyubin, and
+A. A. Fedyanin, Sci. Rep. 5, 10491 (2015).
+[6] M. G. Donato, J. Hernandez, A. Mazzulla, C. Proven-
+zano, R. Saija, R. Sayed, S. Vasi, A. Magazzu, P. Pagliusi,
+R. Bartolino, P. G. Gucciardi, O. M. Marago, and G.
+Cipparrone, Nat. Commun. 5, 3656 (2014).
+[7] Y. Arita, M. Mazilu, and K. Dholakia, Nat. Commun. 4,
+2374 (2013).
+[8] D. G. Grier, Nature 424, 810 (2003).
+[9] W. B. Rogers and J. C. Crocker, Rev. Sci. Instrum. 85,
+043704 (2014).
+[10] A. Rohrbach, Phys. Rev. Lett. 95, 168102 (2005).
+[11] A. R. Zakharian, P. Polynkin, M. Mansuripur, and J. V.
+Moloney, Opt. Express 14, 3660 (2006).
+[12] E. Madadi, A. Samadi, M. Cheraghian, and S. N. S. Rei-
+hani, Opt. Lett. 37, 3519 (2012).
+[13] O. M. Marago, P. H. Jones, F. Bonaccorso, V. Scardaci,
+P. G. Gucciardi, A. G. Rozhin, and A. C. Ferrari, Nano
+Lett. 8, 3211 (2008).
+[14] J. X. Fu, Q. W. Zhan, M. Y. Lim, Z. Y. Li, and H. D.
+Ou-Yang, Opt. Lett. 38, 3995 (2013).
+[15] F. Gittes and C. F. Schmidt, Opt. Lett. 23, 7 (1998).
+[16] J.-M. Choi and H. Noh, arXiv:1510.02887 (2015).
+[17] W. M. Lee, P. J. Reece, R. F. Marchington, N. K. Met-
+zger, and K. Dholakia, Nat. Protoc. 2, 3226 (2007).
+[18] L. Friedrich and A. Rohrbach, Opt. Lett. 37, 2109 (2012).
+[19] S. N. S. Reihani, S. A. Mir, A. C. Richardson, and L. B.
+Oddershede, J. Opt. 13, 105301 (2011).
+[20] K. Berg-Sørensen and H. Flyvbjerg, Rev. Sci. Instrum.
+75, 594 (2004).
+[21] I. M. Toli´c-Nørrelykke, K. Berg-Sørensen, and H. Flyvb-
+jerg, Comput. Phys. Commun. 159, 225 (2004).
+[22] J. P. Barton and D. R. Alexander, J. of Appl. Phys. 66,
+2800 (1989).
+[23] J. P. Barton, D. R. Alexander, and S. A. Schaub, J. of
+Appl. Phys. 66, 4594 (1989).
+[24] A. Rohrbach and E. H. K. Stelzer, J. Opt. Soc. Am. A
+18, 839 (2001).
+[25] A. Mahmoudi and S. N. S. Reihani, Opt. Express 19,
+14794 (2011).

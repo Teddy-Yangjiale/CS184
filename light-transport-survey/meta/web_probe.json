@@ -1,0 +1,73 @@
+[
+  {
+    "name": "rtxdi_readme",
+    "url": "https://raw.githubusercontent.com/NVIDIA-RTX/RTXDI/main/README.md",
+    "status": 200,
+    "content_type": "text/plain; charset=utf-8",
+    "bytes": 7684,
+    "title": "",
+    "digest": "# RTXDI SDK and Sample Applications Version 3.1.0 [Change Log](ChangeLog.md) ## Introduction **RTX** **D**ynamic **I**llumination is a framework that originally facilitated implementation of efficient direct light sampling in real-time renderers. It is based on the **ReSTIR** algorithm published in the paper called \"Spatiotemporal reservoir resampling for real-time ray tracing with dynamic direct lighting\" by B. Bitterli et al. Version 3.0 of RTXDI introduces **ReSTIR PT**, which allows applications to apply importance resampling to all indirect lighting rendered using path tracing. For more information about the ReSTIR PT algorithm, see the paper \"Generalized Resampled Importance Sampling: Foundations of ReSTIR\" by Lin et al. The implementation is described in more detail in [this document](Doc/RestirPT.md). Version 2.0 of RTXDI introduced **ReSTIR GI**, which allows applications to apply importance resampling to indirect diffuse illumination rendered using path tracing. For more information about the ReSTIR GI algorithm, see the paper called \"ReSTIR GI: Path Resampling for Real-Time Path Tracing\" by Y. Ouyang et al. The feature is described in more detail in [this document](Doc/R"
+  },
+  {
+    "name": "rtxdi_restirpt_doc",
+    "url": "https://raw.githubusercontent.com/NVIDIA-RTX/RTXDI/main/Doc/RestirPT.md",
+    "status": 200,
+    "content_type": "text/plain; charset=utf-8",
+    "bytes": 21529,
+    "title": "",
+    "digest": "# ReSTIR PT ## Introduction Reservoir-based SpatioTemporal Importance Resampling for Path Tracing (ReSTIR PT) is a resampling algorithm for path tracers that dramatically increases the effective sample count per pixel. ReSTIR PT enables more intelligent path reuse between pixels, allowing high quality light paths to quickly propagate across the screen and accumulate over time. Unlike ReSTIR GI, ReSTIR PT also works well for specular surfaces with low roughness as its reuse applies a more general shift mapping method. ReSTIR PT is an embodiment of [Generalized Resampled Importance Sampling by Lin et al.](https://d1qx31qr3h6wln.cloudfront.net/publications/sig22_GRIS.pdf) The runtime functions and structures for ReSTIR PT are defined in the header files under [`PT/`](../Libraries/Rtxdi/Include/Rtxdi/PT/) and documented in full in the [ReSTIR PT Shader API reference](ShaderAPI-RestirPT.md) — the authoritative reference for the symbols named on this page. The application-side bridge functions are documented in [RtxdiApplicationBridge.md](RtxdiApplicationBridge.md). The [Full Sample](../Samples/FullSample/Shaders/LightingPasses/PT/) provides a complete, working integration that can be us"
+  },
+  {
+    "name": "eg_neural_render_proxies",
+    "url": "https://diglib.eg.org/items/55363661-e76b-4d9d-8bc0-d8835ccec2e7",
+    "status": 200,
+    "content_type": "text/html; charset=utf-8",
+    "bytes": 473581,
+    "title": "Neural Render Proxies for Interactive and Differentiable Lighting",
+    "digest": "Neural Render Proxies for Interactive and Differentiable Lighting Communities &amp; Collections All of DSpace Statistics English Čeština Deutsch Español Français Gàidhlig Latviešu Magyar Nederlands Português Português do Brasil Suomi Svenska Türkçe Қазақ বাংলা हिंदी Ελληνικά Log In Email address Password Log in or New user? Click here to register. Have you forgotten your password? Home Computer Graphics Forum Volume 45 (2026) 45-Issue 4 Neural Render Proxies for Interactive and Differentiable Lighting &nbsp; Neural Render Proxies for Interactive and Differentiable Lighting Loading... Files cgf70533.pdf (12.79 MB) paper1021_mm_crc2.pdf (1.82 MB) Date 2026 Authors Sancho, Sergio Rath, Alexander Manzi, Marco Chang, Pascal Bermano, Amit H. Nowrouzezahrai, Derek Gross, Markus Papas, Marios Journal Title Journal ISSN Volume Title Publisher The Eurographics Association and John Wiley &amp; Sons Ltd. Abstract Within the CG animation production pipeline, the challenges artists tackle in Lighting can be immense. Even minor adjustments require re-rendering massive scenes with slow offline renderers; global illumination has to be sampled and complex shaders have to be evaluated, leading to ite"
+  },
+  {
+    "name": "nvidia_restirpt_enhanced",
+    "url": "https://research.nvidia.com/labs/rtr/publication/lin2026restirptenhanced/",
+    "status": 200,
+    "content_type": "text/html",
+    "bytes": 32380,
+    "title": "ReSTIR PT Enhanced: Algorithmic Advances for Faster and More Robust ReSTIR Path Tracing | NVIDIA Real-Time Graphics Research",
+    "digest": "ReSTIR PT Enhanced: Algorithmic Advances for Faster and More Robust ReSTIR Path Tracing | NVIDIA Real-Time Graphics Research Search Home News Members Publications NVIDIA Research Light Dark Automatic ReSTIR PT Enhanced: Algorithmic Advances for Faster and More Robust ReSTIR Path Tracing Daqi Lin , Markus Kettunen , Chris Wyman May 2026 Cite PDF Supplementary Video Abstract Algorithms leveraging ReSTIR-style spatiotemporal reuse have recently proliferated, hugely increasing effective sample count for light transport in real-time ray and path tracers. Many papers have explored novel theoretical improvements, but algorithmic improvements and engineering insights toward optimal implementation have largely been neglected. We demonstrate enhancements to ReSTIR PT that make it 2â3x faster, decrease both visual and numerical error, and improve its robustness, making it closer to production-ready. We halve the spatial reuse cost by reciprocal neighbor selection, robustify shift mappings with new footprint-based reconnection criteria, and reduce spatiotemporal correlation with duplication maps. We further improve both performance and quality by extensive optimization, unifying direct and g"
+  },
+  {
+    "name": "renderformer_v2_site",
+    "url": "https://renderformer.github.io/v2/",
+    "status": 200,
+    "content_type": "text/html; charset=utf-8",
+    "bytes": 65346,
+    "title": "RenderFormer-V2: Neural Rendering with Heterogeneous Scene Primitives",
+    "digest": "RenderFormer-V2: Neural Rendering with Heterogeneous Scene Primitives RenderFormer V2 Overview Architecture Coverage Material Attention Results Gallery Poster BibTeX More RenderFormer-V1 NRHints DiLightNet GS³ ECCV 2026 RenderFormer V2 Neural Rendering with Heterogeneous Scene Primitives A pretrained transformer that turns a sequence of mixed scene primitives into a globally illuminated image. Chong Zeng 1 Yue Dong 2 Pieter Peers 3 Lvmin Zhang 1 Maneesh Agrawala 1 1 Stanford University 2 Microsoft Research 3 College of William &amp; Mary arXiv Paper Supplement Code Model Poster Nine scenes from one set of weights, with no per-scene training or fine-tuning. The centre plate is 2048 × 2048. Highlights 128K primitives in one forward pass. RenderFormer-V1 stops at 4K 2048 2 output pixels, with no upsampling stage +9.9 dB PSNR over RenderFormer-V1 at 128K triangles, with 4.8× lower LPIPS 3.5× faster than RenderFormer-V1 , and 4.7× faster than Cycles No per-scene training, fine-tuning or hand-written transport code Overview One model for effects that usually need one code path each. We present RenderFormer-V2, a unified transformer-based neural rendering model, complementary to modern ph"
+  },
+  {
+    "name": "renderformer_site",
+    "url": "https://microsoft.github.io/renderformer/",
+    "status": 200,
+    "content_type": "text/html; charset=utf-8",
+    "bytes": 34847,
+    "title": "RenderFormer: Transformer-based Neural Rendering of Triangle Meshes with Global Illumination",
+    "digest": "RenderFormer: Transformer-based Neural Rendering of Triangle Meshes with Global Illumination Introduction Gallery Videos BibTeX More Research NRHints DiLightNet GS^3 RenderFormer Transformer-based Neural Rendering of Triangle Meshes with Global Illumination SIGGRAPH 2025 Chong Zeng 1,2 Yue Dong 2 Pieter Peers 3 Hongzhi Wu 1 Xin Tong 2 1 State Key Lab of CAD and CG, Zhejiang University 2 Microsoft Research Asia 3 College of William &amp; Mary arXiv Paper Code Model Talk Poster Slides Introduction We present RenderFormer, a neural rendering pipeline that directly renders an image from a triangle-based representation of a scene with full global illumination effects and that does not require per-scene training or fine-tuning . Mesh to Image, End to End Instead of taking a physics-centric approach to rendering, we formulate rendering as a sequence-to-sequence transformation where a sequence of tokens representing triangles with reflectance properties is converted to a sequence of output tokens representing small patches of pixels. Simple Transformer Architecture with Minimal Prior Constraints RenderFormer follows a two stage pipeline: a view-independent stage that models triangle-to-tri"
+  },
+  {
+    "name": "mitsuba_caustics",
+    "url": "https://mitsuba.readthedocs.io/en/latest/src/inverse_rendering/caustics_optimization.html",
+    "status": 200,
+    "content_type": "text/html; charset=utf-8",
+    "bytes": 874007,
+    "title": "Caustics optimization - Mitsuba 3",
+    "digest": "Caustics optimization - Mitsuba 3 Contents Menu Expand Light mode Dark mode Auto light/dark, in light mode Auto light/dark, in dark mode Hide navigation sidebar Hide table of contents sidebar Skip to content Toggle site navigation sidebar Mitsuba 3 Toggle Light / Dark / Auto color theme Toggle table of contents sidebar Mitsuba 3 Getting started Tutorials Rendering tutorials Toggle navigation of Rendering tutorials Dr.Jit quickstart Mitsuba quickstart Editing a scene Rendering from multiple view points Scripting a renderer Polarized rendering Inverse rendering tutorials Toggle navigation of Inverse rendering tutorials Gradient-based optimization Forward inverse rendering Caustics optimization Object pose estimation Projective sampling integrators Volumetric inverse rendering Shape optimization Radiance Field Reconstruction (NeRF-like) Polarizer optimization PyTorch and Mitsuba interoperability Other tutorials Toggle navigation of Other tutorials Deep dive into a BSDF Granular phase function Custom Python plugin Custom shapes in Python Guides How-to Guides Toggle navigation of How-to Guides Transformation toolbox Image I/O and manipulation Mesh I/O and manipulation Detailed look at O"
+  },
+  {
+    "name": "renderformer_msr_pdf",
+    "url": "https://www.microsoft.com/en-us/research/wp-content/uploads/2025/08/rt.pdf",
+    "status": 200,
+    "content_type": "application/pdf",
+    "bytes": 18685903,
+    "note": "pdf saved"
+  }
+]

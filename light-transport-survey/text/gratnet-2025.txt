@@ -1,0 +1,1565 @@
+
+
+===== gratnet-2025 | page 1/15 =====
+
+arXiv:2506.15815v2  [cs.GR]  1 Jul 2025
+GratNet: A Photorealistic Neural Shader for Diffractive Surfaces
+Narayan Kandel and Daljit Singh J.S. Dhillon
+School of Computing, Clemson University, Clemson, SC, USA
+Abstract
+Structural coloration is commonly modeled using wave optics for reli-
+able and photorealistic rendering of natural, quasi-periodic and com-
+plex nanostructures. Such models often rely on dense, preliminary
+or preprocessed data to accurately capture the nuanced variations
+in diffractive surface reflectances. This heavy data dependency war-
+rants implicit neural representation which has not been addressed
+comprehensively in the current literature. In this paper, we present a
+multi-layer perceptron (MLP) based method for data-driven rendering
+of diffractive surfaces with high accuracy and efficiency. We primarily
+approach this problem from a data compression perspective to devise
+a nuanced training and modeling method which is attuned to the do-
+main and range characteristics of diffractive reflectance datasets. Im-
+portantly, our approach avoids overfitting and has robust resampling
+behavior. Using Peak-Signal-to-Noise (PSNR), Structural Similarity
+Index Measure (SSIM) and a flipping difference evaluator (
+F
+LIP ) as
+evaluation metrics, we demonstrate the high-quality reconstruction of
+the ground-truth. In comparison to a recent state-of-the-art offline,
+wave-optical, forward modeling approach, our method reproduces
+subjectively similar results with significant performance gains. We
+reduce the memory footprint of the raw datasets by two orders of
+magnitude in general. Lastly, we depict the working of our method
+with actual surface renderings.
+Keywords
+Diffraction, Spectral BRDF, Photo-realism, Inter-
+active Rendering, Implicit Neural Representation, Compres-
+sion
+1
+INTRODUCTION
+Material appearance modeling is critical to photorealistic ren-
+dering of VFX effects. Many diffractive surfaces are commonly
+present in virtual scenes and warrant efficient modeling and
+shading. Surface nanostructures diffract light waves of differ-
+ent wavelengths differently to produce structural colors. These
+specular colors impose a challenging problem with iridescent
+reflectances (and transmittances) where a fixed surface point
+changes color depending on the incident light or the view direc-
+tion. This problem is further exacerbated by natural variations
+in surface nanostructures. Fine examples of such diffractive
+coloration include flower petals, butterfly wings, rocks, sea-
+shells as well as snake bodies. Also, man-made objects like
+compact disks, holographic papers, scratched metallic sheets,
+and etched windowpanes exhibit nuanced diffractive irides-
+cence due to their design, fabrication imperfections or wear
+and tear.
+Periodic, well-defined diffractive gratings can be modeled
+analytically.
+However, natural variations or complex fabri-
+cations discussed above introduce a non-analytic function in
+representing the surface profile. This makes it impossible to
+mathematically deduce a closed-form formulation for directly
+computing their reflectances. State-of-the-art methods based
+on wave optics exploit ways to discretize such non-analytic sur-
+face profiles to enable numerical approximations [3, 5, 2]. Such
+forward modeling approaches often prove to be memory and/or
+computationally intensive. Yu et al. [3] has emphasized that
+for practical usage of their highly accurate full-wave simulator,
+significant performance improvements are warranted. Also,
+the accuracy of such forward modelers heavily depends on the
+richness of the data representing the surface profiles. In crux,
+a data-driven approach is warranted to assimilate the statistical
+measures arising from the underlying stochastic light-matter
+interactions [6].
+Neural network modeling has the potential to remedy the
+discussed limitations of computational load and memory foot-
+print, simultaneously.
+This is mainly due to their capacity
+and efficiency in effectively learning the nuanced variations
+in training datasets. Yet, using neural networks for modeling
+diffractive reflectances has largely been limited to sheen effects
+in specular highlights, glints [7] and irregular surface scratches.
+Kuznetsov et al. [8] rely on convolutional neural networks
+(CNNs) to model spatially varying glinty scratches. CNNs for
+diffraction shading are computationally demanding and have
+a large memory footprint.
+In a broader context, low foot-
+print, multi-layer perception (MLP) have efficiently modeled
+isotropic as well as non-isotropic reflectances (BRDFs) [9],
+bidirectional texture functions (BTFs) [10] and even real-time
+neural appearances under global illumination [11]. Yet, to the
+best of authors’ knowledge, no existing implicit neural rep-
+resentation based method can reproduce the nuances of rich
+diffractive reflectances as modeled using wave-optics [3, 2].
+Key challenges to such emulations arise due to the scale, vol-
+ume and diversity of the nano-structural variations under the
+surface footprint of each display pixel. In this paper, we present
+a novel multilayer perceptron based method to effectively
+model nuanced diffraction from natural quai-periodic nanos-
+tructures as well as complex man-made nano-architectures.
+Inspired by the recent progress in image compression do-
+1
+
+
+===== gratnet-2025 | page 2/15 =====
+
+(a) Holographic Grooves
+(b) CD Pits & Lands
+(c) Metal Scratches
+(d) Snake Skin
+(e) Spherical Pits
+Figure 1: Structural colors arising from diffraction by various surface nanostructures. We emulate a real-world sized compact
+disk with concentric tracks. Nanostructures oriented along those tracks are depicted in an order of increasing complexity
+from the left to right. (a) Sinusoidal holographic grooves with 600 lines-per-mm, (b) CD-ROM with random pits and lands
+on tracks that are 1.5𝜇𝑚apart, (c) metallic scratches on the tip of a ball-pen [1], (d) natural V-shaped grooves on a sunbeam
+snakeskin [2], and (e) highly complex nanostructures with semi-spherical pits of mild random size and placement variations [3]
+are depicted here. The rainbow-ish radial bars of near equal thickness and regularity in (e) result from a reflectance that is
+difficult to emulate [3]. The snakeskin and metallic scratches are real-world atomic-force microscopic scans while the rest of
+the nanostructures are synthetic. We generate reference ground-truth using Kirchhoff’s formula to emulate scalar-wave Fourier
+optics for far-field Fraunhofer diffraction. Our neural shader learns and reconstructs diffractive reflectances of all levels of
+complexity with high degree of accuracy as presented in Section 5. Our method is realized as a deferred shader for Mitusba3
+renderer [4]. To aid visual comparisons of structural coloration across the examples, we use the same base dielectric material,
+exclude Fresnel effects that become uniform across the cases and render scratches at 10× the exposure in comparison to the
+others.
+main [12, 13, 14] and the notion of data-compression in implicit
+representation of appearance models [9], we devise our method
+to address the unique domain and range space representational
+challenges of diffractive reflectance data-sets. The key ideas
+and contributions in this paper include:
+• a data transformation and re-organizational scheme spe-
+cialized to improve the learnability of diffractive re-
+flectances,
+• an approach to construct MLP layers with funneling under
+golden ratio to actuate annihilated learning, and
+• A method that delivers high accuracy even for the most
+complex cases [3] with major performance gains and sig-
+nificant memory footprint reductions in general.
+2
+RELATED WORK
+Forward Modeling
+In physics, structural coloration in off-
+surface reflectances is explained with the electromagnetic wave
+theory. Particular roles of wave properties such as wavelength,
+polarization, and coherence are accurately expressed through
+Fourier optics in modeling (far-field) Fraunhofer diffraction.
+Some of the earliest efforts in bringing wave optics to com-
+puter graphics are well documented by Stam in his seminal
+work based on Kirchhoff’s theory [6]. He applies it to scalar
+light waves for modeling diffraction in simpler, ’statistically’
+parameterizable cases like rainbow colors on compact disks
+and metallic specular highlights. Yet, it offers a solid physics-
+based foundation for emulating surface diffraction using ana-
+lytical surface profiles as well as statistical estimates on them.
+Several follow-up research expanded the horizon of forward
+modeling to global illumination [15], accurate simulation of
+natural gratings on animal skins [2], metallic scratches [16],
+speckles [5] and pearlescent surfaces [17]. Multilayer diffrac-
+tion [18, 19] and multiscale interplays can also be forward
+modeled accurately. More recently, Yu et al. [3] developed
+a Boundary-Element based full wave simulator that is more
+accurate than Kirchhoff-based [6, 2, 5] or the alternative gener-
+alized Harvey-Shack theory based method [20] in addressing
+unusual surface geometries. In the context of global illumi-
+nation, Steinberg and colleagues have developed a series of
+methods that bundle wave properties and resolve wave-matter
+interactions through some form of radiance generalization and
+respective mathematical simplifications [21, 22, 23]. For the
+nano-architectures addressed in this paper, only few state of the
+art forward methods can generate accurate results [3, 21, 2, 20]
+and except one [2], rest of them are not devised to be com-
+putationally inexpensive.
+Furthermore, all of them impose
+memory requirements that are particularly challenging for in-
+teractive pipelines. In this paper, we reply on such accurate
+methods to provide the ground-truth datasets that can then be
+efficiently and effectively modeled through implicit neural rep-
+resentations.
+Inverse Methods
+Acquiring high quality, large volume data
+for inverse modeling structural coloration is generally requires
+customized and expensive setups. In the last decade, few effec-
+tive, imaging-based methods relying on consumer-grade cam-
+eras and DIY supplies have shown specific promises. Toisoul
+et al. [24] develop a simple, image-based method to recreate
+2
+
+
+===== gratnet-2025 | page 3/15 =====
+
+surface diffraction colors using aperture induced bokeh. Their
+method works for printed holographic materials with homoge-
+neous distribution of highly regular gratings. Toisoul et al. [25]
+explore the use of light polarization properties to extract two
+defining parameters for similar printed gratings with spatial
+variations, namely orientation and periodicity.
+Such meth-
+ods are limited and cannot extract parametric representation of
+natural or complex surface nanostructures. Basic correlational
+statistics extractable from images are inadequate to represent
+their nuanced variations that are required for photo-realistic
+rendering. Such details are adequately obtained either by con-
+struction [3, 5, 16] or by sub-microscopic scanning [2]. These
+methods establish the centrality of the datasets and their rigor-
+ous analysis under a numerical method, no matter how abstract,
+to accurately recreate their appearance effects.
+Implicit Neural Representations
+One of the earliest im-
+plicit neural representations (INR) of diffractive reflectances
+used convolutional neural networks. Yan et al. [5] model spa-
+tially varying, near-random, diffractive coloration in scratches
+and glints. They employ CNNs to jointly model the coloration
+as well as microscopic variations. Designing neural networks
+for patterned structural coloration is a weakly explored area
+and thus their neural representation is an open problem. Away
+from structural coloration problems, simple multilayer percep-
+tion based methods are used effectively in modeling a large va-
+riety of appearances as discussed in the introduction [9, 7, 13].
+These methods are not designed for address the range, scale and
+versatile domain distribution characteristics of the diffractive
+reflectance datasets. We empirically study these key charac-
+teristics. Resulting insights has helped us in devising effective
+data transformation and reorganization schemes to improve
+model learnability. In structuring and fine-tuning our MLP
+models, we look into generic data compression schemes deal-
+ing with image data.
+Data Compression
+MLP based Implicit Neural Representa-
+tions (INRs) that use positional encoding where the pixel loca-
+tion vector (𝑥, 𝑦) to query the network for the pixel color, can
+be very effective in compressing two-dimensional images [13].
+Sztrajman et al. [9] propose taking a data-compressive ap-
+proach for implicit modeling of the reflectance data when it is
+available in a large enough volume. They devise a two-hidden-
+layer MLP network with inputs comprising of the Rusinkiewicz
+reparameterization [26] of the light and the view directions.
+For the four-dimensional reflectance functions, this is akin to
+positional encoding, except that they use six instead of four in-
+put coordinates. This input feature expansion aids the learning
+process where the input redundancy propagates implicit cor-
+relational constraints through the network. Tancik et al. [14]
+apply frequency feature expansions to the positional codes to
+improve the learning of the high frequency features in the data.
+Strümpler et al. [13] provide an elaborate survey of the state of
+the art in 2D image compression using INRs. More recently,
+Catania and Allegra [12] show that the use of sinusoidal acti-
+vation functions [27] and an auxiliary network that modulates
+the frequencies fed to these activators can achieve rate distor-
+tions that outperform traditional image compression encoders
+like JPEG and WebP at lower bitrates. However, they achieve
+these improvements by overfitting the data as their problem
+does not involve resampling. In our work, we aim at a sim-
+pler network structure for high performance. Also, our implicit
+representation must interpolate well in regions with no training
+data.
+3
+PROPOSED METHOD
+To devise an effective neural representational method for nu-
+anced diffractive reflectances strategically, we:
+• study the unique characteristics of such reflectance
+datasets
+• devise appropriate range and domain space transforma-
+tions
+• experiment with the MLP neural network structure, size,
+activation, and the positional encoding schemes for the
+input,
+• validate with the larger set of real-world, synthetic as well
+as reference nano-structural examples, and
+• iteratively fine-tune the transformation, training, and rep-
+resentation modules for improving accuracy and perfor-
+mance of our method.
+With the above strategy, we devise a novel method that includes
+two major steps. As the first step, for a given nanostructure pro-
+file, we generate the rich yet compact volume of its diffractive
+reflectance dataset based on our proposed range and domain
+space transformations.
+As the next step, we configure the
+network size and train it with a suitable sampling approach,
+as informed by our empirical studies. We present these two
+steps in detail but first the ground truth generation scheme is
+explained in the following.
+3.1
+Generating the Ground Truth Training
+Datasets
+With the focus on accuracy, we rely on a forward modeling
+technique to generate the ground-truth. We chose to implement
+a Fourier optics based shader that emulates Kirchhoff integral
+under dense sampling (5𝑛𝑚) of the visible spectral band. Our
+implementation is based on Stam’s formulation [6] as adapted
+by Dhillon et al. [2] for nanostructure profiles discretized into
+height-fields.
+We represent nanostructures with a discrete 2D height-field
+function expressing nano-elevations, ℎ(𝑥, 𝑦), along the 𝑧-axis.
+This is commonly done by existing forward modelers [3, 5, 16].
+3
+
+
+===== gratnet-2025 | page 4/15 =====
+
+20𝜇𝑚× 20𝜇𝑚
+20𝜇𝑚× 20𝜇𝑚
+12.5𝜇𝑚× 12.5𝜇𝑚
+10𝜇𝑚× 10𝜇𝑚
+80𝜇𝑚× 80𝜇𝑚
+72𝜇𝑚× 72𝜇𝑚
+24𝜇𝑚× 24𝜇𝑚
+Blazed Grating
+Synthetic CD
+Cornsnake
+Sunbeam Snake Ballpen Tip Scratch
+Corner Cubes
+Spherical Pits
+Figure 2: Height-fields for Datasets. First two are synthetically generated by us. The snake scans were obtained by the courtesy
+of Milinkovitch, Teyssier, et al. [2]. The ball-pen Tip Scans is by the courtesy of NanoSurf Corporation [1]. All the scans
+were generated through Atomic Force Microscopy (AFM) of real-world nanostructures. The last two are complex designs with
+nuanced variations and obtained by the courtesy of Yu et al. [3]. Actual patch sizes as used for forward modeling are bigger
+than or equal to the coherence window. Unless otherwise specified, we impose a coherence window of 4𝜎𝑠= 65𝜇𝑚. We use a
+coherence window of 4𝜎𝑠= 40𝜇𝑚for Synthetic CD and Corner Cubes. 4𝜎𝑠= 15.556𝜇𝑚for the Spherical Pits.
+Some examples are shown in Figure 2. Now, the Fourier op-
+tical form for its spectral bidirectional reflectance distribution
+function (BRDF) is given as:
+f (𝜆, 𝜔𝑖, 𝜔𝑜) = 𝐴(𝜔𝑖, 𝜔𝑜) |F {𝑝(𝑥, 𝑦)} (𝑢/𝜆, 𝑣/𝜆)|2 ,
+(1)
+where, 𝜆is the light wavelength, 𝜔𝑖is the normalized in-
+cident light direction and 𝜔𝑜is the normalized view direc-
+tion.
+The un-normalized half vector 𝜔ℎ= 𝜔𝑖+ 𝜔𝑜is re-
+lated to Stam’s key vector (𝑢, 𝑣, 𝑤) = −𝜔ℎ[6]. F represents
+Discrete-Time Fourier Transform (DTFT) of the phasor func-
+tion 𝑝(𝑥, 𝑦) = 𝑒𝑖𝑤𝑘ℎ(𝑥,𝑦), where 𝑖is the imaginary identity,
+𝑘= 2𝜋/𝜆in the wave number, and 𝑤is the third element of
+the key vector. Lastly, 𝐴(𝜔𝑖, 𝜔𝑜) is a relative, net attenuation
+term that incorporates the Fresnel term, geometric attenuation
+and the masking and shadowing effects. More specifically,
+𝐴(𝜔𝑖, 𝜔𝑜) = 𝑅2(𝜔𝑖, 𝜔𝑜)𝐺(𝜔𝑖, 𝜔𝑜)/𝑅2
+0𝑤2,
+for |𝑤| > 𝑤𝜖,
+= 0
+otherwise.
+(2)
+Here, 𝑅is the Fresnel term, and 𝑅0 is the reference Fresnel
+term for normal incidence under normal viewing, i.e. 𝑅(𝜔𝑖=
+0, 𝜔𝑜= 0). 𝐺is the standard geometric term expressed as
+𝐺(𝜔𝑖, 𝜔𝑜) = (1 + 𝜔𝑖𝜔𝑜)2/𝑐𝑜𝑠𝜃𝑖𝑐𝑜𝑠𝜃𝑜, with 𝜃as the polar
+angle for respective direction vectors. 𝑤𝜖is a threshold (around
+10−6) used to emulate a masking and shadowing function for
+extreme grazing angles.
+For practical operations, Equation 1 can be simplified using
+Taylor series expansion and Gaussian coherence windowing
+of the discrete phasor function 𝑝(𝑥, 𝑦). See Appendix A in the
+supplemental material for details. The 𝑛th Taylor term includes
+the discrete Fourier transformation (DFT) ℱ{ℎ𝑛(𝑥, 𝑦)}. The
+Gaussian coherence window is parameterized with the standard
+deviation 𝜎𝑠. 𝑁is kept arbitrarily large to ensure series conver-
+gence. These DFTs are sampled along the 𝑢and 𝑣dimensions
+and stored as precomputed lookup tables.
+Now, to generate the ground truth, we first perform spectral
+sampling for Equation 1 at 5nm resolution for a given set of
+(𝑢, 𝑣, 𝑤) tuples. The resulting spectral response is collapsed
+under spectral integration while scaling it with 𝐷65 illumina-
+tion. For the reasons explained later, we default all 𝐴-terms in
+Eqn 1 to 1. Resulting map is in CIE-XYZ color space and for
+the sake of brevity, we refer to it as the reflectance map.
+Representative Dataset
+For our empirical studies, we need
+a dataset that represents nuanced variations of natural gratings
+without becoming a pedagogical case or an outlier. Blazed
+and holographic gratings are regular structures and lack vari-
+ations. A random initialization or selecting some real-world
+nanostructural scans can make visual inspections or interpre-
+tations tedious and ambiguous. Thus, we construct a synthetic
+CD profile with realistic random placement of pits and lands
+to emulate its physical counterpart (see Fig. 2). This refer-
+ence nano-patch results in one main strong band of rainbow
+colors spreading across the tracks and several outward streaky
+blobs that are typical of natural gratings (See a BRDF slice in
+Fig. 5). We use the forward modeled reflectance dataset for
+this synthetic CD as our representative case through most of
+our ablation studies.
+3.2
+Characterizing
+Diffractive
+Reflectance
+Space
+There are three main challenges to data-driven modeling of
+diffractive reflectances: (a) data volume, (b) distributional vari-
+ations, and (c) range space dynamic variations. Each of these
+challenges are systematically address in the proposed method,
+as explained next.
+Data Volume Reduction
+Diffractive reflectances generally
+span all four polar coordinate dimensions (𝜔𝑖≡(𝜃𝑖, 𝜙𝑖); 𝜔𝑜≡
+(𝜃𝑜, 𝜙𝑜)) with notable variations. For dimension reduction, we
+exploit the Fourier optical formulation in Equations 1, to factor-
+ize diffractive BRDFs into 𝐴-terms and the remaining part, say,
+F -terms. The 𝐴-term still exhibits four dimensional variations
+but it is computationally inexpensive. F -term depends only on
+4
+
+
+===== gratnet-2025 | page 5/15 =====
+
+the key vector (𝑢, 𝑣, 𝑤) = −𝜔ℎ. We thus focus on neural rep-
+resentation of this three-dimensional F -term alone. Even in
+this reduced three-dimensional (𝑢, 𝑣, 𝑤)-space, there are rich
+variations requiring dense sampling resolution. Dhillon et al.
+[2] require a 501 × 501 × 3 × 80 lookup table space for inter-
+mediate results. Even after ignoring the RGB dimensions, this
+storage requirement is on the order of millions of parameters
+(around 60 million in total). Their follow-up work imposes
+polynomial fitting along the 𝑤dimension [28]. They still re-
+quire around three million parameters. These reference model
+parameter sizes indicate the need for a much larger training set.
+We empirically found that 1000s of samples along both of 𝑢and
+𝑣dimensions and around 11 samples along the 𝑤-dimension
+adequately retain the rich data variations in general. These re-
+ductions result in practically manageable training timeframes
+(around 2 hours per data-set at 73%—27% split between train-
+ing and test sets) which can be further reduced as discussed in
+our ablation studies.
+Domain Transformation
+Even with 11 million sample
+points in the ground truth, non-linear distribution of the BRDF
+energy along 𝑢and 𝑣dimensions can lead to uneven distribution
+of the errors, resulting in visual artifacts. We thus perform the
+following nonlinear domain transformation prior to estimating
+the ground truth.
+(𝑢, 𝑣) =
+
+2sign(𝑢∗) (𝑢∗/2)2 , 2sign(𝑣∗) (𝑣∗/2)2
+.
+(3)
+Here, 𝑢∗, 𝑣∗∈[−2, 2] represent uniform sampling of their
+respective intervals. We refer to (𝑢∗, 𝑣∗) as regular domain
+sampling and (𝑢, 𝑣) as simple domain sampling as long as the
+𝑤dimension is uniformly sampled along its interval [−2, 0].
+Both regular and simple sampling lead to some data samples
+that are not physically plausible since sum of two unit vectors,
+𝜔ℎ, cannot have a norm 𝜔ℎgreater than 2. To maximally use
+the sampling volume, we thus devise another scheme where
+the 𝑤dimension is sampled uniformly along a valid range
+of [−𝑠𝑞𝑟𝑡(4 −𝑢2 −𝑣2), 0], which is dependent on the 𝑢and
+𝑣. We call this scheme as simple max sampling. This still
+leaves roughly 7% of sample points that are not physically
+plausible and are set to zero to ignore them. With this domain
+transformation, we improve data learnability of the reflectance
+map significantly.
+Range Space Transformations
+It is common to apply a
+range space transformation of 𝑓(𝑥) = 𝑙𝑜𝑔2(1 + 𝑥) to handle
+the dynamic range of most reflectance map [10]. However,
+this standard range transformation does not address range vari-
+ational for diffractive reflectances. Histogram analysis of sev-
+eral datasets reveals that though the range space non-linearity
+has logarithmic characteristics, it is far more compressive at
+lower values (higher votes in the histogram). We thus devise a
+bit-plane decompression formulation,
+𝑓(𝑥) = 1 + log2(𝑥)/𝐵max where
+(4)
+𝐵max is the floating-point precision, and we refer to it as the
+logDivisor. To avoid range violations, we clamp the transfor-
+mations to the interval [0, 1]. From empirical studies, we found
+the decompression in Eqn. 4 to not address low scale values
+that show systematic errors at high exposure for rendering. We
+thus devise two other transformations for examinations.
+𝑔(𝑥) = pow(𝑥, 𝑛), with 𝑛as a power parameter, and
+(5)
+𝑓2(𝑥) = pow( 𝑓(𝑥), 𝑛).
+(6)
+In our empirical studies, we found the transformation in
+Equation 6 to provide the best reconstruction, in general.
+3.3
+Neural Representation
+For effective neural representation, it is critical to design, ex-
+amine and fine-tune the model networks. For operational ef-
+ficiency, we chose to work with multi-layer perceptrons. In
+this section, we first present the operational workflow for the
+proposed MLP-based method.
+Workflow
+Figure 3 illustrates our workflow in operation for
+a single dataset belonging to one given height-field profile.
+It consists of two stages.
+The first stage is offline, and it
+involves setting up the sampling scheme, data generation, range
+transformation, data segregation into training and test sets and
+actual training of the neural network. The key blocks for this
+stage are explained in Section 3.2. The second stage for runtime
+simulations sequences through shading context preparation,
+input feature expansion, driving the network and assimilating
+the MLP predicted XYZ color vector into the frame buffer.
+The shading context preparation task produces the following
+shader parameters: (i) the light direction 𝜔𝑖, (ii) view direction
+𝜔𝑣, (iii) surface normal for each pixel and uploads the MLP
+network as a texture. As the first step for the runtime stage
+of the proposed method, we compute the input feature vector
+using 𝜔𝑖and 𝜔𝑣.
+Position Encoding and Feature Expansion
+Sztrajman et
+al. [9] use just the Rusinkiewicz re-parameterization of the 𝜔𝑖
+and 𝜔𝑣direction vectors to model reflectance maps (BRDFs)
+with MLPs. Their target BRDF dataset lacks high-frequency
+features, and thus, a simple six-element input feature vector
+proves to be effective.
+Tancik et al. [14] demonstrate that
+such an approach does not reconstruct sharp local variations
+in image, 3D shape of other data regression problems. They
+propose to encode the frequency space characteristics into the
+positional vector before passing it on as the input feature to
+query the MLP. This encoding of the position vector v ∈[0, 1)𝑑
+space with the transformation B that expands in to a hyperspace
+[−1, 1]2𝑚can be formulated as [14]:
+B(v) =
+
+𝑎1 cos(2𝜋v𝑇b1), 𝑎1 sin(2𝜋v𝑇b1), ...,
+𝑎𝑚cos(2𝜋v𝑇b𝑚), 𝑎𝑚sin(2𝜋v𝑇b𝑚)
+𝑇
+(7)
+5
+
+
+===== gratnet-2025 | page 6/15 =====
+
+Control
+Parameters
+Height-field: ℎ(𝑥, 𝑦)
+Diffraction 
+BRDF 
+Generation
+Regular Grid 
+Generation
+Domain 
+Transformation
+Final Key Set: 
+(𝑢, 𝑣, 𝑤)
+Raw Key Set: 
+(𝑢∗, 𝑣∗, 𝑤∗)
+Range 
+Transformation
+Training Data:
+𝑓2(F (𝑢, 𝑣, 𝑤)) 
+Feature 
+Expansion
+Shading
+Parameters
+(𝑢, 𝑣, 𝑤) 
+𝑖/𝑝
+𝑜/𝑝
+ℎ𝑖𝑑𝑑𝑒𝑛
+Reflectance Map:
+F (𝑢, 𝑣, 𝑤) 
+Prediction:
+𝑓2(F (𝑢, 𝑣, 𝑤)) 
+TRAINING
+STAGE
+(Offline)
+SIMULATION
+(Run-Time)
+Multi-layer 
+Perceptron Model
+Figure 3: Operational workflow for the proposed method.
+In the equation above, {b𝑖} represent 𝑚most prominent fre-
+quencies and {𝑎𝑖} represent their prominence measures respec-
+tively, for a given domain. This positional encoding scheme
+requires careful selection of Fourier basis frequencies that are
+commonly present in a given dataset. Simply put, determining
+vectors b𝑗s and scalars 𝑎𝑗s establishes 𝑚stationary character-
+istics of the data domain. In the context of image compression,
+Strümpler et al. [13] introduce a parametric set of basis fre-
+quencies, all of equal prominence, by adapting the positional
+encoding in Equation 7 to the following form:
+B(v) =
+
+v𝑇, sin(𝑠0𝜋v𝑇), cos(𝑠0𝜋v𝑇), ...,
+sin(𝑠𝑚𝜋v𝑇), cos(𝑠𝑚𝜋v𝑇)
+𝑇.
+(8)
+Note that their position vector is two-dimensional and v =
+(𝑣1, 𝑣2) ∈(−1, 1)2. Also, they augment the original position
+vector to the encoded one.
+Lastly, 𝑠is the parameter that
+one can tune in to modulate the geometric series of the basis
+frequencies.
+Diffractive reflectance data, which spans three dimensions
+v = (𝑢, 𝑣, 𝑤), often exhibits high-frequency details and can
+benefit from positional encoding. However, Equations 7 or 8
+cannot be directly applied to the domain defined with the key
+vector (𝑢, 𝑣, 𝑤). While 𝑢, 𝑣∈[−2, 2] can be simply scaled
+and offset to suit above equations (due to periodicity of DFTs),
+such scaling is not a trivial matter in general. To appreciate
+the subtlety, consider the case for 𝑤∈[−2, 0]. We need to un-
+derstand the implications of such domain transformation. By
+transforming the range for 𝑤to [0, 1) in applying Equation 7 or
+to the range (−1, 1) in applying Equation 8 we implicitly im-
+pose periodicity across the interval with the use of the Fourier
+basis. This is not the key characteristic of the diffractive re-
+flectance maps and we found a trivial application of position
+encoding to the 𝑤space to struggle with the learning tasks.
+We thus remap 𝑤to the range [0, 1] and use the positional
+encoding scheme in Equation 8. This avoids the imposition of
+the periodicity, and we are able to use positional encoding to
+improve our modeling accuracy.
+More importantly, we first expand the position vector to
+v = (𝑢, 𝑣, 𝑢+ 𝑣, 𝑣−𝑣, 𝑤) before substituting it in Equation 8.
+We found this explicit phase rotations in the Fourier space to
+significantly reduce errors. Also, we introduce the encoding
+scheme to set the value of 𝑠based on the understanding of
+Nyquist sampling. We first fix the 𝑚number of basis vectors to
+use and then set 𝑠such that 𝑠𝑚corresponds to half the sampling
+frequency, which is the highest frequency in the discrete data.
+This principled approach allows for systematic resizing of the
+input feature vector to adapt for network resizing.
+Network Design
+Size, shape and depth of the hidden layer
+block in an MLP model, each of these factors impact the learn-
+ing capacity. Based on our experiments, we propose to use
+a funneling mechanism in structuring hidden layers for MLPs
+modeling diffractive reflectances. For funneling, we make the
+layer immediately after the inputs to be the largest. Each con-
+secutive layer is reduced in size by a constant scale factor.
+Funneling reduces overfitting and balances learning compe-
+tition by emulating simulated annealing under exponentially
+decaying network size. There are five design factors counter-
+playing each other: (i) total network size, (ii) network depth,
+(iii) start size, (iv) end size, and (v) the funneling scale factor.
+We generally found the funneling scale ratio to the reciprocal
+of the golden ratio (1.618) to produce consistent result across
+the frequency spectrum. Also, we found that having 1.5 times
+6
+
+
+===== gratnet-2025 | page 7/15 =====
+
+to twice the input nodes for the first hidden layer allow for ade-
+quate combinations across the frequency basis vectors. Based
+on these design principles, we experimented with several net-
+work sizes and found this funneling mechanism to produce
+consistent results with stable correlation between the network
+size and the reconstruction accuracy.
+Training
+Generally, we use around 73% (8 out of 11 𝑤-
+slices) of the ground truth as the training data and remaining as
+the test data. We tried two segregation strategies with similar
+performances. In the first strategy, we randomly select training
+samples from anywhere within the data volume of 1001 ×
+1001×11 samples across (𝑢, 𝑣, 𝑤) dimensions respectively. In
+the second and the default strategy, we pick three slices along
+the 𝑤dimension (Slice no. 4, 7 and 10) for testing. This allows
+use to examine the use the SSIM measure as well as visual
+inspections to reason appropriately about the network accuracy.
+Lastly, for the most difficult cases of complex fabrications, we
+use all the data in training, akin to the image compression
+methods [12]. For such cases, we additionally examine the
+model efficacy by analyzing BRDF slices with fixed incident
+light direction/s 𝜔𝑖.
+For such slices, pixels rarely coincide
+with the samples from the training data and thus work well to
+examine the model predictions.
+4
+IMPLEMENTATION DETAILS
+Datasets
+We use three group types of datasets: basic, real-
+world scans, and complex designs. We construct the height-
+fields in the basic dataset using common references. This group
+consists of: (i) a blazed grating, (ii) a statistical CD patch, and
+(iii) a random height-field with Gaussian-windowing. All these
+height-field patches are shown in Figure 2.
+The maximum
+height of the blazed grating is 250𝑛𝑚, it has a periodicity of
+2.5𝜇𝑚and a patch size of 100 × 100𝜇𝑚2. A blazed grating
+has a high diffraction efficiency it diffracts most of the incident
+light energy into one single mode of diffraction. This results
+in a reflectance map with very little distribution and a strong
+anisotropic spread. This can help in examining any learning
+biases that will usually manifest as easily noticeable visual
+artifacts.
+Synthetic CD emulates grooved tracks on a read-only com-
+pact disk (CD-R) to the real-life scales.
+Tracks are 1.6𝜇𝑚
+apart and the patch size is 65 × 65𝜇𝑚2. The CD nanostructure
+has pits and lands that are randomly placed along the track
+but with discretized spacing. The pits can only span few bits
+contiguously. This leads to very interesting, varied ensemble
+of rainbow streaks arising from the first mode of diffraction
+along the track directions. Also, the primary diffraction across
+the tracks is sharp, vivid and, like blazed grating assists vi-
+sual inspection.
+We thus use it as our reference dataset in
+most of the ablation studies. For examining extreme complex
+spreads, we also devise a random height-field with maximum
+elevation of 1𝜇𝑚and patch size to match most of the others,
+i.e. 65 × 65𝜇𝑚2. However, due to rectangular windowing of
+the patch, it results in visual artifacts due to frequency aliasing.
+We thus impose a Gaussian window on the random height-field
+to elevate such aliasing issues.
+For working with actual microscopic scans of real-world
+nanostructures, we obtained two snakeskin scans by the cour-
+tesy of Dhillon et al. [2]. One belongs to a corn snake (Elaphe)
+and the second one is for a sunbeam snake (Xeno). Both the
+patches are 65 × 65𝜇𝑚2, and further details are available in
+their paper. We also downloaded a scan of scratches on the tip
+of a ballpen, shared courteously by NanoSurf Corporation [1].
+Firstly, we pre-process this scan image to upsample its required
+resolution using an online, high-quality API [29]. Next, we
+rescale and crop it to 80×80𝜇𝑚2. Also, since the scratches are
+not quasi-periodic, we impose a Gaussian damping window for
+alleviating aliasing effects. The resulting patch with maximum
+elevation of 873𝑛𝑚is shown in Figure 2. Lastly, we also ex-
+amine our model with two highly complex design constructs
+recently published and shared by the courtesy of Yu et al. [3],
+namely Corner Cubes and Spherical Pits.
+Ground-Truth Generation Details
+We use the reference
+method presented in Section 3.1 to generate the ground truth
+datasets for learning. Yu et al. [3] have noted the limitations of
+producing correct reflectances for Corner Cubes using Kirch-
+hoff’s integrals. We found the primary limitation relates to its
+maximum height. For uniformity’s sake and to go beyond the
+narrow coherence waist used in their work, we pre-process the
+original Corner Cube patch of 24 × 24𝜇𝑚2 through mirrored
+repetitions and height down-scaling for a maximum elevation
+of 1.5𝜇𝑚. The resulting patch of 72 × 72𝜇𝑚2 is shown in Fig-
+ure 2. It produces reflectances qualitatively similar to those in
+the original paper [3] when processed by our reference Fourier
+shader. Similarly, the reference patch for Spherical Pits has
+very high resolution to process with our reference shader. We
+thus downsample it to the resolution of 320×320 pixels, which
+is shown by Yu et al. [3] to produce subjectively similar results.
+Lastly, we emphasize that their original method is prohibitively
+expensive to operate on our platform at the coherence length
+and wavelength sampling comparative to our other patches. We
+thus re-purpose their height-field models through our reference
+Fourier shader which produces qualitatively similar reflectance
+maps.
+Network Training and Evaluation Details
+At a more tech-
+nical level, we employ the LogCosh loss function, as it be-
+haves like Mean Squared Error (MSE) for smaller values and
+Mean Absolute Error (MAE) for larger values, ensuring sta-
+bility across varied error magnitudes. Also, a dynamic learn-
+ing rate scheduler is utilized to adapt the learning rate during
+training, improving convergence. Training was conducted on
+a machine equipped with two RTX 3090 GPUs, significantly
+reducing computation time.
+Default Configuration
+Based on our empirical studies, we
+set our default configuration to produce the best qualitative
+7
+
+
+===== gratnet-2025 | page 8/15 =====
+
+results. In this configuration, the network has a size of (163,
+464, 288, 176, 108, 68, 40, 24, 16, 3) including both input and
+output layers. This architecture expands the low-dimensional
+input using sinusoidal encodings, with nineteen frequencies
+along the 𝑢and 𝑣dimensions, and four along the 𝑤dimension.
+While this model produces the best result, we observed that
+consistent quality with smaller models.
+We use the range
+transformation as given by Eqns. 8 & 6, with 𝑛= 8 and the
+logDivisor (𝐵max) set to 48. We use the simple max sampling
+for ground truth generation, by default.
+Evaluation Metrics
+In order to evaluate the model’s perfor-
+mance, we used the Peak Signal-to-Noise Ratio (PSNR),
+F
+LIP
+, and Structural Similarity Index Measure (SSIM). PSNR in the
+XYZ color space provides an evaluation of the predicted image
+in a device-independent color space, thus making it more reli-
+able in quantifying learning losses in the raw data space.
+F
+LIP
+[30] is a difference evaluator that quantitatively characterizes
+the perceptual differences that are observable while flipping
+two images. Having a smaller mean
+F
+LIP value is considered
+better. For SSIM, we use YCbCr color space as recommended
+for evaluating the renderings and videos [31]. We also include
+SSIMs in sRGB color space for direct subjective assessments.
+Rendering Exposure
+The reference method for generating
+the ground truth (see Sec. 3.1) uses a relative attenuation factor.
+This is akin to fixing the exposure for imaging. At one unit
+of this relative exposure (say 1RU), the structural colors due
+to diffraction are very weak. We thus generally use a relative
+exposure from 1000–5000 RUs. This approach is similar to the
+one used by Dhillon et al. [2].
+5
+RESULTS
+We first examine our method for F -terms (see Section 3.1)
+with the default configuration against the test data for the ref-
+erence Synthetic CD dataset at an exposure of 2000RU. The
+PSNR for slices 4,7 and 10 under simple max sampling at (𝑢, 𝑣)
+resolution of 1001×1001 are (56, 690, 62.006, 60.2) dB respec-
+tively. Similarly, the mean SSIM in sRGB color space for these
+slices are (0.9987, 0.9984, 0.9974) and the
+F
+LIP scores are
+(0.0082, 0.0081, 0.0105) respectively. We also performed this
+test for other datasets in the basic and real-world scans groups,
+which produce similar results. Fig. 4 (a) and (b) plot PSNR
+and
+F
+LIP statistics for all these cases along at different network
+sizes. Resulting error metric statistics confirm high-quality re-
+construction by our method, in general. For visual examination
+at more adverse exposure, we depict the
+F
+LIP error map for
+the Xeno dataset at 5000RU (see Fig. 10 (last column)). Fur-
+thermore, we also examine the robustness of our method when
+subject to training data scarcity. Fig. 4(c) & Fig. 10 demon-
+strate with the Xeno case that decreasing the training data set
+to 30% does not result in any notable differences in the final
+results.
+a. PSNR Plot
+b. Flip Plot
+c. Flip & PSNR at different training samples.
+Figure 4: Comparison of performance metrics and training
+set statistics across various configurations at ×2000 exposure
+on Slice 10. (a) PSNR plots for different synthetic and com-
+plex datasets.
+As network size decreases, PSNR generally
+drops—except for the Blaze Grating dataset—indicating that
+larger networks are more effective at learning complex BRDFs.
+(b) Flip error corresponding to the configurations in (a). The
+trend reinforces that larger networks yield better performance
+across datasets.
+(c) Network performance on test Slice 10,
+shown via PSNR and Flip error, as a function of the percentage
+of training data used. This highlights how training set size
+influences learning ability.
+Next, we validate our method against BRDF Slice render-
+ings. A BRDF slice is generated by fixing the incident light
+direction and projecting all view directions from the hemi-
+sphere onto the base plane. The color at the projected location
+8
+
+
+===== gratnet-2025 | page 9/15 =====
+
+Actual
+Predicted
+Flip Error Map
+𝜇
+0.00212
+0.0178
+0.0221
+0.0318
+0.0123
+0.0751
+0.0878
+Blazed Grating
+Synthetic CD
+Cornsnake
+Sunbeam Snake Ballpen Tip Scratch
+Corner Cubes
+Spherical Pits
+Figure 5: BRDF slices for (𝜃, 𝜙) : (0, 0) at the exposure ×2000. 𝜇represents average Flip error.
+represents the fully evaluated value of the reflectance map,
+including the Fresnel effects.
+The (𝑢, 𝑣, 𝑤) rarely coincide
+with the training dataset sample locations and thus rigorously
+validate the model.
+Figures 5, 6, 7 and 8 show the results for our method for
+all the datasets at different (𝜃, 𝜙) at exposure ×5000. Visually
+our renderings look compellingly similar to the ground truths.
+Figures 5 depicts and also tabulates the
+F
+LIP errors.
+The
+mean
+F
+LIP error was generally found to lie in the range of
+0.002–0.087 at 2000RU.
+Performance Evaluation
+We benchmarked our deferred
+shading algorithm implemented in Python to interoperate with
+the Mitsuba3 software [4] that generates input AOV (arbitrary
+output variable) maps that drive our shader. These AOVs in-
+clude position vectors and their gradients, surface normals,
+texture coordinates and their gradients, all projected into the
+screen space.
+We timed our MLP evaluator on a platform
+with one NVIDIA 3090 GPU. Figure 11 plots the performance
+graphs for two screen sizes for different network sizes. In gen-
+eral, our method takes 120𝑚𝑠to 175𝑚𝑠to render one frame of
+size 1001×1001. It can thus support rendering at 5−8 frames-
+per-second. While these rates are not suitable for gaming or
+interactive applications, considering the high-quality output,
+our method can practically emulate the results of the recent
+full-wave forward simulator by Yu et al. [3]. For the context,
+their forward method takes from 4.9 to 17.3 minutes for each
+such rendering using a platform with four NVIDIA 3090 GPUs
+running simultaneously.
+Memory Footprint
+Figure 4(b) shows that for the nanostruc-
+tural complexity of groups basic and real-world scans, which
+also include natural gratings, high-quality reconstructions are
+achievable with a network of size 60𝐾parameters stored as 4
+byte single precision floating numbers. The
+F
+LIP errors in the
+range less than 0.04 indicate good subjective matching. For
+complex designs around 130𝐾parameters generate such high
+subjective quality. Consider the interactive method from by
+Dhillon and Ghosh [28] which requires a memory footprint of
+around 12 million bytes in general with 4 lookup tables of size
+501 × 501 with 3 RGB channels and each lookup entry of 4
+single-precision floating numbers. In comparison, our method
+produces footprint reduction of around 50× for the basic and
+real-world scans and around 23×. Consider a direct compari-
+son to the image compression method by Catania and Allegra
+[12] which requires 1 to 1.5 bits per pixel of 24-bits. For 11
+million data samples of 3 channels and 4 bytes per channel,
+their compression should require a network of 1.375 million
+parameters. In comparison, our method results in 10× to 23×
+further reductions.
+Surface Renderings
+Figure 1 shows structural colors pro-
+duced by our shader when it interoperates with the Mitsuba3
+software [4] in a deferred rendering approach. For comparison,
+we also simulate a regular sinusoidal grating with 600 lines-
+per-mm. We produce surface renderings for the most complex
+nanostructures (from Yu et al. [3]) at high efficiency and no
+visual artifacts.
+We also performed several ablation studies to empirically
+determine the comprehensive behavior of our method under
+different configurations. These studies mainly use PSNR and
+9
+
+
+===== gratnet-2025 | page 10/15 =====
+
+Actual
+Predicted
+Blazed Grating
+Synthetic CD
+Cornsnake
+Sunbeam Snake Ballpen Tip Scratch
+Corner Cubes
+Spherical Pits
+Figure 6: BRDF slices for (𝜃, 𝜙) : (30, 135) at the exposure ×5000. The predicted slices closely match the actual BRDF slices
+even at this high exposure level, demonstrating the robustness and accuracy of the proposed network.
+Actual
+Predicted
+Blazed Grating
+Synthetic CD
+Cornsnake
+Sunbeam Snake Ballpen Tip Scratch
+Corner Cubes
+Spherical Pits
+Figure 7: BRDF slices for (𝜃, 𝜙) : (30, 0) at the exposure ×5000. The predicted slices closely match the actual BRDF slices
+even at this high exposure level, demonstrating the robustness and accuracy of the proposed network.
+Actual
+Predicted
+Blazed Grating
+Synthetic CD
+Cornsnake
+Sunbeam Snake Ballpen Tip Scratch
+Corner Cubes
+Spherical Pits
+Figure 8: BRDF slices for (𝜃, 𝜙) : (72, 30) at the exposure ×5000. The predicted slices closely match the actual BRDF slices
+even at this high exposure level, demonstrating the robustness and accuracy of the proposed network.
+SSIM metrics and are detailed in Appendix B in the supple-
+mental material.
+6
+CONCLUSION
+In this paper, we present a novel method for implicit neural rep-
+resentation of diffractive reflectances. Using the ground truth
+10
+
+
+===== gratnet-2025 | page 11/15 =====
+
+Actual
+Predicted
+Blazed Grating
+Synthetic CD
+Cornsnake
+Sunbeam Snake Ballpen Tip Scratch
+Corner Cubes
+Spherical Pits
+Figure 9: BRDF slices for (𝜃, 𝜙) : (72, 270) at the exposure ×5000.
+Ground Truth
+10%
+20%
+30%
+50%
+70%
+100%
+Flip Error Map
+𝜇
+0.0556
+0.043
+0.036
+0.034
+0.03
+0.028
+Figure 10: Network predictions on Sunbeam Snake test BRDF data (Slice 10) at ×5000 exposure, trained with varying sampling
+rates. Of the 11 total slices, slices 4, 7, and 10 serve as the test set, while the others are used for training. 𝜇denotes the mean
+F
+LIP Error.
+generated by a high-quality, Fourier optics-based reference for-
+ward modeler for Fraunhofer diffraction, our method is shown
+to reconstruct such reflectances with high subjective as well as
+objective quality. The PSNR for most of our reconstructions
+under the higher range of relative exposure (2000–5000RU) is
+observed to be generally in the range of 45–60dB. The sub-
+jective
+F
+LIP error measure ranges from 0.01 to 0.09 (lower
+being better) even for the most challenging nano-structural
+patches.
+These high-quality reconstructions are the conse-
+quence of the combinatorial influences of: (a) our proposed
+domain and range transformation schemes that are fine tuned
+to diffractive reflectances, (b) use of a funneling mechanism
+in the network design to smoothly annihilate learning losses,
+and (c) adaptations of the Fourier frequency based input ex-
+pansion approach to explicitly infuse diagonal frequencies in
+the 𝑢−𝑣space for the half vector. For the first time, to the
+best of the author/s knowledge, diffractive surfaces of very
+high complexities as introduced by Yu et al. [3] are shown to
+be rendered accurately as well as efficiently. Our proposed
+method has strong potential to be incorporated into physically
+based global illumination pipelines for practical emulation of
+nuanced structural coloration due to diffraction.
+ACKNOWLEDGMENTS
+We sincerely thank Prof. Milinkovitch and colleagues from
+the University of Geneva for providing us with the atomic
+force microscopic (AFM) scans for the snake skins. We use
+these scans to represent gratings with natural variations in our
+experiments. We also thank Yu et al. [3] for sharing their
+complex nano-architectures and NanoSurf Corporation [1] for
+sharing their AFM scans of a ball-pen tip, publicly. These
+datasets have been instrumental in evaluating our proposed
+method.
+This research used in part resources on the Palmetto Clus-
+ter at Clemson University under National Science Foundation
+awards MRI 1228312, II NEW 1405767, MRI 1725573, and
+MRI 2018069.
+The views expressed in this article do not
+11
+
+
+===== gratnet-2025 | page 12/15 =====
+
+Figure 11: Performance comparison across different networks
+for a half-vector slice of size 501×501 and 1001×1001. Timing
+was recorded on a single NVIDIA RTX 3090 GPU.
+necessarily represent the views of NSF or the United States
+government.
+References
+[1] NanoSurf.
+FridayAFM
+-
+Birome
+roughness.
+https://www.nanosurf.com/fridayafm/birome_
+roughness, 2025. [Online; accessed 23-May-2025].
+[2] D. S. Dhillon, J. Teyssier, M. Single, I. Gaponenko, M. C.
+Milinkovitch, and M. Zwicker.
+Interactive diffraction
+from biological nanostructures. Computer Graphics Fo-
+rum, 33(8):177–188, 2014.
+[3] Yunchen
+Yu,
+Mengqi
+Xia,
+Bruce
+Walter,
+Eric
+Michielssen, and Steve Marschner. A full-wave refer-
+ence simulator for computing surface reflectance. ACM
+Transactions on Graphics (TOG), 42(4):1–17, 2023.
+[4] Wenzel Jakob, Sébastien Speierer, Nicolas Roussel, Mer-
+lin Nimier-David, Delio Vicini, Tizian Zeltner, Baptiste
+Nicolet, Miguel Crespo, Vincent Leroy, and Ziyi Zhang.
+Mitsuba 3 renderer, 2022. https://mitsuba-renderer.org.
+[5] Ling-Qi Yan,
+Miloš Hašan,
+Bruce Walter,
+Steve
+Marschner, and Ravi Ramamoorthi. Rendering specu-
+lar microgeometry with wave optics. ACM Transactions
+on Graphics (TOG), 37(4):1–10, 2018.
+[6] Jos Stam. Diffraction shaders. In Proceedings of the 26th
+Annual Conference on Computer Graphics and Interac-
+tive Techniques, SIGGRAPH ’99, page 101–110, USA,
+1999. ACM Press/Addison-Wesley Publishing Co.
+[7] Junqiu Zhu, Sizhe Zhao, Yanning Xu, Xiangxu Meng,
+Lu Wang, and Ling-Qi Yan. Recent advances in glinty
+appearance rendering. Computational Visual Media, 8
+(4):535–552, 2022.
+[8] Alexandr Kuznetsov, Zexiang Xu, Ling-Qi Yan, Bruce
+Walter, Nima Khademi Kalantari, Steve Marschner, and
+Ravi Ramamoorthi. Learning generative models for ren-
+dering specular microgeometry. ACM Trans. Graph., 38
+(6):225–1, 2019.
+[9] Alejandro Sztrajman, Gilles Rainer, Tobias Ritschel, and
+Tim Weyrich. Neural brdf representation and importance
+sampling. Computer Graphics Forum, 40(6):332–346,
+2021.
+[10] Alexandr Kuznetsov, Krishna Mullia, Zexiang Xu, Miloš
+Hašan, and Ravi Ramamoorthi.
+Neumip:
+multi-
+resolution neural materials. ACM Trans. Graph., 40(4),
+July 2021. ISSN 0730-0301.
+[11] Tizian Zeltner*, Fabrice Rousselle*, Andrea Weidlich*,
+Petrik Clarberg*, Jan Novák*, Benedikt Bitterli*, Alex
+Evans, Tomáš Davidovič, Simon Kallweit, and Aaron
+Lefohn.
+Real-time neural appearance models.
+ACM
+Trans. Graph., 43(3), June 2024. ISSN 0730-0301.
+[12] Lorenzo Catania and Dario Allegra. Nif: A fast implicit
+image compression with bottleneck layers and modulated
+sinusoidal activations. In Proceedings of the 31st ACM
+International Conference on Multimedia, pages 9022–
+9031, 2023.
+[13] Yannick Strümpler, Janis Postels, Ren Yang, Luc Van
+Gool, and Federico Tombari. Implicit neural representa-
+tions for image compression. In European Conference on
+Computer Vision, pages 74–91. Springer, 2022.
+[14] Matthew Tancik, Pratul Srinivasan, Ben Mildenhall, Sara
+Fridovich-Keil, Nithin Raghavan, Utkarsh Singhal, Ravi
+Ramamoorthi, Jonathan Barron, and Ren Ng. Fourier fea-
+tures let networks learn high frequency functions in low
+dimensional domains. Advances in neural information
+processing systems, 33:7537–7547, 2020.
+[15] Tom Cuypers, Tom Haber, Philippe Bekaert, Se Baek
+Oh, and Ramesh Raskar. Reflectance model for diffrac-
+tion. ACM Transactions on Graphics (TOG), 31(5):1–11,
+2012.
+[16] Sebastian Werner, Zdravko Velinov, Wenzel Jakob, and
+Matthias B. Hullin. Scratch iridescence: wave-optical
+rendering of diffractive surface structure. ACM Trans.
+Graph., 36(6), November 2017.
+[17] Ibón Guillén, Julio Marco, Diego Gutierrez, Wenzel
+Jakob, and Adrian Jarabo.
+A general framework for
+pearlescent materials. ACM Trans. Graph., 39(6), Novem-
+ber 2020.
+[18] Gary Fourneau, Romain Pacanowski, and Pascal Barla.
+Interactive Exploration of Vivid Material Iridescence
+based on Bragg Mirrors . Computer Graphics Forum,
+2024.
+12
+
+
+===== gratnet-2025 | page 13/15 =====
+
+[19] Daljit Singh J Dhillon. Physically based rendering of
+simple thin volume natural nanostructures. In Interna-
+tional Symposium on Visual Computing, pages 400–413.
+Springer, 2021.
+[20] Andrey Krywonos. Predicting surface scatter using a lin-
+ear systems formulation of non-paraxial scalar diffraction.
+Ph. D. Thesis, 2006.
+[21] Shlomi Steinberg and Ling-Qi Yan. A generic frame-
+work for physical light transport. ACM Transactions on
+Graphics (TOG), 40(4):1–20, 2021.
+[22] Shlomi Steinberg, Pradeep Sen, and Ling-Qi Yan. To-
+wards practical physical-optics rendering. ACM Transac-
+tions on Graphics, 41(4):1–13, Jul 2022. doi: 10.1145/
+3528223.3530119.
+[23] Shlomi Steinberg, Ravi Ramamoorthi, Benedikt Bitterli,
+Eugene d’Eon, Ling-Qi Yan, and Matt Pharr. A gener-
+alized ray formulation for wave-optical light transport.
+ACM Trans. Graph., 43(6), November 2024. ISSN 0730-
+0301.
+[24] Antoine Toisoul and Abhĳeet Ghosh. Practical acqui-
+sition and rendering of diffraction effects in surface re-
+flectance. ACM Transactions on Graphics (TOG), 36(5):
+1–16, 2017.
+[25] Antoine Toisoul, Daljit Singh Dhillon, and Abhĳeet
+Ghosh. Acquiring spatially varying appearance of printed
+holographic surfaces. ACM Trans. Graph., 37(6), Decem-
+ber 2018. ISSN 0730-0301.
+[26] Szymon M Rusinkiewicz. A new change of variables for
+efficient brdf representation. In Rendering Techniques’
+98: Proceedings of the Eurographics Workshop in Vi-
+enna, Austria, June 29—July 1, 1998 9, pages 11–22.
+Springer, 1998.
+[27] Vincent Sitzmann, Julien Martel, Alexander Bergman,
+David Lindell, and Gordon Wetzstein. Implicit neural rep-
+resentations with periodic activation functions. Advances
+in neural information processing systems, 33:7462–7473,
+2020.
+[28] Daljit Singh J. Dhillon and Abhĳeet Ghosh. Efficient
+surface diffraction renderings with chebyshev approxi-
+mations. In SIGGRAPH ASIA 2016 Technical Briefs, SA
+’16, New York, NY, USA, 2016. Association for Com-
+puting Machinery. ISBN 9781450345415.
+[29] DeepAI.
+The super resolution api uses machine
+learning to clarify, sharpen, and upscale the photo
+without losing its content and defining characteristics.
+https://deepai.org/machine-learning-model/
+torch-srgan, 2025. [Online; accessed 23-May-2025].
+[30] Pontus Andersson, Jim Nilsson, Tomas Akenine-Möller,
+Magnus Oskarsson, Kalle Åström, and Mark D Fairchild.
+Flip: A difference evaluator for alternating images. Proc.
+ACM Comput. Graph. Interact. Tech., 3(2):15–1, 2020.
+[31] Jim Nilsson and Tomas Akenine-Möller.
+Understand-
+ing ssim, 2020. URL https://arxiv.org/abs/2006.
+13846.
+13
+
+
+===== gratnet-2025 | page 14/15 =====
+
+Appendix A: Taylor Series Expansion for
+Approximating Diffraction BRDFs
+Surface nanostructures can be represented with a discrete
+2D height-field function ℎ(𝑥, 𝑦), representing nano elevations
+along the 𝑧-axis (surface normal). Fourier optical formulation
+for its spectral bidirectional reflectance distribution function
+(BRDF) is given as [2]:
+f (𝜆, 𝜔𝑖, 𝜔𝑜) = 𝐴(𝜔𝑖, 𝜔𝑜)
+F {𝑝(𝑥, 𝑦)}
+𝑢
+𝜆, 𝑣
+𝜆
+
+2
+,
+(9)
+where, 𝜆is the light wavelength, 𝜔𝑖is the normalized incident
+light direction and 𝜔𝑜is the normalized view direction. The
+unnormalized half vector 𝜔ℎ= 𝜔𝑖+ 𝜔𝑜is related to Stam’s
+key vector (𝑢, 𝑣, 𝑤) = −𝜔ℎ[6]. F represents Discrete-Time
+Fourier Transform (DTFT) of the phasor function 𝑝(𝑥, 𝑦) =
+𝑒𝑖𝑤𝑘ℎ(𝑥,𝑦), where 𝑖is the imaginary identity, 𝑘= 2𝜋/𝜆in the
+wave number, and 𝑤is the third element of the key vector.
+Lastly, 𝐴(𝜔𝑖, 𝜔𝑜) is a normalized, net attenuation term that
+incorporates the Fresnel term, geometric attenuation and the
+masking and shadowing effects. More specifically,
+𝐴(𝜔𝑖, 𝜔𝑜) = 𝑅2(𝜔𝑖, 𝜔𝑜)𝐺(𝜔𝑖, 𝜔𝑜)/𝑅2
+0𝑤2,
+for |𝑤| > 𝑤𝜖,
+= 0
+otherwise.
+(10)
+Here, 𝑅is the Fresnel term, and 𝑅0 is the reference Fresnel
+term for normal incidence under normal viewing, i.e. 𝑅(𝜔𝑖=
+0, 𝜔𝑜= 0). 𝐺is the standard geometric term expressed as
+𝐺(𝜔𝑖, 𝜔𝑜) = (1 + 𝜔𝑖𝜔𝑜)2
+𝑐𝑜𝑠𝜃𝑖𝑐𝑜𝑠𝜃𝑜
+,
+(11)
+with 𝜃as the polar angle for the respective direction vector. 𝑤𝜖
+is a threshold at the scale of 10−6 and used to emulate a basic
+masking and shadowing function for extreme grazing angles.
+To simplify computations for practical operations, Dhillon
+et al. [2] show that a physically-based Gaussian coherence
+windowing of the discrete phasor function 𝑝(𝑥, 𝑦) under Taylor
+series expansion yields to Discrete Fourier Transformations
+(DFTs). This simplification for F {𝑝(𝑥, 𝑦)} in Equation 9 is
+formulated as
+F {𝑝}( 𝑢
+𝜆, 𝑣
+𝜆) =
+𝑁
+∑︁
+𝑛=0
+(𝑖𝑤𝑘)𝑛
+𝑛!
+(ℱ{ℎ𝑛} ∗𝒢)
+𝑢
+𝜆, 𝑣
+𝜆
+
+.
+(12)
+Here, ℱ{ℎ𝑛(𝑥, 𝑦)} is the discrete Fourier transformation of
+the height-field ℎ(𝑥, 𝑦) raised to power 𝑛, element-wise.
+𝒢(𝑢/𝜆, 𝑣/𝜆) is the frequency-space equivalent of a given
+physically-based spatial coherence area. This coherence area
+limits wave interference and is modeled as an isotropic Gaus-
+sian with given standard deviation 𝜎𝑠in microns. Using 𝜎𝑠,
+we can derive 𝒢as
+𝒢(𝜉, 𝜓) = exp
+
+−𝜉2 + 𝜓2
+2𝜎𝑓
+
+,
+where 𝜎𝑓=
+1
+2𝜋𝜎𝑠
+.
+(13)
+G spans only a small window in the frequency space and emu-
+lating Equation 9 by substituting Equation 12 in it is computa-
+tionally faster and much practical. Lastly, 𝑁is kept arbitrarily
+large to ensure the convergence of the Taylor series. By default,
+we perform spectral sampling at 5nm resolution and collapse
+resulting spectral response subject to 𝐷65 illumination under
+spectral integration. Resulting map for the F -term in CIE-XYZ
+colorspace. For brevity, we still refer to it as the reflectance
+map.
+Appendix B: Ablation Studies
+For the ablation studies, we focused on networks of smaller
+sizes since those configurations particularly challenge the com-
+pressive capabilities of our method and thus offer rich learning
+opportunities.
+After numerous experiments, we empirically set the default
+challenging configuration to have fifteen frequencies corre-
+sponding to 𝑢and 𝑣dimensions and four relating to 𝑤dimen-
+sion. We use the input expansion scheme given by Equation
+(8) in the main paper. In this following, we present the ablation
+studies on logDivisor, range space transformation, frequency
+count and network size. We base our analysis on PSNR and
+SSIM errors.
+Range-Space Transformation
+We performed experiments
+with different data transformation techniques. The PSNR and
+SSIM for different range-space transformation is shown in the
+table 1. This data clearly shows that using range transforma-
+tions with Equation. 6 from the main paper results in best
+quantitative results (highest PSNR and SSIM values).
+logDivisor
+The recorded PSNR and SSIM for different com-
+binations of logDivisor and power function are shown in Ta-
+ble 2. While the PSNR is highest for 𝐵max = 20 with 𝑛= 2.5,
+the SSIM which is a better predictor of the subjective quality
+is still the best for 𝐵max = 48 with 𝑛= 8.0. More importantly,
+Transformation
+PSNR
+SSIM
+XYZ
+lRGB
+YBR
+sRGB
+𝑥
+31.781
+29.810
+0.853
+0.420
+𝑙𝑜𝑔2(1 + 𝑥)
+31.950
+30.048
+0.862
+0.476
+1 + 𝑙𝑜𝑔2(𝑥)/15
+30.437
+30.335
+0.717
+0.284
+1 + 𝑙𝑜𝑔2(𝑥)/20
+35.934
+34.377
+0.974
+0.732
+(1 + 𝑙𝑜𝑔2(𝑥)/24)2.5
+36.090
+35.923
+0.981
+0.927
+(1 + 𝑙𝑜𝑔2(𝑥)/48)8
+36.389
+36.624
+0.981
+0.928
+Table 1: PSNR and SSIM values for different range-space
+transformation
+14
+
+
+===== gratnet-2025 | page 15/15 =====
+
+Parameters
+PSNR
+SSIM
+𝐵max
+𝑛
+XYZ
+lRGB
+YBR
+sRGB
+15
+1
+30.437
+30.335
+0.717
+0.284
+15
+2.5
+30.089
+29.615
+0.692
+0.254
+20
+1
+35.934
+34.377
+0.974
+0.732
+20
+2.5
+36.418
+36.840
+0.976
+0.703
+24
+1
+35.495
+33.560
+0.972
+0.918
+24
+2.5
+36.090
+35.923
+0.981
+0.927
+24
+3.5
+36.145
+36.584
+0.980
+0.913
+30
+2.5
+36.006
+35.286
+0.979
+0.927
+30
+3.5
+36.185
+36.518
+0.981
+0.931
+45
+2.5
+35.906
+35.099
+0.975
+0.920
+45
+3.5
+36.356
+35.061
+0.978
+0.925
+48
+8.0
+36.389
+36.624
+0.981
+0.928
+Table 2: PSNR and SSIM values for different configurations
+Frequency
+PSNR
+SSIM
+(U,V,W)
+i/p size
+XYZ
+lRGB
+YBR sRGB
+(0,0,0)
+3
+34.064 31.862 .957
+.872
+(5,5,5)
+33
+34.815 32.680 .965
+.889
+(10,10,5)
+53
+35.726 35.027 .976
+.911
+(15,15,3)
+69
+36.502 36.076 .980
+.927
+(15,15,4)
+71
+36.090 35.923 .981
+.927
+(15,15,5)
+73
+36.093 36.086 .982
+.929
+(15,15,15)
+93
+35.896 36.077 .982
+.928
+(20,20,5)
+93
+36.094 36.332 .981
+.928
+(30,30,5)
+143
+36.396 36.425 .982
+.928
+Table 3: PSNR and SSIM values for different frequency con-
+figurations
+higher the value of 𝐵max, greater is the bit-precision and better
+reconstruction at higher exposures.
+Frequency Count
+From our experiments, we found that ex-
+panding input coordinates using sine and cosine functions helps
+the network generalize over high-frequency components only
+until the Nyquist sampling rates are reached (i.e. 19 along
+𝑢and 𝑣dimensions with 𝑠= 1.4 for the 𝑢-𝑣resolution of
+1001 × 1001). In our ablation study, we compare PSNR and
+SSIM across various frequencies applied to the 𝑢, 𝑣, and 𝑤
+coordinates.
+Network Size
+We train the Synthetic CD dataset with an
+input size of 3 and a frequency of (15, 15, 4) across various
+network architectures, varying the number of parameters from
+1.5𝑘to 245𝑘. From our experiments, we found that a network
+with hidden layers of size (108, 66, 40, 24) achieves good per-
+formance. The PSNR and SSIM values for slice 7 with an
+exposure of ×2640 are presented in Table 4.
+Hidden Layer
+PSNR
+SSIM
+Node
+Params
+XYZ
+lRGB
+YBR sRGB
+(10,10)
+863
+31.140 27.137 .938
+.828
+(21,21)
+2,040
+33.425 31.014 .950
+.850
+(10,21,21,10)
+1,666
+33.488 31.719 .951
+.852
+(108,66,40,24)
+18,709
+36.090 35.923 .981
+.927
+(120,48,32,24)
+16,883
+35.822 35.879 .979
+.924
+(280,100,48,16)
+53,943
+36.371 37.226 .990
+.958
+(360,150,70,32)
+93,011
+36.374 37.431 .994
+.969
+(450,220,85,32) 153,256 36.358 37.422 .995
+.976
+(680,260,65,30) 245,058 36.435 37.612 .996
+.979
+Table 4: PSNR and SSIM values for different network config-
+urations for slice 7 at an exposure of 2640
+15

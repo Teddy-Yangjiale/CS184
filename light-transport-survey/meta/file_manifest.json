@@ -1,0 +1,450 @@
+{
+  "schema": 1,
+  "files": [
+    {
+      "path": "DEVELOPMENT.md",
+      "bytes": 6237,
+      "sha256": "f41db70e2a2810e553dc2c29125c1dd7760bfef056d6d5bb8220677f77f6a141"
+    },
+    {
+      "path": "meta/arxiv_candidates.json",
+      "bytes": 110952,
+      "sha256": "041639d3d8d9cb762b7739869ece81232511bb170e9086fc5bede28543a7c1de"
+    },
+    {
+      "path": "meta/arxiv_candidates2.json",
+      "bytes": 91954,
+      "sha256": "c93e03201b9c050340b8ebb6b2c3a088cd70e6f04d6c61ac819744386db0ef46"
+    },
+    {
+      "path": "meta/download_log.json",
+      "bytes": 7492,
+      "sha256": "497364b7706e34f5069baf3568fef71482aa659c1c9afe6510f2f187b5fe7df9"
+    },
+    {
+      "path": "meta/excluded/active-caustics-2023.pdf",
+      "bytes": 16121119,
+      "sha256": "4d5f858581354adbd2852566a3e2962cd6c7141d364a0d788ffd01da3dc24749"
+    },
+    {
+      "path": "meta/excluded/active-caustics-2023.txt",
+      "bytes": 63513,
+      "sha256": "d54b3bcf59fda6a7a0470137e12cbe8c8490727d875ec8ddafc56dfaa6401e4e"
+    },
+    {
+      "path": "meta/excluded/extract_stats_initial.json",
+      "bytes": 5314,
+      "sha256": "d31c10637e8c6b340726a7ba6fcba1863cf0e19e16412a0c3ac2dc6b5a0f01bf"
+    },
+    {
+      "path": "meta/extract_stats.json",
+      "bytes": 4380,
+      "sha256": "99c65d3bec0c8b86aa5460939ba71dd0c59c69c90765ec45b28d7b5c01b083be"
+    },
+    {
+      "path": "meta/github_probe.json",
+      "bytes": 14880,
+      "sha256": "0ef70fd954d36a30f38e3d6c13fbec8721a336a2f5522044c9e06910912851ff"
+    },
+    {
+      "path": "meta/papers.json",
+      "bytes": 4269,
+      "sha256": "29e4215711dc3a34c9f30cf2bfa46667240789b85d10c1507103ffe44d921f8b"
+    },
+    {
+      "path": "meta/repo_status.json",
+      "bytes": 8571,
+      "sha256": "e15793d69b0d33f1bda5a1d57fdbf3840a3e347eb26143afbce6fb69b86de15a"
+    },
+    {
+      "path": "meta/web/eg_neural_render_proxies.txt",
+      "bytes": 3347,
+      "sha256": "2ca02124370244046ba52a6737eca968b291e91968f2895cde3554b26430d3b7"
+    },
+    {
+      "path": "meta/web/mitsuba_caustics.txt",
+      "bytes": 21086,
+      "sha256": "ce2dcae1942db23c59d1f65cc8b0af1a7a3e1686bb9728bc39dee26c392003ce"
+    },
+    {
+      "path": "meta/web/nvidia_restirpt_enhanced.txt",
+      "bytes": 2099,
+      "sha256": "508d0b0a387efa8a5b2bca50be73b807c2186c2b768704354d41c8ca31d9e9d1"
+    },
+    {
+      "path": "meta/web/renderformer_msr_pdf.pdf",
+      "bytes": 18685903,
+      "sha256": "2c9ecda4b4499aa9af4ec01a188394ecc57aa452bb7a8419f8b11f38db2061fd"
+    },
+    {
+      "path": "meta/web/renderformer_site.txt",
+      "bytes": 3554,
+      "sha256": "fcaeecd703c02ba54f4a3a9675073fdabd1b4377907bea364c39fbb29f58f329"
+    },
+    {
+      "path": "meta/web/renderformer_v2_site.txt",
+      "bytes": 15604,
+      "sha256": "9c0dcdc643f521109d1e3b9511bc23c729ff1237991209798da553cd69da2349"
+    },
+    {
+      "path": "meta/web/rtxdi_readme.txt",
+      "bytes": 7618,
+      "sha256": "3a0b1bda64ce27f371866a7c21cf5bbbceb67906f88bf71243aa1acde98b169d"
+    },
+    {
+      "path": "meta/web/rtxdi_restirpt_doc.txt",
+      "bytes": 21486,
+      "sha256": "dc9fc1a48403381e0f82da48dc9722765739b744a7eb2cda0c5fe1540b245509"
+    },
+    {
+      "path": "meta/web_probe.json",
+      "bytes": 10766,
+      "sha256": "75cbe2c89fb7b2b64a860d4e96f1f29b388f051f4472ddb9823489d2259eda95"
+    },
+    {
+      "path": "notes/IDEA_REVIEW.md",
+      "bytes": 14833,
+      "sha256": "4057e867795fe0e307fca11fe01561d1deef18173919034326c799cb4251d622"
+    },
+    {
+      "path": "notes/PROGRESS.md",
+      "bytes": 14142,
+      "sha256": "c5cebadb2915c95b7e5a12ff711d0bcc55b1f2e9c154b528f683cce2d3280f2f"
+    },
+    {
+      "path": "pdf/caustic-surface-light-2025.pdf",
+      "bytes": 18220829,
+      "sha256": "af691d4d999c34e30a6079205d97b5496515dd1b6f84cf1a59a82207fd52a7da"
+    },
+    {
+      "path": "pdf/ddgi-resampling-2021.pdf",
+      "bytes": 18916714,
+      "sha256": "3033083221fe749a871bc3a506ab79c43a518961e0488d79f5ddaaccd5c38c7f"
+    },
+    {
+      "path": "pdf/diff-light-tracing-2026.pdf",
+      "bytes": 5360315,
+      "sha256": "7e72bc1f95787952a11cdf359a2fdf9ce958cec29641bfd8bdfa3a711cda79a8"
+    },
+    {
+      "path": "pdf/double-freeform-2026.pdf",
+      "bytes": 3286283,
+      "sha256": "195c01364d7c5a09f99d586eb3ae15f278a84880cb0195f17d806b15aba4981e"
+    },
+    {
+      "path": "pdf/dynamic-caustics-2025.pdf",
+      "bytes": 46349826,
+      "sha256": "bfb4014b2106328fae4cb296b0d440758e9ec2e26d075c1998ce54da5e99a4d6"
+    },
+    {
+      "path": "pdf/gratnet-2025.pdf",
+      "bytes": 39546477,
+      "sha256": "34b81f96e29231f2fbe8a2ef8015a764a62b0c51000558d6af8bcdd5ef7dbba9"
+    },
+    {
+      "path": "pdf/let-there-be-light-2026.pdf",
+      "bytes": 2446513,
+      "sha256": "c10133c3ab14987aba0968d7f7d59cc72f414b0b88cd2bf0a689e5a24ef6169e"
+    },
+    {
+      "path": "pdf/lt3d-embedding-2025.pdf",
+      "bytes": 47213529,
+      "sha256": "dd435d5afd75e71cdd38dfa0bb9c6d8cea855df0607ea009f2cad8b1d258b73b"
+    },
+    {
+      "path": "pdf/neural-integral-operators-2025.pdf",
+      "bytes": 23116379,
+      "sha256": "333b00a6e8fda86aa0b9609f769410634de931ebd81c8263c27324180b763b9c"
+    },
+    {
+      "path": "pdf/neural-visibility-cache-2025.pdf",
+      "bytes": 59589360,
+      "sha256": "22d6d40e0cb836e0de3603cfdd50c79702cd3a731997154ff2623de2e6dae385"
+    },
+    {
+      "path": "pdf/npm-path-guiding-2025.pdf",
+      "bytes": 20104383,
+      "sha256": "dbd041c9c4095df2beb1d3fa474e86cfd21776e5c5304fc0703cf269f1370700"
+    },
+    {
+      "path": "pdf/nrc-2021.pdf",
+      "bytes": 20713308,
+      "sha256": "6284263491d9c093f205f7a5048bb38c121a41dd8bf23f024247644dbe0c15ed"
+    },
+    {
+      "path": "pdf/ntmc-2024.pdf",
+      "bytes": 42653494,
+      "sha256": "aa9890ddf9a69fa0d223226aca6f8c08cfbecfd467730a3215c2270d0defe446"
+    },
+    {
+      "path": "pdf/photon-guiding-caustics-2024.pdf",
+      "bytes": 35504061,
+      "sha256": "76b643fe63c9393ede1bf17644f63d988635cd118c1776f5546550f24483ef69"
+    },
+    {
+      "path": "pdf/plasmonic-stiffness-2021.pdf",
+      "bytes": 831993,
+      "sha256": "6c6f0973cd5b254c92fc0270774aa9fbb8f7898c649e3f72c49ff62e895e61ed"
+    },
+    {
+      "path": "pdf/plateau-diffpt-2022.pdf",
+      "bytes": 13545923,
+      "sha256": "899939ef178a09bc6e96763a0cf32c220285e68f7f37d6445e56f1af9b581430"
+    },
+    {
+      "path": "pdf/renderformer-2025.pdf",
+      "bytes": 15840060,
+      "sha256": "f405328598ed09b5850b16a67091747ab8d6c6e8c6024e10a0cb5af7911fe7cd"
+    },
+    {
+      "path": "pdf/renderformer-plus-2026.pdf",
+      "bytes": 8472178,
+      "sha256": "563ca9331f31bd4890323f9eca7556915959c47b4fc4ae40a0119ac48e498f1f"
+    },
+    {
+      "path": "pdf/renderformer-v2-2026.pdf",
+      "bytes": 41180137,
+      "sha256": "34204e3f45d7476da8c7100247a292a83c53dfd7f157d9152979b34399fbd75f"
+    },
+    {
+      "path": "pdf/restir-mcmc-2022.pdf",
+      "bytes": 46103744,
+      "sha256": "1e672b7a6d9b6d676403a4e2b1afed001fa3fbf5b70f90fd47d747d21874bf58"
+    },
+    {
+      "path": "pdf/sobolev-2017.pdf",
+      "bytes": 6430649,
+      "sha256": "02fcb348b03b52c17e0b1c2846bf3bf62e28d491dc62776471189f7d5412fceb"
+    },
+    {
+      "path": "pdf/specular-prefilter-2026.pdf",
+      "bytes": 3964456,
+      "sha256": "330571ee8f877f99e027c2eed0b3a7da332a5e7689df8b48a2fb5664799c7a27"
+    },
+    {
+      "path": "pdf/stiffness-polarization-2015.pdf",
+      "bytes": 4964830,
+      "sha256": "cbb14f8425ff5174ff3502f3787e321587ab1de459ef1a4156d60b6d68e2a3e0"
+    },
+    {
+      "path": "pdf/tof-restir-2026.pdf",
+      "bytes": 10393341,
+      "sha256": "244d55fad9d187790042078d093fcc55bbb1f9ace3f91899fc6cd151591c6c54"
+    },
+    {
+      "path": "pdf/wave-ray-2023.pdf",
+      "bytes": 8295241,
+      "sha256": "948117af57cd60bfc079aded7fdd7884c00067a2148179226022b663f4bb8a19"
+    },
+    {
+      "path": "pdf/wave-tracing-2025.pdf",
+      "bytes": 48090941,
+      "sha256": "e44e5631dbf425f70beb46dc56a942cc1bc410f19b54aad5f41b54ce5ee4f45b"
+    },
+    {
+      "path": "README.md",
+      "bytes": 4732,
+      "sha256": "5db0423984a4d08592bf9d7ad45173bd8be35be0140c8703d1dfe3883e81ab19"
+    },
+    {
+      "path": "requirements-ocr.txt",
+      "bytes": 125,
+      "sha256": "301b7c76a571b3cf6a1766df99f6cc0c2f851d71fa4b7d0d5ba8fcf6a98084be"
+    },
+    {
+      "path": "requirements-survey.txt",
+      "bytes": 195,
+      "sha256": "551a2122afb890a351e584e26e9923add2c031c9b409599bde333d1fd9a4b21e"
+    },
+    {
+      "path": "SOURCES.md",
+      "bytes": 6288,
+      "sha256": "459e4ba9a794f04719f16da41a7ec9b35c0b44ae439f5967cd2c1c23240c1207"
+    },
+    {
+      "path": "text/caustic-surface-light-2025.txt",
+      "bytes": 81211,
+      "sha256": "ed5eb0e61dfa18b4e519019bbdfe3522186e1b4758132ac82fb41b48b30cd06d"
+    },
+    {
+      "path": "text/ddgi-resampling-2021.txt",
+      "bytes": 65598,
+      "sha256": "2be99b22332e624c38195ac50248dea80a52da10768019b301f929b103e4762a"
+    },
+    {
+      "path": "text/diff-light-tracing-2026.txt",
+      "bytes": 20278,
+      "sha256": "ffbca027af172bc9fbebd9e41b6ef5e36fbb58336c82690d0cae394522fc4129"
+    },
+    {
+      "path": "text/double-freeform-2026.txt",
+      "bytes": 52926,
+      "sha256": "98ef0b397c67b65a343f2237bad5f90fd00c74f8e95e290804f6a6ed92e77fd6"
+    },
+    {
+      "path": "text/dynamic-caustics-2025.txt",
+      "bytes": 44627,
+      "sha256": "2ebe6f2479ae1a72f2a8b2aead5bd9789003be4874b7b97faa0f6a6f1c81d455"
+    },
+    {
+      "path": "text/gratnet-2025.txt",
+      "bytes": 63718,
+      "sha256": "8f5973bb5fb3cda59c14f593461e2cf6bb5a5ef4541f7fe28e4a014b4629a541"
+    },
+    {
+      "path": "text/let-there-be-light-2026.txt",
+      "bytes": 76436,
+      "sha256": "32ddbbec7488ed0b017df7583de36630c1577de6e89c58907021f7442a0b1911"
+    },
+    {
+      "path": "text/lt3d-embedding-2025.txt",
+      "bytes": 98402,
+      "sha256": "c720512343e860baada5ee7f70930cd5c65031750cea0b32999c2b4d061a73af"
+    },
+    {
+      "path": "text/neural-integral-operators-2025.txt",
+      "bytes": 42997,
+      "sha256": "dc6851156a69a96cbf236acaf6a6e8d5af35917b1aceb29d85b02003c8ac6eee"
+    },
+    {
+      "path": "text/neural-visibility-cache-2025.txt",
+      "bytes": 45989,
+      "sha256": "02b7fb6b6b702f4ce097c4fa19375f626d8cdfa30c1a06d923d69b8be9776389"
+    },
+    {
+      "path": "text/npm-path-guiding-2025.txt",
+      "bytes": 54931,
+      "sha256": "c1088b58ab2b1614426a67170fee7289d010cb2bbd94bc602608377812521513"
+    },
+    {
+      "path": "text/nrc-2021.txt",
+      "bytes": 89451,
+      "sha256": "f343903d5d22ee8545d26cd0aba59b3c5fd42b3b5069d57de1228fe6d44066df"
+    },
+    {
+      "path": "text/ntmc-2024.txt",
+      "bytes": 88174,
+      "sha256": "ba11c84555816845ca9fdfab5f4925ce58d2e1335f26e08e423c1d60eb4baba3"
+    },
+    {
+      "path": "text/photon-guiding-caustics-2024.txt",
+      "bytes": 80896,
+      "sha256": "a12ff1b26a2c466efe15db444a98d60c4fa66c667846444abb43e3d6dff0ebcc"
+    },
+    {
+      "path": "text/plasmonic-stiffness-2021.txt",
+      "bytes": 29677,
+      "sha256": "092a172a90256bd662cb202a149e7f24cd34932e6ece90c37b55bfb4d8a04a56"
+    },
+    {
+      "path": "text/plateau-diffpt-2022.txt",
+      "bytes": 57172,
+      "sha256": "c8748dcaf23f5ca0d81f28f08afb584aa591d56035e1df12b843602d28487cba"
+    },
+    {
+      "path": "text/renderformer-2025.txt",
+      "bytes": 62540,
+      "sha256": "e13e679762fa2e72cbbe6efb5fdb2146945a1bd041ddf0550020071fb5ec40f0"
+    },
+    {
+      "path": "text/renderformer-plus-2026.txt",
+      "bytes": 39790,
+      "sha256": "e6151765cf1ebbb927c4faa4dce143f9a453678e3e23bbbdf834cf08c58f0bd8"
+    },
+    {
+      "path": "text/renderformer-v2-2026.txt",
+      "bytes": 63374,
+      "sha256": "a40b723e3c76d1dfda8e8f75858f7bbac1328bd404795f3158e1e070f48ea249"
+    },
+    {
+      "path": "text/restir-mcmc-2022.txt",
+      "bytes": 82719,
+      "sha256": "2594abad25fc8f74ed15d7b88ac16acf2952c4e0c351fdd7dce481a81f8af0b0"
+    },
+    {
+      "path": "text/sobolev-2017.txt",
+      "bytes": 57992,
+      "sha256": "464d489044b91d8f17ad5cb0a6da057ec29686bfc9063f33d1ba57237fbfaf26"
+    },
+    {
+      "path": "text/specular-prefilter-2026.txt",
+      "bytes": 18740,
+      "sha256": "015a55b665d12b308add2d8cf2528cba75244c58a41e46fc7827872e971d9357"
+    },
+    {
+      "path": "text/stiffness-polarization-2015.txt",
+      "bytes": 31344,
+      "sha256": "064cd622b2a5d688354a988d3f2980e0833b93cf14f8c47a8834a494a9b90560"
+    },
+    {
+      "path": "text/tof-restir-2026.txt",
+      "bytes": 105970,
+      "sha256": "02badc1bc17c6e6701bbcf594ab4ce53430ba81c8a7c88d434e7bd5ff8f43744"
+    },
+    {
+      "path": "text/wave-ray-2023.txt",
+      "bytes": 123693,
+      "sha256": "eefa5281a8ea5c04d5237d0a7a7d2a3c774936fffb2d1c78042577227c21bc89"
+    },
+    {
+      "path": "text/wave-tracing-2025.txt",
+      "bytes": 68190,
+      "sha256": "0232b08af6e43ff48ef153a81816fff5aac5fa02de86eb46bcf5e197013f265f"
+    },
+    {
+      "path": "tools/arxiv_search.py",
+      "bytes": 2868,
+      "sha256": "0276f3a8aeeb73090834621df86dc8892558f5e3ca6905c74fb988785d23fae4"
+    },
+    {
+      "path": "tools/arxiv_search2.py",
+      "bytes": 2678,
+      "sha256": "fa043abf082e7376eeb0eefbf2020607e53a418d5135f2bac875f96cdd9d1b0b"
+    },
+    {
+      "path": "tools/arxiv_search3.py",
+      "bytes": 1325,
+      "sha256": "5efe055eb3381ff660fe806dfa27f7817cbe815523739d5a94e977882171ebe1"
+    },
+    {
+      "path": "tools/check_repos.py",
+      "bytes": 2196,
+      "sha256": "9f9e4717fa017173dfa5207c08e8e0e18dfe78e53da89c20ae2efde7da306f82"
+    },
+    {
+      "path": "tools/download_pdfs.py",
+      "bytes": 2484,
+      "sha256": "12320fcf869bca001e5183b9647ee9eee4bdc6d95854cdaedccc294e897d45ab"
+    },
+    {
+      "path": "tools/extract_text.py",
+      "bytes": 2491,
+      "sha256": "8754ff74785fbc3d4b3cbe8400d8d9e72034f3def648f44268e5343ddc226847"
+    },
+    {
+      "path": "tools/fetch_web.py",
+      "bytes": 2609,
+      "sha256": "5cfa45b260bcb1a7ca38486afdd525df3a742ab2b3285cdd80570f2d753cfd65"
+    },
+    {
+      "path": "tools/github_probe.py",
+      "bytes": 2947,
+      "sha256": "218777108c6cb340ebc95ca8e8a4cc8c880405547af224d249db280f7e7dd427"
+    },
+    {
+      "path": "tools/make_index.py",
+      "bytes": 1994,
+      "sha256": "da74b43c7a12f46f2e0f7088ab963039882e5c396bcb6d74881e538ef07b0960"
+    },
+    {
+      "path": "tools/survey_config.py",
+      "bytes": 350,
+      "sha256": "06183456ed92e82b3a2860866fa36213502ef66b1030d5549c5949fbc61ce037"
+    },
+    {
+      "path": "tools/verify_snapshot.py",
+      "bytes": 2865,
+      "sha256": "9ce1dd83cc5b754fc0a21d748ce174cb9f08f183b1d6199f44f2c4e1795a4072"
+    }
+  ]
+}

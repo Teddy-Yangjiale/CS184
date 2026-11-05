@@ -1,0 +1,1440 @@
+
+
+===== ddgi-resampling-2021 | page 1/13 =====
+
+Volume xx (200y), Number z, pp. 1–13
+Dynamic Diffuse Global Illumination Resampling
+Zander Majercik1, Thomas Müller1, Alexander Keller1, Derek Nowrouzezahrai2, and Morgan McGuire3
+1NVIDIA 2McGill University 3Roblox
+Ours + Denoising
+Ofﬂine Reference
+Path tracing + ReSTIR
++ Secondary DDGI (ours)
++ DDGI Resampling (ours)
++ Denoising (ours)
+Reference
+22.5 ms
+12.8 ms
+18.4 ms
+26.6 ms
+Figure 1: The indirectly lit GREEK VILLA scene rendered at 1920×1080 with 1 sample per pixel (spp) on an i7 6800k CPU and RTX 3090
+GPU. Direct illumination resampling, such as ReSTIR [BWP*20] (leftmost inset), reduces noise at the primary path vertex but does not affect
+the remainder of the path which is both noisy and expensive to trace. Therefore, we propose replacing the remainder of the path, starting from
+the secondary vertex, with a cheap, noise-free approximation: an extended variant of DDGI [MMSM21] (second inset). Our key observation is
+that DDGI thereby acts as a light source, allowing us to include it in the resampling algorithm (third inset). This uniﬁes the sampling of direct
+and indirect illumination. Combined with denoising (fourth inset), scenes with complex indirect illumination such as this one can be rendered
+in real time from 1 spp, with quality approaching ofﬂine path tracing with hundreds of samples per pixel (ﬁfth inset).
+Abstract
+Interactive global illumination remains a challenge in radiometrically- and geometrically-complex scenes. Specialized sampling
+strategies are effective for specular and near-specular transport because the scattering has relatively low directional variance
+per scattering event. In contrast, the high variance from transport paths comprising multiple rough glossy or diffuse scattering
+events remains notoriously difﬁcult to resolve with a small number of samples. We extend unidirectional path tracing to address
+this by combining screen-space reservoir resampling and sparse world-space probes, signiﬁcantly improving sample efﬁciency
+for transport contributions that terminate on diffuse scattering events. Our experiments demonstrate a clear improvement –
+at equal time and equal quality – over purely path traced and purely probe-based baselines. Moreover, when combined with
+commodity denoisers, we are able to interactively render global illumination in complex scenes.
+CCS Concepts
+• Computing methodologies →Ray tracing;
+submitted to COMPUTER GRAPHICS Forum (8/2021).
+arXiv:2108.05263v1  [cs.GR]  11 Aug 2021
+
+
+===== ddgi-resampling-2021 | page 2/13 =====
+
+2
+Z. Majercik & T. Müller & A. Keller & D. Nowrouzezahrai & M. McGuire / Dynamic Diffuse Global Illumination Resampling
+1. Introduction
+Modern physically-based production renderers rely primarily on
+variants of the unidirectional path tracing algorithm [Bal18], in
+which paths are traced from the camera and scattered in the scene
+until they reach an emitter. Path tracing scenes with high geometric
+and radiometric complexity can result in high-variance (i.e., noisy)
+images unless they take a prohibitively large number of samples. To
+alleviate this, many Monte Carlo variance reduction-based solutions
+have been proposed, such as variants of importance sampling [VG95;
+OZ98; TCE05; BWP*20] and path guiding [VHH*19]. However,
+even with advanced sampling techniques in place, hundreds of sam-
+ples per pixel are typically required to produce a converged image,
+which is prohibitive for real-time applications.
+Even though recent improvements in GPU ray tracing and effec-
+tive denoising have greatly improved path tracing performance for
+complex scenes, real-time path tracing budgets remain limited to
+only few indirect scattering events (often just one) and scenes with
+only modestly complex illumination. As such, interactive graphics
+methods necessarily resort to approximate global illumination meth-
+ods in addition to importance sampling. One such recent approach
+combines world-space irradiance probes with visibility-aware inter-
+polation to rapidly approximate multi-bounce indirect illumination
+(DDGI) [MGNM19]. Crucially, the normal-dependent irradiance
+can also be interpreted as cosine-preﬁltered radiance [MMSM21] in
+the normal direction, allowing its use in both rough glossy as well as
+Lambertian diffuse transport. As with most approximate solutions,
+these dynamic probes introduce bias – in the form of the transport
+that is computed – in exchange for a noise-free and fast result.
+In contrast to interactive indirect illumination sampling, the sam-
+ple efﬁciency and approachable scene complexity for ray-traced
+direct illumination has been greatly improved by recent a spatio-
+temporal resampling scheme (ReSTIR) [BWP*20]. In the graphics
+pipeline, sampling is followed by full-screen post-processing, in-
+cluding denoising [BRM*16; BB17; SKW*17; VRM*18; BVM*17;
+CKS*17; MMBJ17; XZW*19; HY21]. So, the goal of a modern
+real-time sampling algorithm is not a fully converged image, but
+rather one with sufﬁciently low noise that after post-processing it
+is acceptably close to a converged image for the application. We
+address the efﬁcient sampling problem in this work, assuming a
+downstream denoiser. We note that today’s commodity denoisers
+both desirably conceal sampling noise and also undesirably exhibit
+various residual temporal errors that are beyond the scope of this
+work. Hence, we show the impact of denoising in Fig. 1 for a static
+image to validate the unconverged targets, and then show the pre-
+denoising output of our method in all other results.
+We present a new real-time global illumination method that
+combines the advantages of spatio-temporal resampling (improved
+sample efﬁciency for stochastic estimators) and dynamic diffuse
+probe volumes (smooth, interpolation-friendly transport proxies).
+Our method is efﬁcient, treats direct and multi-bounce indirect ef-
+fects, and is robust to radiometrically- and geometrically-complex
+settings. Naïvely combining DDGI with ReSTIR (see Fig. 8, “Pri-
+mary DDGI” column) will neither eliminate the probe grid artifacts
+nor address the discrepancy in their respective artifact/noise char-
+acteristics: DDGI’s noise-free and biased indirect illumination, and
+ReSTIR’s noisy and unbiased direct illumination.
+We alleviate this discrepancy by postponing DDGI queries by one
+bounce (from the eye) – where sample contributions are evaluated
+during ReSTIR (see Fig. 8, “DDGI in ReSTIR” column) – similarly
+to ﬁnal gathering with photon mapping [Jen96]. This hides a large
+portion of DDGI’s bias and allows us to combine direct and indirect
+samples during resampling, selecting each sample proportional to its
+global transport contribution. Where the original ReSTIR approach
+would normally resample direct illumination, it now treats both
+direct and indirect samples, each with similar noise characteristics
+due to the ﬁnal gathering-like postponed DDGI sample, resulting
+in a sample efﬁcient global shading estimate that is amenable to
+commodity denoising methods (see Fig. 1).
+Our method takes a principled approach to balancing the
+performance-quality trade-off inherent to any combination of DDGI
+and ReSTIR, as evidenced in our analysis and benchmark against
+purely path traced and purely probe-based variants (Sec. 5). Con-
+cisely, our contributions are as follows:
+• a categorization of contributions from each constituent technique,
+• an in-depth analysis of sampling-based methods applied to these
+contributions,
+• an interactive global illumination algorithm, motivated by our
+analysis, that combines resampling with a global transport ap-
+proximation.
+2. Background and Related Work
+(Ir)radiance Caching. Most modern real-time global illumination
+caches have their roots in Ward’s seminal irradiance cache [WRC88]
+and other early approaches to precomputed light transport [Arv86;
+Hec90]. While initial work focused on adapting precomputed light
+transport to the harsh constraints of real-time rendering in static
+settings [Abr97; Oat05; ME10], many recent techniques offer at
+least partial dynamics, such as dynamic lighting through precom-
+puted radiance transfer [SKS02]. Orthogonally, radiance caching
+techniques overcome the Lambertian assumption by including the
+directional domain [KGPB05]. Although today’s selection of high-
+quality partially dynamic techniques is vast [GS12; SL17; SSS*20;
+VPG14; SNRS12; RZD14; SJJ12], our goal is fully dynamic global
+illumination with as few constraints as possible.
+To this end, we build upon the DDGI volume [MGNM19], which
+consists of a 3D grid of directionally resolved irradiance probes
+that is updated in real-time through hardware ray-tracing. Crucially,
+DDGI contains visibility information to prevent light leaking and it
+can approximate sufﬁciently rough glossy transport by re-purposing
+its directional dependence [MMSM21]. These features make it –
+with mild modiﬁcations (Sec. 3) – a reasonably versatile approxima-
+tion of global illumination for most phenomena other than specular
+reﬂections. By querying DDGI at secondary path vertices, we em-
+ploy a similar strategy to ﬁnal gathering to conceal DDGI’s limita-
+tions (e.g., coarse spatial discretization) behind the blurring effect
+of the primary scattering interaction at the cost of sampling noise.
+We then address the sampling noise by applying spatio-temporal
+reservoir sampling [BWP*20].
+Müller et al. [MRNK21] use a real-time trained neural radiance
+cache to approximate fully-dynamic global illumination. They eval-
+uate their cache at later path vertices to hide the artifacts of their
+submitted to COMPUTER GRAPHICS Forum (8/2021).
+
+
+===== ddgi-resampling-2021 | page 3/13 =====
+
+Z. Majercik & T. Müller & A. Keller & D. Nowrouzezahrai & M. McGuire / Dynamic Diffuse Global Illumination Resampling
+3
+neural network, but unlike this paper, they do not employ specialized
+importance sampling. Crucially, their method is compatible with
+ours in that the caches can be interchanged in future investigations.
+Importance Sampling. In ofﬂine rendering, importance sampling
+is the dominant technique for reducing sampling noise: the closer
+the sampling distribution matches the distribution of light, the less
+noise there is [Vea97]. With the advent of hardware ray tracing, it
+is now important to adapt established techniques to the real-time
+setting [KVB*19].
+Like with caching techniques, spatio-temporal reuse is key for
+high-quality importance sampling, as evidenced by bidirectional
+techniques [LW93; VG94; VG97; Kel97; GKDS12], resampling and
+mutation strategies [TCE05; VG97; KSAC02; KMA*15; HKD14],
+as well as learned distributions via neural networks [MMR*19;
+ZZ19; KD19] or path guiding [Jen95; LW95; VKŠ*14; MGN17;
+DK18]. Unfortunately, most reuse strategies come with a signiﬁ-
+cant performance penalty, meaning that while they handle difﬁcult
+illumination well, they are outperformed by naïve unidirectional
+path tracing under simple illumination. This disqualiﬁes them from
+the real-time setting that we strive for. Path guiding has generally
+little overhead, which makes it a good choice for production render-
+ing [VHH*19], however adapting its underlying data structures to
+animated content in real-time is non-trivial ongoing work [DHD20].
+Our importance sampling method of choice is ReSTIR [BWP*20]:
+a recent combination of importance resampling [TCE05] and classic
+weighted reservoir sampling [Vit85; ES06; CHA82] that permits
+the reuse of a massive number of samples in constant time. For esti-
+mating direct lighting, ReSTIR generates many candidate samples
+on the light sources in the scene, resamples those candidates across
+space and time proportional to their predicted contribution, and then
+traces a shadow ray to determine the visibility of the selected sam-
+ple(s). This scheme not only has negligible overhead compared to
+simple path tracing, but also gracefully handles dynamic content.
+In contrast, we apply ReSTIR to global illumination by targeting
+it at the sum of direct illumination from light sources and indirect
+illumination stored in DDGI probes [MGNM19] of irradiance (for
+diffuse reﬂection) and angularly-ﬁltered radiance [MMSM21] (for
+rough glossy reﬂection). This converts the global illumination prob-
+lem into a purely direct illumination problem for the high variance
+case of low-frequency angular scattering, by treating DDGI as a
+light source. In contrast to multiple importance sampling [VG95],
+this means that we draw a single sample approximately proportional
+to the total transported light rather than multiple samples that are
+heuristically combined. Note that the result has two symbiotic levels
+of reuse: (i) screen-space resampling by ReSTIR for both direct and
+indirect light as well as (ii) world space DDGI probes which contain
+spatio-temporal aggregates of global illumination.
+Concurrent work of Ouyang et al. [OLK*21] proposes an alterna-
+tive mechanism for spatio-temporal resampling of global illumina-
+tion: they target ReSTIR at single-sample Monte Carlo estimates –
+rather than a cache – which can be likened to importance sampling
+of virtual point lights. Compared with our approach, theirs is capable
+of less biased (optionally unbiased) rendering, but lacks world-space
+spatio-temporal reuse and early path termination, which in our case
+is handled by the DDGI volume.
+As we show in our results, combining the underlying ideas of
+ReSTIR, DDGI, and path tracing into a new sampling strategy pro-
+duces a less-biased and less noisy result than naïvely compositing the
+results of separately-computed ReSTIR direct, DDGI diffuse/rough-
+glossy indirect, and path traced near-specular contributions.
+3. Algorithm
+In order to render images with global illumination in real-time,
+we strive to efﬁciently simulate radiance transport. The rendering
+equation [Kaj86]
+L = Le +Tf L
+(1)
+describes the outgoing radiance L : R3 × S2 →R3 as the sum of
+the radiance Le emitted by the light sources and the transported
+radiance Tf L, where Tf is a higher order operator that maps between
+two functions (similar to notation deﬁned by Veach [Vea97]). The
+symbol f represents the bidirectional scattering distribution function
+(BSDF), describing how the surfaces in the scene transport radiance.
+For our derivation, it is useful to partition radiance transport
+Tf = Tfd +Tfg
+into diffuse Tfd and glossy Tfg transport, the latter of which including
+specular transport as the special case of small surface roughness.
+With this operator notation at hand, the dynamic diffuse global
+illumination (DDGI) algorithm [MGNM19] is
+L ≈Le +Tfd Le +LDDGI +Tfg L ,
+(2)
+in which LDDGI ≈∑∞
+i=2(Tfd)i Le is an approximation of the diffuse
+transported radiance without the directly visible light sources (i
+starts at 2). The other terms are estimated by sampling. Inserting
+the DDGI approximation into equation (2) and assuming equality
+results almost in the rendering equation (1), missing only higher
+order glossy transport.
+Majercik et al. [MMSM21] extended DDGI to include this miss-
+ing contribution for the special case of specular reﬂection, which
+we will build on in Section 3.3. The “Primary DDGI” column in
+Fig. 3 and 8 shows results of this extended DDGI algorithm. As
+compared to path tracing [Kaj86], the images are smooth and noise
+only results from sampling the direct diffuse illumination Tfd Le and
+the recursion for glossy transport Tfg L. Yet, the irradiance probe
+approximation of LDDGI shows visible artifacts that we resolve by
+postponing its evaluation to secondary path vertices. We develop
+our new algorithm in the following sections.
+3.1. Sampling all Surfaces with ReSTIR
+As the DDGI approximation can be queried at any point of the scene
+surface, we consider the whole scene surface as a light source rather
+than only the actual light sources. Our new sampling algorithm
+performs the following steps:
+1. Generate candidate samples on all surfaces of the scene. To
+this end, we uniformly sample a small number of positions on
+emissive surfaces and generate additional samples by tracing
+secondary rays in directions sampled from the BSDF.
+submitted to COMPUTER GRAPHICS Forum (8/2021).
+
+
+===== ddgi-resampling-2021 | page 4/13 =====
+
+4
+Z. Majercik & T. Müller & A. Keller & D. Nowrouzezahrai & M. McGuire / Dynamic Diffuse Global Illumination Resampling
+x
+y
+x
+z
+Figure 2: We compute direct and indirect illumination in a uniﬁed
+way by targeting the ReSTIR algorithm at the sum of emitted light Le
+and the DDGI approximation LDDGI. Left: two points are sampled.
+One (red) is sampled on the emissive surfaces and another (green, y)
+by BSDF sampling at the primary vertex x. Right: with all samples
+across pixels and past frames converted to the area measure, a single
+sample z is selected with probability proportional to Le +LDDGI and
+a shadow ray (red) is traced. The radiance leaving x towards the
+camera is estimated with low variance by combining the reﬂected
+light from y and z through the method of Kollig and Keller [KK06].
+(Near-)specular transport at y and z is estimated through recursion
+(blue) and the remaining transport by LDDGI.
+2. Select one candidate by ﬁrst sampling from a weighted reservoir
+proportional to the sample contribution, then resample spatially
+among neighboring pixels, and resample temporally among pre-
+vious frames, proportional to the sum Le +LDDGI.
+3. Trace one shadow ray to the selected sample point.
+4. If visible, shade from that sample point, using the emissive con-
+tribution Le and adding the contribution from the DDGI volume.
+As with original ReSTIR, our uniﬁed sampling scheme traces only
+a single ray to the selected sample (see Figure 2). However, as the
+original DDGI volume only contains the diffuse indirectly reﬂected
+light without direct reﬂections as shown in equation (2), we need to
+add these, as well as glossy contributions, which we describe next.
+3.2. Augmenting the DDGI Approximation
+As mentioned in Sec. 3.1, integrating LDDGI from secondary vertices
+over the hemisphere at the primary vertex would result in too dark
+images, because the DDGI approximation lacks the diffuse direct
+illumination and the radiance from non-diffuse transport. In fact,
+adding these missing terms to the DDGI approximation recovers an
+approximation of the transport operator
+LDDGI +Tfd Le +Tfg L ≈Tfd L+Tfg L = Tf L.
+(3)
+Adding the missing terms by recursive path tracing would in-
+crease the noise and involve further shading and tracing cost.
+Instead, we augment the DDGI approximation in two steps, which
+are most easily explained by examining the underlying irradiance
+approximation that DDGI makes. Given a 3D position and 2D nor-
+mal vector, the DDGI probe volume stores irradiance from indirect
+diffuse reﬂections, which is approximated by repeatedly evaluating
+Primary DDGI
+Secondary DDGI
+Primary DDGI
+Secondary DDGI
+Reference
+Figure 3: Using the DDGI approximation LDDGI at the primary
+vertex (left) shows light leaking artifacts beneath the couch and does
+not correctly reproduce indirect contact shadows on the table, vases,
+and plate. Using our augmented LDDGI+ at the secondary vertex
+(middle) exhibits no leaks, recovers some of the indirect contact
+shadows and is closer to the path traced reference (right).
+the following double-bounce transport [MGNM19]
+EDDGI(x,n) ≈
+Z
+(LDDGI +Tfd Le)(h(x,ωi),−ωi)⟨n,ωi⟩dωi ,
+LDDGI(x,ωi) := ρ(x)
+π
+EDDGI(x,n),
+(4)
+where h is the ray tracing operation and ρ is the diffuse albedo.
+Repeated Monte Carlo estimation of this equation at the centers x
+of all DDGI probes converges to the aforementioned approximation
+LDDGI ≈
+∞
+∑
+i=2
+(Tfd)i Le .
+To include direct reﬂections and non-diffuse transport, we replace
+the double-bounce transport with simpler single-bounce recursion
+EDDGI+(x,n) ≈
+Z
+(LDDGI+ +Le)(h(x,ωi),−ωi)⟨n,ωi⟩dωi , (5)
+where Le no longer undergoes a diffuse interaction and LDDGI+ will
+be adapted to include glossy transport in the following section. The
+approximation thus converges to the full transport operator
+LDDGI+ ≈Tf L.
+Including direct illumination (i.e. untransported Le) in the probe
+update equation (5) produces results that are too bright whenever
+probe centers are closer to light sources than the surfaces that
+they shade. This causes surfaces to receive more (secondary) di-
+rect illumination than they should – a common problem in probe-
+based caches. To alleviate this, we approximate the true distance to
+submitted to COMPUTER GRAPHICS Forum (8/2021).
+
+
+===== ddgi-resampling-2021 | page 5/13 =====
+
+Z. Majercik & T. Müller & A. Keller & D. Nowrouzezahrai & M. McGuire / Dynamic Diffuse Global Illumination Resampling
+5
+Secondary DDGI
++Specular Recursion
+Reference
+Figure 4: For shading, we recursively trace (near-)specular inter-
+actions until their footprint grows sufﬁciently large to blur away
+small-scale artifacts of the DDGI approximation (middle). This
+produces less biased results than always querying the DDGI approx-
+imation at the secondary vertex (left).
+the surface by querying the average visibility already computed
+by the probes in the backwards direction [MGNM19] (dashed
+red lines), clipping that value to the probe boundary (pink), and
+adding it to the length of the corresponding probe update rays (solid
+red arrows). Because the update rays are traced per probe, this
+costs just a texture read without any probe weight computation.
+We then use the inverse square
+of the total distance, i.e., solid +
+dashed, to attenuate Le. In con-
+trast to direct illumination com-
+puted at probe centers, this heuris-
+tic slightly underestimates direct
+illumination. We therefore expose
+a user-tunable slider to scale the
+additional attenuation per scene to
+correct for brightness differences
+that would otherwise be a signiﬁ-
+cant source of bias.
+3.3. Including Glossy Illumination
+Recall that the reﬂected light from a diffuse material with albedo ρ
+can be cheaply approximated by looking up ρ(x)
+π
+EDDGI+(x,n).
+Majercik et al. [MMSM21] make the observation that the irra-
+diance approximation can additionally be used to very coarsely
+approximate specular transport by substituting the normal n with the
+direction of specular reﬂection ωr. The irradiance EDDGI(x,ωr) can
+then be re-interpreted as a preﬁltered (by the cosine term) coarse
+approximation of incident radiance up to a normalization factor of
+2π which must be added. In the illustration, the green lobes visualize
+cosine-weighted preﬁltering of incident radiance and the red arrows
+indicate the query direction of EDDGI.
+x
+n
+x
+n
+ωi
+ωi
+ωr
+ωo
+ωo
+Diffuse
+Specular
+While Majercik et al. use this strategy for just specular transport,
+we generalize it to arbitrary glossy BSDFs – in our case micro-
+facet models – by Monte Carlo estimation. More speciﬁcally, we
+approximate reﬂected radiance by our augmented DDGI model
+LDDGI+(x,ωo) = ρ(x)
+π
+EDDGI+(x,n)
+|
+{z
+}
+Diffuse
+(6)
++ 1
+2π
+Z
+EDDGI+(x,ωi)fg(x,ωo,ωi)⟨n,ωi⟩dωi
+|
+{z
+}
+Glossy
+as the decomposition into diffuse and glossy transport, where we
+estimate the glossy integral with a single Monte Carlo sample drawn
+proportionally to the glossy BSDF component fg.
+Specular recursion for shading. We use our radiance approxima-
+ton LDDGI+ in three parts of the algorithm: (i) in the update rule of
+EDDGI+ (5), (ii) to resample proportional to (Le +LDDGI+), and (iii)
+for shading. The latter use case – shading – requires special care
+to avoid exposing too much of the inherent bias of LDDGI+ through
+(near-)specular interactions.
+We thus trace shading paths recursively until their scattering
+footprint is sufﬁciently spread out to blur DDGI’s visual artifacts.
+To this end, we adopt the path termination strategy of Müller et
+al. [MRNK21; MRKN20], which is based on the isotropic path
+footprint approximation of Bekaert et al. [BSC*03].
+More speciﬁcally, we approximate the footprint of a path with
+vertices x1 ···xn as
+a(x1 ···xn) =
+ 
+n−1
+∑
+i=1
+s
+∥xi −xi+1∥2
+pi(ωi,i |xi,ωo,i)⟨ni+1,−ωi,i⟩
+!2
+,
+(7)
+where pi is the BSDF sampling density at the i-th vertex. At the
+primary vertex, p1 is proportional to the entire BSDF f, whereas
+pi; i > 1 is proportional to only the glossy portion of the BSDF
+fg, because we simply terminate the recursion early and query
+ρ(xn)
+π
+EDDGI+(xn,nn) when the diffuse portion is sampled. When the
+glossy portion is sampled, we terminate the recursion by estimating
+the glossy integral of Eq. (6) as soon as a(x1 ···xn) > a0 ·c, where
+a0 :=
+∥x0 −x1∥2
+4π ⟨n1,−ωi,i⟩
+(8)
+is an approximation (up to constant factors) of the pixel footprint pro-
+jected into the scene, x0 is the camera position, and c is a user-chosen
+threshold. See Bekaert et al. [BSC*03] and Müller et al. [MRNK21;
+MRKN20] for details.
+submitted to COMPUTER GRAPHICS Forum (8/2021).
+
+
+===== ddgi-resampling-2021 | page 6/13 =====
+
+6
+Z. Majercik & T. Müller & A. Keller & D. Nowrouzezahrai & M. McGuire / Dynamic Diffuse Global Illumination Resampling
+Default SS Bias
+View Path Bias
+d
+d
+(a) Default DDGI self-shadow bias
+(b) New view path bias
+Figure 5: DDGI combats self-shadowing by pushing the evaluation
+point away from surfaces (violet arrow) by a ﬁxed distance d that is
+proportional to the probe size. Left: DDGI uses a linear combination
+of the view direction and the surface normal. This may push the
+evaluation point through geometry, leading to light leaking. Right:
+we instead move the evaluation point a ﬁxed distance back along
+the path, which is guaranteed to not penetrate surfaces.
+We empirically set the threshold c = 0.2 to obtain a satisfactory
+noise versus bias trade-off. Fig. 4 conﬁrms that this helps reduce
+artifacts on highly glossy surfaces without affecting rough glossy
+and diffuse surfaces.
+3.4. Correcting Self-shadow Bias
+The original DDGI algorithm applies an offset to the positions at
+which LDDGI is queried to avoid computing visibility weights exactly
+at a surface where their variance is high. This offset is called the
+“self-shadow” bias, and is computed as a weighted combination of
+the view and normal vector at the queried point.
+While the self-shadow bias was sufﬁcient for the original primary-
+vertex DDGI algorithm, using it unmodiﬁed in our indirect sampling
+strategy showed light leaking artifacts (Figure 5). These artifacts
+arise from very short distances between the view point and the query
+point, as might arise from sharp corners. To address these artifacts,
+we bias the query point along the view path as opposed to the surface
+normal and view direction. Results using our view path bias against
+the original self-shadow bias are shown in Figure 5.
+3.5. Taming the Weak Singularity in the Geometry Term
+In order to perform spatio-temporal resampling among different
+shading locations, the geometry term is introduced as part of the
+change of the integration measure. Unfortunately, the weak singu-
+larity in the geometry term may lead to unbounded variance in the
+resampling procedure in geometric creases; see Fig. 6 (middle).
+In typical path tracing applications, uniform multiple importance
+sampling [VG95] of light sources would bound the variance when
+light sources (almost) touch the surfaces that they shade. But this is
+PT + ReSTIR
+DDGI Resampling
+DDGI Resampling
+without bounding
+with bounding (ours)
+Figure 6: Even though spatio-temporal resampling of DDGI (middle)
+improves the noise of path tracing (left), outliers (“ﬁreﬂies”) cause
+distracting artifacts in geometric concavities. These ﬁreﬂies are
+due to the weak singularity in the geometry term of the rendering
+equation. Using the method of Kollig and Keller [KK06], we bound
+the geometry term during resampling and then trace an auxiliary ray
+to estimate the residual transport (right). This eliminates ﬁreﬂies and
+preserves a signiﬁcant noise reduction. The images were rendered
+at 128 samples per pixel.
+an impractical solution in our case, where the entire scene is con-
+sidered a light source. It may be feasible to non-uniformly sample
+all relevant scene surfaces according to a data structure that is con-
+structed online, but we instead take a simpler approach that does not
+require multiple importance sampling: we partition the integrand to
+bound the variance [KK06].
+To avoid the weak singularity caused by samples very close to
+the primary vertex, we clamp the computed geometry term to a
+maximum value of Gmax = 1 and use the notation ⌈Tf ⌉for the
+transport with this bounded geometry term. The residual transport
+is denoted by ⌊Tf ⌋, such that
+Tf = ⌈Tf ⌉+⌊Tf ⌋.
+⌊Tf ⌋is evaluated by an auxiliary BSDF sample in the sampling step
+described in Sec. 3.1. The improved variance is shown in Fig. 6.
+In summary, our new algorithm to approximate the rendering
+equation amounts to summing separate estimators of each term of
+L ≈Le +⌈Tf ⌉(Le +LDDGI+)
+|
+{z
+}
+bounded geometry term
++⌊Tf ⌋(Le +LDDGI+)
+|
+{z
+}
+residual transport
+,
+(9)
+where
+• Le is evaluated at the primary vertex,
+• ⌊Tf ⌋by importance sampling the BSDF, and
+• ⌈Tf ⌉by spatio-temporal reservoir resampling.
+submitted to COMPUTER GRAPHICS Forum (8/2021).
+
+
+===== ddgi-resampling-2021 | page 7/13 =====
+
+Z. Majercik & T. Müller & A. Keller & D. Nowrouzezahrai & M. McGuire / Dynamic Diffuse Global Illumination Resampling
+7
+DDGI Resampling
++ Query Caching
+Reference
+MAPE: 0.63
+MAPE: 0.64
+50.3 ms
+18.4 ms
+Figure 7: Caching the DDGI query for resampling is more efﬁcient:
+while the increase in noise level and MAPE is negligible in query
+caching, the reduction in frame rendering time is substantial.
+3.6. Improved Performance by Caching DDGI Queries
+During the spatio-temporal resampling step, our algorithm re-
+quires numerous DDGI queries: one for each candidate’s con-
+tribution to the shaded pixel, which, in our implementation,
+amounts to 1 temporal and 3 spatial candidates per pixel.
+x2
+x1
+x3
+y2
+y1
+y3
+In the illustration, we de-
+pict the simpler case of re-
+sampling among just 2 spa-
+tial candidates y2 and y3
+for shading at the center
+vertex x1. For each candi-
+date, we must query its con-
+tribution LDDGI+(yi,yi →x1) to the center vertex, where y→x is
+the direction vector pointing from y towards x (dashed arrows).
+These #vertices×#candidates queries can be avoided by approx-
+imating them with the #vertices values LDDGI+(yi,yi →xi), which
+have to be evaluated for shading each vertex xi in any case. This
+saves a factor of #candidates queries. Importantly, using approxi-
+mate values in the resampling step does not introduce additional
+bias in the rendered image – merely additional noise.
+Nonetheless, we analyze the error of this approximation by con-
+sidering its three sources:
+1. the scene and the DDGI volume may change each frame,
+2. the shading location x is different, and
+3. the view-path bias (Sec. 3.4) depends on the path preﬁx
+each of which become small if we apply the assumptions of our
+method: local pixel neighborhoods, near-diffuse scattering, and short
+frame times. The approximation error is thus reasonably small in
+practice (see Fig. 7) and we use this optimization in all our results.
+4. Results
+We implemented DDGI resampling in Direct3D 12 using the Falcor
+rendering framework [BYC*20]. All results were generated on a
+high-end desktop machine with an Intel i7-6800K CPU and an
+NVIDIA RTX 3090 GPU.
+Fig. 8 summarizes our results, comparing visuals, render time,
+and mean absolute percentage error (MAPE) of 5 different rendering
+techniques at 1 sample per pixel. MAPE is deﬁned as 1
+N ∑N
+i=1 |vi −
+ˆvi|/(ˆvi +ε), where ˆvi is the value of the i-th pixel in the reference
+image, vi is the value of the i-th rendered pixel, and ε = 0.01 prevents
+near-black pixels from dominating the metric.
+All rendering techniques are based on an unbiased path tracer
+that uses ReSTIR [BWP*20] to estimate direct illumination at the
+primary vertex.
+1. PT + ReSTIR: The aforementioned baseline path tracer.
+2. Primary DDGI: The original DDGI algorithm [MGNM19;
+MMSM21], which approximates indirect illumination at the
+primary vertex of the path.
+3. Secondary DDGI: Our augmented DDGI algorithm approxi-
+mates global illumination at the secondary vertex of the path
+(Sec. 3.2–3.4). Near-specular transport is traced recursively.
+4. + DDGI in ReSTIR: The same as before, but the DDGI approx-
+imation is included in the ReSTIR algorithm (Sec. 3.1). The
+diffuse weak singularity is separately sampled (Sec. 3.5).
+5. + Denoising: The same as before, but with OptiX denoising.
+As expected, the DDGI algorithm [MGNM19; MMSM21] has the
+least noise with the greatest performance (“Primary DDGI” column).
+However, it also exhibits signiﬁcant visual artifacts such as ﬂat
+shading (e.g., in the GREEK VILLA), a lack of ambient occlusion
+(e.g., in the PINK ROOM), and light leaking (e.g., in the LIVING
+ROOM). At the other extreme, an unbiased path tracer produces
+highly accurate results but requires a long time for its noise to
+converge away in globally illuminated scenes, even when using
+ReSTIR [BWP*20] for direct lighting (“PT + ReSTIR” column).
+Our proposed indirect use of DDGI probes – provided that the
+probes contain the energy of the full transport (Sec. 3.2 and 3.3) –
+reduces noise while introducing only little bias, because the inac-
+curacies of the DDGI probes are hidden behind the ﬁrst scattering
+event (“Secondary DDGI” column). Additionally, the performance
+is improved, because paths are terminated early into DDGI probes.
+Incorporating the indirect lighting injected by the DDGI probes in
+the resampling step further reduces noise (“DDGI in ReSTIR” col-
+umn). Overall, the noise is now low enough that adding the OptiX
+denoiser results in more visually pleasing images than the original
+DDGI algorithm, albeit at an on average 1.5-2× greater cost.
+We also show a failure case (LIVING ROOM) where the outer
+walls consist of ﬂat planes that receive strong sunlight from the
+outside. In this difﬁcult scene, secondary DDGI queries are unable to
+hide DDGI’s light leaking artifacts (red inset) and BSDF importance
+sampling (“Secondary DDGI” column) performs slightly better than
+ReSTIR sampling. This shows that further work is needed in making
+DDGI more resilient to thin geometry as well as in understanding
+the circumstances in which ReSTIR can be outperformed by its
+candidate generation strategies.
+submitted to COMPUTER GRAPHICS Forum (8/2021).
+
+
+===== ddgi-resampling-2021 | page 8/13 =====
+
+8
+Z. Majercik & T. Müller & A. Keller & D. Nowrouzezahrai & M. McGuire / Dynamic Diffuse Global Illumination Resampling
+[MMSM21]
+[BWP*20]
+Ours
+Reference
+Primary DDGI
+PT + ReSTIR
+Secondary DDGI +DDGI in ReSTIR
++Denoising
+Reference
+PINK ROOM
+MAPE / Frametime (ms):
+0.44 / 10.2 ms
+1.35 / 49.1 ms
+0.79 / 10.8 ms
+0.45 / 15.8 ms
+0.22 / 24.0 ms
+GREEK VILLA
+MAPE / Frametime (ms):
+0.80 / 12.2 ms
+1.10 / 22.5 ms
+0.78 / 12.8 ms
+0.64 / 18.4 ms
+0.38 / 26.6 ms
+ROOM DOOR
+MAPE / Frametime (ms):
+0.07 / 8.62 ms
+1.73 / 18.9 ms
+0.52 / 9.05 ms
+0.23 / 13.5 ms
+0.08 / 22.0 ms
+SPLIT ROOM
+MAPE / Frametime (ms):
+0.22 / 6.73 ms
+0.76 / 12.4 ms
+0.38 / 7.00 ms
+0.18 / 10.9 ms
+0.12 / 18.3 ms
+RED BALL
+MAPE / Frametime (ms):
+0.18 / 7.89 ms
+0.88 / 12.7 ms
+0.54 / 8.15 ms
+0.17 / 13.1 ms
+0.05 / 21.2 ms
+LIVING ROOM
+MAPE / Frametime (ms):
+0.27 / 10.0 ms
+1.18 / 54.5 ms
+0.45 / 10.8 ms
+0.46 / 18.4 ms
+0.19 / 26.3 ms
+Figure 8: Comparison of rendering algorithms at 1 sample per pixel with respect to noise and bias. All algorithms are based on an unbiased path
+tracer that uses ReSTIR [BWP*20] to estimate direct illumination at the primary vertex. As compared to this baseline, dynamic diffuse global
+illumination (Primary DDGI) renders smooth indirect illumination. Bias artifacts inherent with the DDGI approximation can be ameliorated by
+pushing the query of DDGI one bounce further into the light path (Secondary DDGI). Facilitating the ReSTIR sampling mechanism to jointly
+importance sample these DDGI queries with direct illumination, the induced noise is reduced (+DDGI in ReSTIR), and is further amenable to
+commodity denoising methods (+Denoising). We also show a failure case (LIVING ROOM) where the outer walls consist of ﬂat planes that
+receive strong sunlight from the outside. In this difﬁcult scene, our method is unable to hide DDGI light leaking artifacts (red inset) and BSDF
+importance sampling (Secondary DDGI) performs slightly better than ReSTIR sampling.
+submitted to COMPUTER GRAPHICS Forum (8/2021).
+
+
+===== ddgi-resampling-2021 | page 9/13 =====
+
+Z. Majercik & T. Müller & A. Keller & D. Nowrouzezahrai & M. McGuire / Dynamic Diffuse Global Illumination Resampling
+9
+Table 1: Time to converge to equal MAPE
+Scene
+Method
+Frames
+Time
+MAPE
+GREEK VILLA
+PT+ReSTIR
+129
+2908.00 ms
+0.573
++Secondary DDGI
+8
+113.52 ms
+0.578
++DDGI Resampling
+1
+19.83 ms
+0.572
+LIVING ROOM
+PT+ReSTIR
+315
+17157.04 ms
+0.366
++Secondary DDGI
+1
+10.82 ms
+0.366
++DDGI Resampling
+3
+56.57 ms
+0.365
+PINK ROOM
+PT+ReSTIR
+29
+1423.70 ms
+0.384
++Secondary DDGI
+9
+97.21 ms
+0.390
++DDGI Resampling
+1
+16.85 ms
+0.383
+RED BALL
+PT+ReSTIR
+109
+1381.71 ms
+0.140
++Secondary DDGI
+29
+254.17 ms
+0.142
++DDGI Resampling
+1
+13.37 ms
+0.140
+ROOM DOOR
+PT+ReSTIR
+4095
+77278.05 ms
+0.206
++Secondary DDGI
+79
+748.51 ms
+0.200
++DDGI Resampling
+1
+13.28 ms
+0.199
+SPLIT ROOM
+PT+ReSTIR
+150
+1854.92 ms
+0.162
++Secondary DDGI
+27
+202.42 ms
+0.162
++DDGI Resampling
+1
+10.92 ms
+0.161
+Average
+PT+ReSTIR
+804.50
+17000.57 ms
+0.305
++Secondary DDGI
+25.50
+237.77 ms
+0.306
++DDGI Resampling
+1.33
+21.81 ms
+0.303
+Quantitative evaluation. To gauge the convergence improvements
+offered by using DDGI at the secondary path vertex (with or without
+resampling), we list the time it takes for all noisy methods to reach
+equal error in Tab. 1. In all scenes, except for the LIVING ROOM,
+DDGI resampling converges the fastest – in some scenes by a signif-
+icant margin – even when taking into account the slightly increased
+cost of rendering.
+To better understand this cost, we break it down by component in
+Tab. 2. As expected, terminating paths into DDGI reduces the ray
+tracing cost because paths are shorter, even when taking into account
+the additional cost of querying DDGI during the shading step, as
+well as the cost of updating the DDGI volume every frame. However,
+perhaps unexpectedly, resampling only becomes marginally more
+expensive by incorporating DDGI in it (by 1.7 ms on average) thanks
+to the caching of previous DDGI queries (Sec. 3.6). The remaining
+overhead of DDGI resampling arises in tracing & shading of (near-
+)specular path sufﬁxes, which must now be performed twice per
+pixel: once for the BSDF sample that estimates ⌊Tf ⌋and once for
+the resampled vertex that estimates ⌈Tf ⌉(see Sec. 3.5).
+5. Discussion and Future Work
+The following discussion focuses on future avenues for potential
+performance and noise improvements.
+Subsampling. To reduce the remaining resampling cost, it might
+be feasible to subsample the generation of new candidates: for
+example, only every n-th pixel could generate novel samples from
+the BSDF and from light sources. All other pixels would merely
+resample among spatio-temporal neighbors. Since this strategy is
+rather orthogonal to our work – it would beneﬁt all ReSTIR-type
+algorithms – we did not include it in our technique. However, we
+feel that it warrants a detailed analysis in the future.
+Alternative Caching Strategies. While we focused on the speciﬁc
+use of DDGI, we believe other caching strategies, such as the re-
+Table 2: Rendering cost by component
+Scene
+Method
+Trace & shade Resampling Update
+GREEK VILLA
+PT+ReSTIR
+20.38 ms
+1.10 ms
+—
++Secondary DDGI
+10.65 ms
+1.20 ms
+1.54 ms
++DDGI Resampling 14.03 ms
+3.13 ms
+1.55 ms
+LIVING ROOM
+PT+ReSTIR
+52.72 ms
+1.42 ms
+—
++Secondary DDGI
+8.18 ms
+1.62 ms
+0.57 ms
++DDGI Resampling 13.32 ms
+4.47 ms
+0.57 ms
+PINK ROOM
+PT+ReSTIR
+46.60 ms
+1.08 ms
+—
++Secondary DDGI
+8.08 ms
+1.26 ms
+1.13 ms
++DDGI Resampling 11.99 ms
+2.41 ms
+1.14 ms
+RED BALL
+PT+ReSTIR
+10.71 ms
+0.95 ms
+—
++Secondary DDGI
+5.47 ms
+1.27 ms
+1.02 ms
++DDGI Resampling 8.57 ms
+3.23 ms
+1.01 ms
+ROOM DOOR
+PT+ReSTIR
+16.91 ms
+1.10 ms
+—
++Secondary DDGI
+6.71 ms
+1.50 ms
+1.07 ms
++DDGI Resampling 9.64 ms
+2.33 ms
+1.08 ms
+SPLIT ROOM
+PT+ReSTIR
+10.90 ms
+0.88 ms
+—
++Secondary DDGI
+5.33 ms
+1.24 ms
+0.44 ms
++DDGI Resampling 7.63 ms
+2.65 ms
+0.44 ms
+Average
+PT+ReSTIR
+26.37 ms
+1.09 ms
+—
++Secondary DDGI
+7.40 ms
+1.35 ms
+0.96 ms
++DDGI Resampling 10.86 ms
+3.04 ms
+0.97 ms
+cent neural radiance caching [MRNK21], can similarly beneﬁt from
+importance sampling through ReSTIR. Another example is the con-
+current work of Ouyang et al. [OLK*21] who apply ReSTIR to a
+cache that is effectively a collection of spatio-directional point light
+sources. Their approach represents a different point on the Pareto
+front that trades off noise, bias, and performance – one that has
+lower bias (and can even be unbiased) at the cost of tracing longer
+paths, leading to extra noise.
+5.1. Alternative Variance Reduction Strategies
+In real-time rendering, sampling with low variance is key due to the
+limited budget of rays to be traced. In this context, we also analyzed
+the efﬁciency of utilizing DDGI as a control variate, as well as that
+of using it for path guiding instead of resampling. Both approaches
+were overall less efﬁcient than the presented DDGI resampling, but
+we will nonetheless describe them in the hope that future algorithms
+may build on top of them.
+DDGI as Control Variate. For scenes with simple occlusion, the
+original DDGI data structure provides a low-bias, noise-free result.
+This can sometimes be desired over our new resampling, which
+will introduce noise even in cases where the resulting lower bias is
+not visually noticeable. To combat this, we explored extending our
+solution by using primary hitpoint irradiance EDDGI+ as a control
+variate of diffuse transport. That is, we assumed that ρ
+π EDDGI+ at
+primary vertices yields the correct indirect illumination and we re-
+sampled proportional to the remaining non-diffuse transport plus
+(neglecting constants for brevity) the absolute difference between
+(LDDGI+ +Le) at the secondary vertex and the spatio-directionally
+nearest DDGI update ray among those that were traced while ren-
+dering the last frame. This amounts to using the DDGI update rays
+as a spatio-directionally piecewise constant control variate and their
+average, EDDGI+, as its exact integral.
+When shading, we then applied DDGI to the primary vertex (as
+described in [MGNM19]) and added the difference (not the absolute
+submitted to COMPUTER GRAPHICS Forum (8/2021).
+
+
+===== ddgi-resampling-2021 | page 10/13 =====
+
+10
+Z. Majercik & T. Müller & A. Keller & D. Nowrouzezahrai & M. McGuire / Dynamic Diffuse Global Illumination Resampling
+DDGI Resampling
++ Control Variate
+DDGI Resampling + Control Variate
+Visualization
+Reference
+of DDGI
+Figure 9: Analysis of DDGI Resampling (left split) augmented by
+DDGI used as a control variate at the primary vertex (right split).
+The transient artifacts visible at low sampling rates are due to the
+underlying probe volume as can be seen by the visualization of
+DDGI. At 1 spp, these are too salient to ignore, although with higher
+sample counts both DDGI Resampling and DDGI Resampling with
+control variate converge to the same result.
+value) between Le +LDDGI+ at the secondary vertex and the nearest
+DDGI update ray. Adding this difference in the shading step may
+result in negative radiance values, which frequently manifest as
+negative ﬁreﬂies that cause black pixels. We omitted spatio-temporal
+probe interpolation for the DDGI control variate, as otherwise the
+value of LDDGI+ at the primary vertex would not be an exact integral
+of the control variate.
+Fig. 9 shows our results. Though this algorithm converges to the
+same (biased) solution as plain DDGI resampling, at one sample
+per pixel, the control variate exposes light leaks similar to the naïve
+ReSTIR + DDGI combination. At the same time, the noise level
+does not improve upon plain DDGI resampling, which produces less
+prominent light leaks.
+While using DDGI as a control variate may be beneﬁcial in some
+settings, in general, it appears not sufﬁciently efﬁcient and remains
+an avenue for future research.
+DDGI for Path Guiding. Based on the DDGI data structure, guid-
+ing rays towards where the radiance comes from is straightforward.
+Given a position in space, we can query the closest DDGI probe and
+build the cumulative distribution function (CDF) from the results of
+its update rays to sample a guiding direction. While the results of
+the probe rays are stored, building the CDF and sampling from it
+was too slow to increase the overall efﬁciency of our algorithm.
+In addition, using LDDGI+ to normalize the PDF and sample the
+guiding direction in an unbiased way requires the same modiﬁca-
+tions to be made to the DDGI volume that were made to the control
+variate. These make the volume less stable and thus less effective for
+path guiding. An alternative would be porting efﬁcient path guiding
+data structures [VHH*19] to the GPU.
+Combining Primary and Secondary DDGI. Even though we fo-
+cus on hiding the bias of DDGI behind scattering interactions, there
+are situations in which DDGI’s bias is very low in the ﬁrst place and
+does not warrant the extra noise caused by secondary queries; see
+the orange inset of the RED BALL scene in Fig. 8. It likely pays off
+to design an automatic mechanism for detecting such situations and
+to select among primary and secondary DDGI queries accordingly.
+Path Space Filtering. Lastly, alternatively to screen-space denois-
+ing, we believe that additional spatio-temporal reuse through path
+space ﬁltering could be beneﬁcial. While ReSTIR amounts to spatio-
+temporal ﬁltering of sampling probabilities and DDGI amounts to
+spatio-temporal ﬁltering of radiance at secondary vertices, path
+space ﬁltering would provide additional spatio-temporal ﬁltering
+of radiance at primary vertices. Recent hash-based implementa-
+tions [BFK21] can run with little overhead on modern GPUs.
+5.2. Limitations
+The limitations of our approach are largely inherited from its com-
+ponents: ReSTIR and DDGI. ReSTIR is a screen-space technique
+whose reuse capability depends highly on the availability of mo-
+tion vectors, slow camera motion, and transparency. These down-
+sides can be mitigated by transitioning to a world-space representa-
+tion [JBW21], but another limitation remains: through resampling,
+samples become spatio-temporally correlated, which reduces the
+total amount of information available to modern denoisers. Effective
+denoising in the presence of ReSTIR samples is still ongoing work.
+The limitations induced by DDGI are two-fold. First, being grid-
+based, DDGI does not scale easily to expansive scenes where the
+camera may only focus on small regions. And second, DDGI is
+incapable of resolving ﬁne spatio-directional detail such as intricate
+caustics, shadows, ambient occlusion or near-specular reﬂections.
+These limitations are hidden to a degree when DDGI is queried
+after a primary scattering interaction that is sufﬁciently diffuse or
+after undergoing sufﬁciently many secondary interactions, but better
+quality can be achieved by using a more accurate cache [MRNK21].
+6. Conclusion
+We have combined DDGI [MMSM21] and ReSTIR [BWP*20],
+which, at ﬁrst glance, might seem orthogonal. DDGI renders in-
+direct illumination and ReSTIR direct illumination. However, the
+appearance is deceiving and a small modiﬁcation to the DDGI algo-
+rithm – querying the probe volume at secondary path vertices rather
+than primary ones – uniﬁes the two approaches into an algorithm
+that performs much better than its constituent parts. By querying
+DDGI at secondary vertices, it acts as a scene-spanning light source,
+effectively turning the global illumination problem into a much
+simpler direct illumination problem, which ReSTIR can holistically
+attack. This observation is a general one that has inspired rendering
+algorithms since the 90s, making us excited about future work in
+this direction.
+submitted to COMPUTER GRAPHICS Forum (8/2021).
+
+
+===== ddgi-resampling-2021 | page 11/13 =====
+
+Z. Majercik & T. Müller & A. Keller & D. Nowrouzezahrai & M. McGuire / Dynamic Diffuse Global Illumination Resampling
+11
+Quantitatively, the combined algorithm is about 60% more ex-
+pensive than either of the two prior works, but makes up for its
+cost in terms of low noise and bias. It achieves equal error over an
+order of magnitude more quickly. Together with denoising, real-time
+rendering of global illumination in dynamic scenes is feasible.
+Acknowledgements
+We would like to thank David Luebke and Aaron Lefohn for support-
+ing this work. We also thank Benedikt Bitterli and Chris Wyman for
+providing the initial codebase in Falcor [BYC*20], Chris Wyman
+and Peter Shirley for many early ideas and fruitful discussion, and
+Nikolaus Binder and Christoph Schied for proofreading the article
+and many valuable comments. The Pink Room scene was modiﬁed
+from “The Modern Living Room" by Wig42 and the Living Room
+scene was modiﬁed from “The White Room" by Jay-Artist. The
+Greek Villa was modiﬁed from “3D Greek Villa" by holy_diver.
+References
+[Abr97] ABRASH,
+MICHAEL.
+“Quake’s
+lighting
+model:
+Surface
+caching”. Graphics Programming Black Book. Coriolis Group, 1997.
+Chap. 68, 1245–1256 2.
+[Arv86] ARVO, JAMES. “Backward Ray Tracing”. In ACM SIGGRAPH ’86
+Course Notes - Developments in Ray Tracing. 1986, 259–263 2.
+[Bal18] “Special Issue on Production Rendering”. ACM Trans. Graph. 37.3
+(2018). Ed. by BALA, KAVITA. ISSN: 0730-0301 2.
+[BB17] BOUGHIDA, MALIK and BOUBEKEUR, TAMY. “Bayesian Collabo-
+rative Denoising for Monte Carlo Rendering”. Computer Graphics Forum
+36.4 (2017), 137–153. DOI: https://doi.org/10.1111/cgf.
+13231. eprint: https://onlinelibrary.wiley.com/doi/
+pdf/10.1111/cgf.13231. URL: https://onlinelibrary.
+wiley.com/doi/abs/10.1111/cgf.13231 2.
+[BFK21] BINDER, NIKOLAUS, FRICKE, SASCHA, and KELLER, ALEXAN-
+DER. “Massively Parallel Path Space Filtering”. Monte Carlo and Quasi-
+Monte Carlo Methods 2020. Ed. by KELLER, ALEXANDER. Springer,
+2021, to appear 10.
+[BRM*16] BITTERLI,
+BENEDIKT,
+ROUSSELLE,
+FABRICE,
+MOON,
+BOCHANG, et al. “Nonlinearly Weighted First-Order Regression for De-
+noising Monte Carlo Renderings”. Comput. Graph. Forum 35.4 (July
+2016), 107–117. ISSN: 0167-7055 2.
+[BSC*03] BEKAERT, PHILIPPE, SLUSALLEK, PHILIPP, COOLS, RONALD,
+et al. A custom designed Density Estimation Method for Light Transport.
+Tech. rep. Max-Planck-Institut für Informatik, Saarbrücken, Germany,
+Apr. 2003 5.
+[BVM*17] BAKO, STEVE, VOGELS, THIJS, MCWILLIAMS, BRIAN, et al.
+“Kernel-Predicting Convolutional Networks for Denoising Monte Carlo
+Renderings”. ACM Trans. Graph. 36.4 (July 2017). ISSN: 0730-0301.
+DOI: 10.1145/3072959.3073708. URL: https://doi.org/
+10.1145/3072959.3073708 2.
+[BWP*20] BITTERLI, BENEDIKT, WYMAN, CHRIS, PHARR, MATT, et
+al. “Spatiotemporal reservoir resampling for real-time ray tracing with
+dynamic direct lighting”. ACM Transactions on Graphics (Proceedings of
+SIGGRAPH) 39.4 (July 2020). DOI: 10.1145/3386569.3392481 1–
+3, 7, 8, 10.
+[BYC*20] BENTY, NIR, YAO, KAI-HWA, CLARBERG, PETRIK, et al.
+The Falcor Rendering Framework. https : / / github . com /
+NVIDIAGameWorks / Falcor. Aug. 2020. URL: https : / /
+github.com/NVIDIAGameWorks/Falcor 7, 11.
+[CHA82] CHAO, M. T. “A general purpose unequal probability sampling
+plan”. Biometrika 69.3 (Dec. 1982), 653–656. ISSN: 0006-3444. DOI:
+10.1093/biomet/69.3.653. eprint: https://academic.
+oup.com/biomet/article-pdf/69/3/653/591311/69-3-
+653.pdf. URL: https://doi.org/10.1093/biomet/69.3.
+653 3.
+[CKS*17] CHAITANYA, CHAKRAVARTY R. ALLA, KAPLANYAN, AN-
+TON S., SCHIED, CHRISTOPH, et al. “Interactive Reconstruction of
+Monte Carlo Image Sequences Using a Recurrent Denoising Autoen-
+coder”. ACM Trans. Graph. 36.4 (July 2017). ISSN: 0730-0301. DOI:
+10.1145/3072959.3073601. URL: https://doi.org/10.
+1145/3072959.3073601 2.
+[DHD20] DITTEBRANDT, ADDIS, HANIKA, JOHANNES, and DACHS-
+BACHER, CARSTEN. “Temporal Sample Reuse for Next Event Estimation
+and Path Guiding for Real-Time Path Tracing”. Eurographics Symposium
+on Rendering - DL-only Track. Ed. by DACHSBACHER, CARSTEN and
+PHARR, MATT. The Eurographics Association, 2020. DOI: 10.2312/
+sr.20201135 3.
+[DK18] DAHM, KEN and KELLER, ALEXANDER. “Learning Light Trans-
+port the Reinforced Way”. Monte Carlo and Quasi-Monte Carlo Methods.
+Ed. by OWEN, ART B. and GLYNN, PETER W. Springer International
+Publishing, 2018, 181–195 3.
+[ES06] EFRAIMIDIS, PAVLOS S. and SPIRAKIS, PAUL G. “Weighted
+random sampling with a reservoir”. Information Processing Letters
+97.5 (2006), 181–185. ISSN: 0020-0190. DOI: https : / / doi .
+org / 10 . 1016 / j . ipl . 2005 . 11 . 003. URL: https :
+/ / www . sciencedirect . com / science / article / pii /
+S002001900500298X 3.
+[GKDS12] GEORGIEV, ILIYAN, K ˇRIVÁNEK, JAROSLAV, DAVIDOVI ˇC,
+TOMÁŠ, and SLUSALLEK, PHILIPP. “Light transport simulation with
+vertex connection and merging”. ACM Trans. Graph. 31.6 (Nov. 2012),
+192:1–192:10. ISSN: 0730-0301. DOI: 10.1145/2366145.2366211.
+URL: http://doi.acm.org/10.1145/2366145.2366211 3.
+[GS12] GILABERT, NS MICKAEL and STEFANOV, NIKOLAY. “Deferred
+radiance transfer volumes, global illumination in far cry 3”. Game Devel-
+opers Conference. 2012 2.
+[Hec90] HECKBERT, PAUL S. “Adaptive Radiosity Textures for Bidirec-
+tional Ray Tracing”. SIGGRAPH Comput. Graph. 24.4 (Sept. 1990), 145–
+154. ISSN: 0097-8930. DOI: 10.1145/97880.97895. URL: https:
+//doi.org/10.1145/97880.97895 2.
+[HKD14] HACHISUKA, TOSHIYA, KAPLANYAN, ANTON S., and DACHS-
+BACHER, CARSTEN. “Multiplexed Metropolis Light Transport”. ACM
+Trans. Graph. 33.4 (July 2014), 100:1–100:10. ISSN: 0730-0301. DOI:
+10.1145/2601097.2601138. URL: http://doi.acm.org/
+10.1145/2601097.2601138 3.
+[HY21] HUO, YUCHI and YOON, SUNG-EUI. “A survey on deep learning-
+based Monte Carlo denoising”. Computational Visual Media 7 (Mar.
+2021). DOI: 10.1007/s41095-021-0209-9 2.
+[JBW21] JUKARAINEN, PAULA, BOKSANSKY, JAKUB, and WYMAN,
+CHRIS. “Rendering of Many Lights with Grid-Based Reservoirs”. I3D
+’21 Posters. Apr. 2021, 194–195 10.
+[Jen95] JENSEN, HENRIK WANN. “Importance Driven Path Tracing using
+the Photon Map”. Vienna: Springer Vienna, 1995, 326–335. ISBN: 978-
+3-7091-9430-0. DOI: 10.1007/978-3-7091-9430-0_31. URL:
+http://dx.doi.org/10.1007/978-3-7091-9430-0_31 3.
+[Jen96] JENSEN, HENRIK WANN. “Global Illumination Using Photon
+Maps”. Proceedings of the Eurographics Workshop on Rendering
+Techniques ’96. Porto, Portugal: Springer-Verlag, 1996, 21–30. ISBN:
+3211828834 2.
+[Kaj86] KAJIYA, JAMES. “The Rendering Equation”. Computer Graphics
+(Proc. SIGGRAPH 1986). 1986, 143–150 3.
+[KD19] KELLER, ALEXANDER and DAHM, KEN. “Integral Equations
+and Machine Learning”. Mathematics and Computers in Simulation 161
+(2019), 2–12 3.
+submitted to COMPUTER GRAPHICS Forum (8/2021).
+
+
+===== ddgi-resampling-2021 | page 12/13 =====
+
+12
+Z. Majercik & T. Müller & A. Keller & D. Nowrouzezahrai & M. McGuire / Dynamic Diffuse Global Illumination Resampling
+[Kel97] KELLER, A. “Instant Radiosity”. SIGGRAPH ’97: Proceedings
+of the 24th Annual Conference on Computer Graphics and Interactive
+Techniques. 1997, 49–56 3.
+[KGPB05] K ˇRIVÁNEK, JAROSLAV, GAUTRON, PASCAL, PATTANAIK,
+SUMANTA, and BOUATOUCH, KADI. “Radiance caching for efﬁcient
+global illumination computation”. IEEE Transactions on Visualization
+and Computer Graphics 11.5 (2005), 550–561 2.
+[KK06] KOLLIG, THOMAS and KELLER, ALEXANDER. “Illumination in
+the Presence of Weak Singularities”. Monte Carlo and Quasi-Monte Carlo
+Methods 2004. Ed. by NIEDERREITER, HARALD and TALAY, DENIS.
+Springer, 2006, 245–257 4, 6.
+[KMA*15] KETTUNEN, MARKUS, MANZI, MARCO, AITTALA, MIIKA,
+et al. “Gradient-Domain Path Tracing”. ACM Trans. Graph. 34.4 (July
+2015). ISSN: 0730-0301. DOI: 10.1145/2766997. URL: https:
+//doi.org/10.1145/2766997 3.
+[KSAC02] KELEMEN, CSABA, SZIRMAY-KALOS, LÁSZLÓ, ANTAL,
+GYÖRGY, and CSONKA, FERENC. “A Simple and Robust Mutation Strat-
+egy for the Metropolis Light Transport Algorithm”. Computer Graphics
+Forum 21.3 (2002), 531–540. ISSN: 1467-8659. DOI: 10.1111/1467-
+8659.t01-1-00703. URL: http://dx.doi.org/10.1111/
+1467-8659.t01-1-00703 3.
+[KVB*19] KELLER, ALEXANDER, VIITANEN, TIMO, BARRÉ-BRISEBOIS,
+COLIN, et al. “Are We Done with Ray Tracing?”: ACM SIGGRAPH
+2019 Courses. SIGGRAPH ’19. Los Angeles, California: Association for
+Computing Machinery, 2019. ISBN: 9781450363075. DOI: 10.1145/
+3305366 . 3329896. URL: https : / / doi . org / 10 . 1145 /
+3305366.3329896 3.
+[LW93] LAFORTUNE, ERIC P. and WILLEMS, YVES D. “Bi-Directional
+Path Tracing”. Compugraphics ’93. Alvor, Portugal, 1993, 145–153 3.
+[LW95] LAFORTUNE, ERIC P. and WILLEMS, YVES D. “A 5D tree to
+reduce the variance of Monte Carlo ray tracing”. Rendering Techniques
+’95 (Proc. of the 6th Eurographics Workshop on Rendering). 1995, 11–20.
+DOI: 10.1007/978-3-7091-9430-0_2 3.
+[ME10] MARTIN, SAM and EINARSSON, PER. A Real-Time Radiosity
+Architecture for Video Games. SIGGRAPH 2010 Course: Advances in
+Real-Time Rendering in 3D Graphics and Games. 2010 2.
+[MGN17] MÜLLER, THOMAS, GROSS, MARKUS, and NOVÁK, JAN. “Prac-
+tical Path Guiding for Efﬁcient Light-Transport Simulation”. Computer
+Graphics Forum 36.4 (June 2017), 91–100. ISSN: 1467-8659. DOI: 10.
+1111/cgf.13227. URL: http://dx.doi.org/10.1111/cgf.
+13227 3.
+[MGNM19] MAJERCIK,
+ZANDER,
+GUERTIN,
+JEAN-PHILIPPE,
+NOWROUZEZAHRAI, DEREK, and MCGUIRE, MORGAN. “Dynamic
+Diffuse Global Illumination with Ray-Traced Irradiance Fields”. Journal
+of Computer Graphics Techniques (JCGT) 8.2 (2019), 1–30. ISSN: 2331-
+7418. URL: http://jcgt.org/published/0008/02/01/ 2–5,
+7, 9.
+[MMBJ17] MARA,
+MICHAEL,
+MCGUIRE,
+MORGAN,
+BITTERLI,
+BENEDIKT, and JAROSZ, WOJCIECH. “An Efﬁcient Denoising
+Algorithm for Global Illumination”. ACM SIGGRAPH / Eurographics
+High Performance Graphics. HPG 2017. July 2017, 7. URL: https:
+//casual- effects.com/research/Mara2017Denoise/
+index.html 2.
+[MMR*19] MÜLLER, THOMAS, MCWILLIAMS, BRIAN, ROUSSELLE,
+FABRICE, et al. “Neural Importance Sampling”. ACM Trans. Graph.
+38.5 (Oct. 2019), 145:1–145:19. ISSN: 0730-0301. DOI: 10.1145/
+3341156. URL: http://doi.acm.org/10.1145/3341156 3.
+[MMSM21] MAJERCIK, ZANDER, MARRS, ADAM, SPJUT, JOSEF, and
+MCGUIRE, MORGAN. “Scaling Probe-Based Real-Time Dynamic Global
+Illumination for Production”. Journal of Computer Graphics Techniques
+(JCGT) 10.2 (May 2021), 1–29. ISSN: 2331-7418. URL: http://jcgt.
+org/published/0010/02/01/ 1–3, 5, 7, 8, 10.
+[MRKN20] MÜLLER,
+THOMAS,
+ROUSSELLE,
+FABRICE,
+KELLER,
+ALEXANDER, and NOVÁK, JAN. “Neural Control Variates”. ACM Trans.
+Graph. 39.6 (Nov. 2020), 243:1–243:19. ISSN: 0730-0301. DOI: 10.
+1145 / 3414685 . 3417804. URL: https : / / doi . org / 10 .
+1145/3414685.3417804 5.
+[MRNK21] MÜLLER, THOMAS, ROUSSELLE, FABRICE, NOVÁK, JAN,
+and KELLER, ALEXANDER. “Real-time Neural Radiance Caching for
+Path Tracing”. ACM Trans. Graph. 40.4 (Aug. 2021), 36:1–36:16. DOI:
+10.1145/3450626.3459812. URL: https://doi.org/10.
+1145/3450626.3459812 2, 5, 9, 10.
+[Oat05] OAT, CHRISTOPHER. “Irradiance Volumes for Games”. Game
+Developers Conference. 2005 2.
+[OLK*21] OUYANG, YAOBIN, LIU, SHIQIU, KETTUNEN, MARKUS, et al.
+“ReSTIR GI: Path Resampling for Real-Time Path Tracing”. Computer
+Graphics Forum (2021). ISSN: xxx. DOI: 10.1111/xxx 3, 9.
+[OZ98] OWEN, ART and ZHOU, YI. “Safe and Effective Importance Sam-
+pling”. Journal of the American Statistical Association 95 (1998), 135–
+143 2.
+[RZD14] REHFELD, HAUKE, ZIRR, TOBIAS, and DACHSBACHER,
+CARSTEN. “Clustered Pre-Convolved Radiance Caching”. Proceedings of
+the 14th Eurographics Symposium on Parallel Graphics and Visualization.
+PGV ’14. Swansea, Wales, United Kingdom: Eurographics Association,
+2014, 25–32. ISBN: 9783905674590 2.
+[SJJ12] SCHWARZHAUPT, JORGE, JENSEN, HENRIK WANN, and JAROSZ,
+WOJCIECH. “Practical Hessian-Based Error Control for Irradiance
+Caching”. ACM Trans. Graph. 31.6 (Nov. 2012). ISSN: 0730-0301. DOI:
+10.1145/2366145.2366212. URL: https://doi.org/10.
+1145/2366145.2366212 2.
+[SKS02] SLOAN, PETER-PIKE, KAUTZ, JAN, and SNYDER, JOHN. “Pre-
+computed Radiance Transfer for Real-Time Rendering in Dynamic, Low-
+Frequency Lighting Environments”. Proceedings of the 29th Annual
+Conference on Computer Graphics and Interactive Techniques. SIG-
+GRAPH ’02. San Antonio, Texas: Association for Computing Machinery,
+2002, 527–536. ISBN: 1581135211. DOI: 10.1145/566570.566612.
+URL: https://doi.org/10.1145/566570.566612 2.
+[SKW*17] SCHIED, CHRISTOPH, KAPLANYAN, ANTON, WYMAN,
+CHRIS, et al. “Spatiotemporal Variance-Guided Filtering: Real-Time
+Reconstruction for Path-Traced Global Illumination”. Proceedings of
+High Performance Graphics. HPG ’17. Los Angeles, California: Asso-
+ciation for Computing Machinery, 2017. ISBN: 9781450351010. DOI:
+10.1145/3105762.3105770. URL: https://doi.org/10.
+1145/3105762.3105770 2.
+[SL17] SILVENNOINEN, ARI and LEHTINEN, JAAKKO. “Real-Time Global
+Illumination by Precomputed Local Reconstruction from Sparse Radiance
+Probes”. ACM Trans. Graph. 36.6 (Nov. 2017). ISSN: 0730-0301. DOI:
+10.1145/3130800.3130852. URL: https://doi.org/10.
+1145/3130800.3130852 2.
+[SNRS12] SCHERZER, DANIEL, NGUYEN, CHUONG H., RITSCHEL, TO-
+BIAS, and SEIDEL, HANS-PETER. “Pre-Convolved Radiance Caching”.
+Comput. Graph. Forum 31.4 (June 2012), 1391–1397. ISSN: 0167-7055.
+DOI: 10.1111/j.1467-8659.2012.03134.x. URL: https:
+//doi.org/10.1111/j.1467-8659.2012.03134.x 2.
+[SSS*20] SEYB, DARIO, SLOAN, PETER-PIKE, SILVENNOINEN, ARI, et
+al. “The design and evolution of the UberBake light baking system”. ACM
+Transactions on Graphics (Proceedings of SIGGRAPH) 39.4 (July 2020).
+awaiting publication 2.
+[TCE05] TALBOT, JUSTIN F., CLINE, DAVID, and EGBERT, PARRIS. “Im-
+portance Resampling for Global Illumination”. Proceedings of the Six-
+teenth Eurographics Conference on Rendering Techniques. EGSR ’05.
+Konstanz, Germany: Eurographics Association, 2005, 139–146. ISBN:
+3-905673-23-1. DOI: 10.2312/EGWR/EGSR05/139- 146. URL:
+http://dx.doi.org/10.2312/EGWR/EGSR05/139-146 2,
+3.
+[Vea97] VEACH, E. “Robust Monte Carlo Methods for Light Transport
+Simulation”. PhD thesis. Stanford University, 1997 3.
+submitted to COMPUTER GRAPHICS Forum (8/2021).
+
+
+===== ddgi-resampling-2021 | page 13/13 =====
+
+Z. Majercik & T. Müller & A. Keller & D. Nowrouzezahrai & M. McGuire / Dynamic Diffuse Global Illumination Resampling
+13
+[VG94] VEACH, ERIC and GUIBAS, LEONIDAS J. “Bidirectional estima-
+tors for light transport”. EG Rendering Workshop. 1994 3.
+[VG95] VEACH, ERIC and GUIBAS, LEONIDAS J. “Optimally Combin-
+ing Sampling Techniques for Monte Carlo Rendering”. Proceedings of
+the 22nd Annual Conference on Computer Graphics and Interactive
+Techniques. SIGGRAPH ’95. New York, NY, USA: Association for Com-
+puting Machinery, 1995, 419–428. ISBN: 0897917014. DOI: 10.1145/
+218380.218498. URL: https://doi.org/10.1145/218380.
+218498 2, 3, 6.
+[VG97] VEACH, ERIC and GUIBAS, LEONIDAS J. “Metropolis Light Trans-
+port”. Proc. SIGGRAPH 1997. Annual Conference Series. New York, NY,
+USA: ACM Press/Addison-Wesley Publishing Co., 1997, 65–76 3.
+[VHH*19] VORBA, JI ˇRÍ, HANIKA, JOHANNES, HERHOLZ, SEBASTIAN,
+et al. “Path Guiding in Production”. ACM SIGGRAPH 2019 Courses.
+SIGGRAPH ’19. Los Angeles, California: ACM, 2019, 18:1–18:77.
+ISBN: 978-1-4503-6307-5. DOI: 10.1145/3305366.3328091. URL:
+http://doi.acm.org/10.1145/3305366.3328091 2, 3, 10.
+[Vit85] VITTER, JEFFREY S. “Random Sampling with a Reservoir”. ACM
+Trans. Math. Softw. 11.1 (Mar. 1985), 37–57. ISSN: 0098-3500. DOI:
+10.1145/3147.3165. URL: https://doi.org/10.1145/
+3147.3165 3.
+[VKŠ*14] VORBA, JI ˇRÍ, KARLÍK, OND ˇREJ, ŠIK, MARTIN, et al. “On-line
+Learning of Parametric Mixture Models for Light Transport Simulation”.
+ACM Trans. Graph. 33.4 (Aug. 2014) 3.
+[VPG14] VARDIS, KOSTAS, PAPAIOANNOU, GEORGIOS, and GKAR-
+AVELIS, ANASTASIOS. “Real-time Radiance Caching using Chrominance
+Compression”. Journal of Computer Graphics Techniques (JCGT) 3.4
+(Dec. 2014), 111–131. ISSN: 2331-7418. URL: http://jcgt.org/
+published/0003/04/06/ 2.
+[VRM*18] VOGELS, THIJS, ROUSSELLE, FABRICE, MCWILLIAMS,
+BRIAN, et al. “Denoising with Kernel Prediction and Asymmetric Loss
+Functions”. ACM Trans. Graph. 37.4 (July 2018). ISSN: 0730-0301. DOI:
+10.1145/3197517.3201388. URL: https://doi.org/10.
+1145/3197517.3201388 2.
+[WRC88] WARD, GREGORY J., RUBINSTEIN, FRANCIS M., and CLEAR,
+ROBERT D. “A Ray Tracing Solution for Diffuse Interreﬂection”. SIG-
+GRAPH Comput. Graph. 22.4 (June 1988), 85–92. ISSN: 0097-8930.
+DOI: 10.1145/378456.378490. URL: https://doi.org/10.
+1145/378456.378490 2.
+[XZW*19] XU, BING, ZHANG, JUNFEI, WANG, RUI, et al. “Adversarial
+Monte Carlo Denoising with Conditioned Auxiliary Feature Modula-
+tion”. ACM Trans. Graph. 38.6 (Nov. 2019). ISSN: 0730-0301. DOI:
+10.1145/3355089.3356547. URL: https://doi.org/10.
+1145/3355089.3356547 2.
+[ZZ19] ZHENG, QUAN and ZWICKER, MATTHIAS. “Learning to Impor-
+tance Sample in Primary Sample Space”. Computer Graphics Forum 38.2
+(2019), 169–179. DOI: 10.1111/cgf.13628 3.
+submitted to COMPUTER GRAPHICS Forum (8/2021).

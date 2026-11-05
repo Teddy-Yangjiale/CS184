@@ -1,0 +1,1424 @@
+
+
+===== wave-tracing-2025 | page 1/12 =====
+
+Wave Tracing: Generalizing The Path Integral To Wave Optics
+SHLOMI STEINBERG, University of Waterloo, Canada
+MATT PHARR, NVIDIA, United States
+A
+B
+C
+spectral rendering with dispersion and rough surfaces
+RF diffraction around geometric structures
+spectral diffraction and dispersion through complex geometries
+Fig. 1. In this paper we analyze the classical path integral formulation of light transport, and rigorously study what wave-optical phenomena can be reproduced
+by it. We show that some effects, like dispersion and scattering by a restricted class of statistical surface models (rendered in image A), fall under its regime.
+We generalize the classical path integral to a formulation that is able to account for a much wider variety of wave effects, and based on that generalized
+path integral present a unified framework that is able to: (B) simulate long-wave radiation and its propagation and diffraction in complex environments, for
+example to compute its signal strength (visualized color-coded); and (C) render optical wave effects, such as diffraction by arbitrary geometry.
+Modeling the wave nature of light and the propagation and diffraction
+of electromagnetic fields is crucial for the accurate simulation of many
+phenomena, yet wave simulations are significantly more computationally
+complex than classical ray-based models. In this work, we start by analyzing
+the classical path integral formulation of light transport and rigorously study
+which wave-optical phenomena can be reproduced by it. We then introduce
+a bilinear path integral generalization for wave-optical light transport that
+models the wave interference between paths. This formulation subsumes
+many existing methods that rely on shooting-bouncing rays or UTD-based
+diffractions, and serves to give insight into the challenges of such approaches
+and the difficulty of sampling good paths in a bilinear setting.
+With this foundation, we develop a weakly-local path integral based on
+region-to-region transport using elliptical cones that allows sampling in-
+dividual paths that still model wave effects accurately. As with the classic
+path integral form of the light transport equation, our path integral makes
+it possible to derive a variety of practical transport algorithms. We present a
+complete system for wave tracing with elliptical cones, with applications in
+light transport for rendering and efficient simulation of long-wavelength
+radiation propagation and diffraction in complex environments.
+CCS Concepts: • Computing methodologies →Rendering; Computer
+graphics; Scientific visualization; • Applied computing →Physics.
+Additional Key Words and Phrases: path tracing, light transport, diffraction,
+PLT, rendering, coherence, cone tracing, UTD
+1
+Introduction
+Ray optics has been the foundation of light transport algorithms
+in computer graphics since Whitted’s introduction of recursive
+ray tracing. Especially with the development of path tracing, ray
+optics light transport has become progressively more sophisticated
+and has come to be able to model a wide variety of scattering and
+illumination effects. Researchers have long sought to extend such
+ray-based algorithms to model wave effects while maintaining the
+Authors’ Contact Information: Shlomi Steinberg, p@shlomisteinberg.com, University
+of Waterloo, Waterloo, Canada; Matt Pharr, matt@pharr.org, NVIDIA, San Francisco,
+United States.
+efficiency of ray models. One area of focus has been scattering
+models that account for wave effects when light interacts with
+surfaces or geometric edges; another has been the development
+of algorithms to simulate wave-based light transport. These areas
+are complementary in that the light transport depends on accurate
+scattering and diffraction models while scattering models require
+information that is not available in a classical ray-based model: for
+example, the shape of the electromagnetic wavefronts or optical
+coherence. In this work we focus on the light transport problem.
+Wave-based models are more computationally expensive than
+ray-based models, and so we begin by studying a fundamental ques-
+tion: precisely which wave effects can ray-based light transport
+accurately simulate, and which can they not? Under a few assump-
+tions that are characteristic of rendering applications (e.g., sensors
+that average measurements over long times and a far-field setting),
+we rigorously characterize the conditions under which electromag-
+netic fields obey the Eikonal equation point-wise, and thus, the
+fields’ wavefronts can be propagate using rays. We further discuss
+and formally show what classes of materials can be simulated with
+such light transport models.
+With the boundaries of models based on independent rays es-
+tablished, we turn to determining what wave-based models may
+achieve. A number of wave simulation methods have been devel-
+oped that use geometric rays as the underlying transport primitive,
+so we start by deriving a bilinear path integral that characterizes
+light transport with interfering ray-based paths. This work is in-
+spired by Veach’s introduction of the path integral formulation of
+the light transport equation that transformed the traditional recur-
+sive rendering equation into an infinite-dimensional integral over
+all light carrying paths in a scene [Veach 1997].
+Our bilinear path integral spans the cases of pairs of paths that
+do not interact—corresponding to standard path tracing; pairs of
+phase-carrying paths that always interfere—corresponding to several
+1
+arXiv:2508.17386v1  [physics.optics]  24 Aug 2025
+
+
+===== wave-tracing-2025 | page 2/12 =====
+
+2
+•
+Shlomi Steinberg and Matt Pharr
+wave-based light transport models (see Section 2); as well as pairs
+of paths that are partially-coherent, including approaches like those
+based on propagating the Wigner distribution function or the mutual
+coherence function. This model clearly shows the difficulties of path
+sampling with ray-based paths: although each path individually may
+have a meaningful contribution, the interaction of a pair of paths
+may lead to destructive interference and thus, no light transport after
+all. Therefore, the efficiency of local path sampling is greatly reduced,
+and path sampling effectively becomes a global problem, where all
+path pairs need to be considered. While these issues are well-known,
+our path integral makes the associated sampling challenges clear.
+We then turn to develop a weakly-local path integral that is based
+on region-to-region transport. This model is inspired by physical
+light transport (PLT) [Steinberg et al. 2024a, 2022], which introduced
+weakly-local—meaning confined to a small spatial region—light
+transport primitives. Our formulations generalize their wave-based
+light transport equation and maintain the crucial characteristics
+of modeling transport over small regions of space such that only
+observable wave effects are accounted for. As transport is done
+region-to-region (and not point-to-point), no interference between
+pairs of paths may arise, making it possible to efficiently construct
+individual paths via local sampling. Our formulations further al-
+low the derivation of advanced light transport algorithms for wave
+models, including a bidirectional model.
+We show that elliptical cones form tight geometric envelopes for
+PLT’s light transport primitives. Then, based upon the weakly-local
+path integral formulation, a practical, general-purpose wave trans-
+port model is developed. At its core, our wave transport algorithm
+can be understood as replacing the classical ray with an elliptical
+cone. We discuss how to traverse the scene with elliptical cones, sim-
+ulate the interaction of their underlying electromagnetic fields with
+the geometry and materials that fall within an interaction region,
+and introduce a general importance sampling strategy. We further
+show that this algorithm is able to reproduce accurate diffraction
+effects and do wave simulations for applications in different parts
+of the electromagnetic spectrum, see Fig. 1.
+2
+Related Work
+Our work builds on two classic foundations of ray-based light trans-
+port. First is the path integral formulation of the light transport
+equation [Veach 1997; Veach and Guibas 1997]. This expression
+of the rendering equation made it clear how to apply non-local
+sampling techniques to light transport (i.e., that paths do not neces-
+sarily need to be sampled incrementally from the sensor) and has
+provided a rigorous foundation for deriving more advanced light
+transport simulation algorithms. We also build upon the operator
+expression of light transport developed by Arvo [1995] and Veach
+[1997]. By expressing light transport and scattering as linear oper-
+ators on functions describing light emission and sensor response,
+this formulation allows compact expression of light transport and
+has enabled analysis of its convergence.
+Starting with Stam’s pioneering work on modeling diffraction
+from rough metalic surfaces [Stam 1999], there has been consid-
+erable work on BSDFs that model wave effects. Examples include
+diffraction due to scratches [Velinov et al. 2018; Werner et al. 2017],
+iridescent and pearlescent materials [Guillén et al. 2020], thin-film
+interference [Huang et al. 2020], and dispersion via thin dielec-
+tric layers above conductors [Belcour and Barla 2017; Kneiphof
+et al. 2019]. Scattering models have also been developed based on
+measured scattering from diffractive surfaces [Toisoul and Ghosh
+2017], diffractive surfaces modeled with explicit microgeometry [Fal-
+ster et al. 2020; Yu et al. 2023], and statistical models [Holzschuch
+and Pacanowski 2017; Krywonos 2006; Steinberg and Yan 2022].
+Also related is recent work on modeling free space diffraction as a
+BSDF [Steinberg et al. 2024b].
+Many techniques have been developed to simulate wave-based
+light transport. Approaches based on the Winger distribution func-
+tion have been developed both in graphics [Cuypers et al. 2012]
+and in optics [Jensen and Buot 1991; Mackay and Johnson 2021;
+Mout et al. 2018]. Outside of graphics, algorithms based on different
+shooting-bouncing rays methodologies [Weinmann 2006] or the
+geometric/uniform theory of diffraction (UTD) [Bilibashi et al. 2020;
+Son and Myung 1999; Yi et al. 2022] are often used. All these ap-
+proaches rely on ray tracing for transport, and share a fundamental
+difference compared with the more common ray or path tracing seen
+in computer graphics: rays mutually interfere with each other. In
+this work, we generalize the classical path integral to such bilinear
+transport; this generalization highlights the additional sampling dif-
+ficulties that arise with mutually-interfering rays, and in the future
+symbol
+units
+paths and their contributions
+x = ®𝑥1 . . . ®𝑥𝑛
+a path: a finite sequence of 𝑛spatial
+positions ®𝑥𝑗∈R3
+R
+a region: a bounded, closed subset R𝑗⊂R3
+R = R1 . . . R𝑛
+a weakly-local path: a finite sequence of 𝑛
+regions (regions may overlap)
+𝑓(x),𝑔 R
+the measurement contribution functions over
+a path
+W
+𝐹(x, y)
+the mutual contribution function, given over
+a pair of paths x, y
+W
+electrodynamics
+𝜆
+wavelength of electromagnetic radiation
+mm
+𝑘= 2π
+𝜆
+wavenumber of electromagnetic radiation
+mm−1
+®𝑘
+wavevector
+mm−1
+𝜓
+wavefunction (scalar electric field)
+V m−1
+light transport and Wigner (space-frequency) distributions
+𝜙(®𝑟, ®𝑘)
+the Wigner distribution of a Gaussian beam
+(see supplemental Section S3)
+W or 1
+𝐿(®𝑟, ®𝑘)
+Wigner distribution of an emitter’s emission
+W
+𝑊(®𝑟, ®𝑘)
+Wigner distribution of a sensor’s sensitivity
+1
+𝑇, T
+context-dependant interaction or scattering
+operators acting upon Wigner distributions
+Table 1. List of symbols and notation in this paper.
+Preprint
+2025-08-26 01:41. Page 2 of 1–12.
+
+
+===== wave-tracing-2025 | page 3/12 =====
+
+Wave Tracing: Generalizing The Path Integral To Wave Optics
+•
+3
+may serve as a theoretical foundation for developing better path
+sampling techniques for such bilinear light transport models.
+Recently, physical light transport [Steinberg et al. 2024a, 2022;
+Steinberg and Yan 2021] has introduced weakly-local light transport
+primitives, which can be understood as tracing beams of light instead
+of singular rays—enabling the reproduction of a much wider class
+of wave effects, compared with classical light transport. Previous
+implementations of it have approximated the transport over regions
+with singular rays. We develop the underlying path tracing theory by
+generalizing the classical path integral to region-to-region transport,
+and present a solver that models wave transport over volumes using
+elliptical cones.
+3
+What Can Be Simulated With Classical Path Tracing?
+Consider the classical path integral formulation [Veach 1997]:
+𝐼=
+∫
+Ω
+𝑓(x) d𝜇(x) ,
+(1)
+where x ∈Ω is a scene path—connecting an emitter to the sensor
+over a finite sequence of points—in the space of all paths Ω, and 𝑓
+is the real-valued, non-negative measurement contribution function.
+The result of 𝑓is the power measured by the sensor.
+It is well understood that the light transport under the formula-
+tion above is governed by the laws of geometric optics. Nevertheless,
+some optical phenomena beyond geometric optics may be repro-
+duced accurately by this formalism. Our objective in this section is
+then to rigorously answer the question: to what extent is classical
+path tracing able to reproduce wave-optical phenomena?
+In our supplemental material, Subsection S1.1, we formally study
+the conditions subject to which the wavefronts of an electromag-
+netic field obey, point-wise, the Eikonal equation, and thereby can
+be propagated via geometric-optical rays. These conditions can be
+summarized as: fields (i) of sufficiently high frequency (ii) that prop-
+agate very far from their origin (emitter or scattering matter). We
+furthermore show that such fields behave locally as plane waves.
+We then assume that light is a stochastic ensemble of waves,
+where every realization conforms to the conditions discussed above.
+The wavefronts of such a wave ensemble can be propagated, point-
+wise, via classical rays as in Eq. (1), and we study what wave phe-
+nomena can be reproduced by such a description of light.
+Dispersion and color. The fields admit well-defined temporal and
+spatial frequencies. It is possible to model emitters and sensors
+with arbitrary emission and sensitivity spectra, as well as arbitrary
+dispersion relations for media, including cross-spectrum re-emission
+effects, like fluorescence. These effects can be accurately integrated
+in a spectral renderer.
+One limitation arises: No interference between spectral samples
+is permissible, as samples must add up incoherently in Eq. (1). There-
+fore, we must assume that sensors time average, and the wave en-
+semble is limited to the appropriate class of processes (see Section S1
+in our supplemental material).
+Polarization. The fields also admit well defined directions for
+their electric components, enabling modeling arbitrary states of
+polarization, including random polarization (under time-averaging).
+Interaction with materials. Under the assumptions above, we may
+propagate the wavefronts, point-wise, to an interaction point using
+geometric optics. A question arises: what extent of these wavefronts
+should be considered when simulating their interaction with mat-
+ter? That question cannot be answered with the information we
+have: no additional specifications about the shape of the wavefronts,
+or their statistics (e.g., spatial coherence) can be deduced, as there
+is no mechanism in Eq. (1) to propagate such information. Deriving
+expressions for BSDFs can then be difficult. We may choose to inte-
+grate over very large (or infinite) regions; this would stretch the far
+field assumption, and also make it impractical to deal with materi-
+als that admit explicit scattering features (e.g., a scratched surface,
+which would require integration over a vast count of scratches).
+In Subsection S1.2 of our supplemental material, we show that
+if we understand the scattering process as a stationary (at least in
+the wide sense) random process, then the knowledge of the exact
+integration region is no longer required: it is enough to assume that
+this extent is large enough to fully capture the surface’s statistics.
+Thereby, we may simulate the interaction of light with materials
+whose scattering is quantified by a statistically wide-sense stationary
+random process. The only assumption we make is that the area of
+integration is large with respect to that process’s correlation length.
+Such materials include Fresnel reflection and refraction; scattering
+by rough statistical surfaces (e.g., via the Harvey–Shack formalism),
+periodic surfaces, or thinly-layered surfaces; or, scattering by a
+stationary distribution of scatterers in a medium.
+Summary. Following the discussion above, we summarize what
+forms of optical phenomena are amenable to classical path tracing:
+(1) Light that is an ergodic, wide-sense stationary wave ensemble,
+of sufficiently large spatial frequencies.
+(2) Sensors that time average over periods long with respect to
+light’s temporal coherence.
+(3) The far-field assumption is made several times: the points of
+a sampled path x are assumed to be far from each other.
+(4) Scattering that is formulated in expectation by statistically
+wide-sense stationary materials only.
+Under these conditions, we prove in our supplemental material
+that the classical path integral Eq. (1) is a sufficient formalism to
+reproduce all the wave phenomena discussed in this section.
+Strictly speaking, it is usually not possible to perfectly satisfy
+the above set of requirements, for example: at geometric edges or
+where different geometries with distinct materials intersect (vio-
+lating assumption 4). Nevertheless, at optical frequencies, classical
+path tracing is able to simulate the wave-optical effects discussed
+above at a reasonable accuracy.
+In our supplemental material, we discuss which effects may not
+be reproduced classically. As an example that motivates our the
+derivations in Section 4, consider a ray passing close to geometry,
+but not intersecting it. Under wave optics, part of the energy carried
+by the ray should have diffracted around the geometry. However, we
+may not detect this situation with classical ray tracing (a “does this
+ray travel close to geometry” query would be needed), so the energy
+that is propagated straight on is overestimated. To amend the error,
+one may consider two approaches: we could (i) allow other paths
+2025-08-26 01:41. Page 3 of 1–12.
+Preprint
+
+
+===== wave-tracing-2025 | page 4/12 =====
+
+4
+•
+Shlomi Steinberg and Matt Pharr
+emitter
+receiver
+(A) bilinear path integral formulation
+propagation via elliptical cones
+scattered cone
+ballistic segment
+intersected frustum
+interaction region
+(B) Weakly-local path integral formulation
+Fig. 2. Path integrals for wave optics. We develop two generalizations of the classical light transport path integral [Veach 1997]—capable of reproducing a
+wide range of wave effects. (A) The bilinear path integral, Subsection 4.1 (implicitly employed by common methods that use phase-carrying rays, like those
+that rely on UTD-based diffractions) accounts for the interference between all pairs of paths. Bilinearity frustrates local path sampling: assume that a path
+was sampled; afterwards, another path might be sampled that destructively interferes with the former path, resulting in overall negligible contribution, even
+with good local path sampling. (B) The weakly-local path integral, Subsection 4.2, formalizes region-to-region transport. In-place of rays, we employ elliptical
+cones for transport, and formulate the aggregated interaction of light with all materials that fall within a region (illustrated in orange). This requires more
+sophisticated machinery—tracing of elliptical cones and aggregated wave-optical interactions—but allows crucial local path sampling. Ballistic segments are
+illustrated using thick lines, and an elliptical conic frustum within which intersected geometry is found in orange (see Subsection 5.1).
+to fix these erroneous contributions, by facilitating interference
+between different paths, as is done with ray-based techniques such
+as UTD; or, (ii) replace ray queries with a volumetric query, in order
+to sample regions—and not singular points—where wave-optical
+interactions occur. In the following section we generalize the path
+integral to both of these approaches.
+4
+Generalizing the Path Integral Formulation
+4.1
+Bilinear Path Integral
+We extend the classical path integral with a map 𝐹: Ω × Ω →R,
+the mutual contribution function, producing a bilinear path integral:
+𝐼=
+∫
+Ω×Ω
+𝐹(x, y) d𝜇(x) d𝜇(y) .
+(2)
+We only consider maps 𝐹that fulfill the following properties:
+(1) symmetry, 𝐹(x, y) = 𝐹(y, x);
+(2) non-negative contribution over a single path, 𝐹(x, x) ≥0;
+(3) Cauchy–Schwarz inequality, |𝐹(x, y)| 2 ≤𝐹(x, x)𝐹(y, y).
+Note, when x ≠y, the map 𝐹(x, y) may take negative values. It is
+easy to see that the properties above mandate that the path integral
+in Eq. (2) integrates to a non-negative 𝐼, as desired (see Section S2
+in the supplemental for a proof).
+As a statistical distribution. To see how the mutual contribution
+function 𝐹connects to optics, let𝜓be some realization of a statistical
+wave ensemble (i.e.,𝜓is some electric field). Given a geometric path
+x, we will let 𝜓(x) denote the field strength that is transported
+over that path. (We briefly mention a few formalisms that enable
+such field transport over a path later). Then, the measurement in
+expectation becomes:
+𝐼=
+*
+∫
+Ω
+𝜓(x) d𝜇(x)
+
+2+
+=
+∫
+Ω×Ω
+
+𝜓(x)𝜓★(y)
+
+d𝜇(x) d𝜇(y) ,
+(3)
+where 𝜓★is the complex conjugate of 𝜓, and we formally inter-
+changed the order of ensemble averaging and integration. The above
+takes an identical form to Eq. (2), with 𝐹(x, y) = ⟨𝜓(x)𝜓★(y)⟩quan-
+tifying the ensemble’s second-order statistics (its cross-correlation),
+and is the mutual coherence function in the optical context.
+The statistical formulation above may also account for temporal
+fluctuations, e.g., when 𝐹operates on paths with different wave-
+lengths (under spectral rendering). This arises in practice in simu-
+lations where sensors do not time average (or averaging times are
+too short to induce temporal decoherence), for example for acoustic
+simulations with observable interference across spectral samples.
+For ergodic ensembles 𝜓, the ensemble averages can indeed be un-
+derstood as time averages, though we keep the formulation general.
+Examples. In the limiting case where the mutual contribution
+function is a proportional to a Dirac delta, 𝐹(x, y) = |𝜓(x)| 2𝛿(x, y) ,
+the above reduces to the classical unitary case, with 𝑓= |𝜓(x)| 2 be-
+ing the classical measurement contribution function. The Dirac delta
+formalizes the fact that all paths are assumed to be perfectly mutu-
+ally uncorrelated—incoherent—and no interference arises. Therefore,
+the bilinear path integral generalizes the classical path integral.
+Another important special case is path tracing with phase-carrying
+rays, where every pair of paths are fully coherent in their measure-
+ment and interfere. Let the map 𝐹take the form:
+𝐹(x, y) = |𝜓(x)||𝜓(y)| Re e−i𝑘(|x|−|y|) ,
+(4)
+where |x| is the path’s total distance (in world units), and 𝑘= 2π
+𝜆is
+the wavenumber with wavelength 𝜆. Clearly 𝐹fulfills the desired
+properties of the mutual contribution function. The terms 𝑘|x| are
+then the phases carried by each ray, and the complex exponent term
+quantifies the mutual interference between every pair of paths. This
+formalism of phase-carrying rays encompasses several common
+light transport methods, including UTD-based simulations—very
+common in acoustics and RF simulations—and other methods that
+rely on mutually-interfering phase-carrying rays.
+In between the above two extremes—perfect incoherence and
+perfect coherence—partially-coherent formalisms arise. Such for-
+malisms include light transport formalisms that employ the Wigner
+distribution function or the mutual coherence function directly.
+Local path sampling. Local path sampling [Kajiya 1986] is a very
+common technique to construct complete paths x, where each point
+in the path is recursively sampled locally by sampling the local
+interaction function and then ray tracing. Practical light transport
+often relies on the ability to perform good local path sampling.
+Preprint
+2025-08-26 01:41. Page 4 of 1–12.
+
+
+===== wave-tracing-2025 | page 5/12 =====
+
+Wave Tracing: Generalizing The Path Integral To Wave Optics
+•
+5
+With bilinear light transport, local path sampling is hampered
+by the fact that the mutual contribution 𝐹(x, y) usually cannot
+be evaluated without full knowledge of the paths x, y, and may
+annihilate the paths’ contributions. That is
+
+|𝜓(x) +𝜓(y)|2
+=
+
+|𝜓(x)|2
++
+
+|𝜓(y)|2
++ 2𝐹(x, y)
+(5)
+may vanish entirely. That is, even if a path x was constructed with
+effective local path sampling, another path y might annihilate its
+contribution (illustrated in Fig. 2a). Under the bilinear setting, path
+sampling always becomes a global problem. The classical path inte-
+gral, Eq. (1), does not suffer from this issue, as its integrand is always
+non-negative. It is also noteworthy that constructive/destructive
+interference happens at a high frequency across the scene, making
+techniques like path guiding not effective. The difficulty with lo-
+cal path construction is a fundamental challenge in path tracing
+simulations that employ typical UTD, or other phase-carrying rays,
+formalisms.
+Other forms of non-local path construction, like Metropolis light
+transport, could be applied to the bilinear path integral. We leave
+this to be explored in future work.
+4.2
+Weakly-Local Path Integral
+The classical path integral, Eq. (1), formalizes point-to-point light
+transport. We now generalize that formulation to region-to-region
+light transport (illustrated in Fig. 2b):
+𝐼=
+∫
+Ω
+𝑔 R d𝜇 R ,
+(6)
+where R = R0R1 . . . R𝑛is a generalized path defined as sequence of
+bounded regions R𝑗⊂R3, Ω is now the set of all such sequences of
+all bounded subsets of space, and 𝜇is then the appropriate product
+measure: 𝜇(R) = 𝜇(R0) . . . 𝜇(R𝑛).𝑔is the path contribution function,
+which can be written in operator notation:
+𝑔 R =
+D
+𝑊, 𝑇R𝑛−2→R𝑛−1→R𝑛𝑇R𝑛−3→R𝑛−2→R𝑛−1 . . .
+𝑇R0→R1→R2𝐿R0→R1 (R0)
+E
+.
+(7)
+𝑇are generic transport operators, generalizing the classical BSDF
+to region-to-region transport. The emission function 𝐿sources a
+distribution of light from a given initial region R0:
+𝜙1 = 𝐿R0→R1 (R0) .
+(8)
+The transport operators then transform these distributions, as fol-
+lows, thereby propagating them from region to region:
+𝜙𝑗+1 = 𝑇R𝑗−1→R𝑗→R𝑗+1𝜙𝑗.
+(9)
+Finally, the inner product of the sensor sensitivity function 𝑊over
+the distribution of light quantifies the sensor’s response to a distri-
+bution and yields the measurement contribution of the path R:
+𝑔 R = ⟨𝑊,𝜙𝑛⟩,
+(10)
+which must be real and non negative, 𝑔 R ≥0. We discuss the
+above in additional detail and prove the non-negativity of Eq. (10)
+in our supplemental material.
+In the following section, we understand the distributions 𝜙as
+a specific class of space-frequency (Wigner) distributions, and the
+transport operators 𝑇describe the interaction of these fields with
+matter in a region R𝑗and their propagation to the next region. In
+general,𝜙can take other forms: for example, they may be correlation
+functions, quantifying a wave ensemble’s second order statistics, or
+realizations from a wave ensemble. We keep the definition abstract
+to make it applicable to different light transport formalisms.
+Our weakly-local formulation of the path integral makes explicit
+the regions R𝑗over which light transport takes place. It is easy to see
+that Eq. (6) generalizes the classical formulation: when the regions
+are reduced to points, 𝑇to classical BSDFs, and 𝜙𝑗to radiance point
+samples, the above reduces to the classical point-to-point transport.
+However, Eq. (6) is also more powerful than the classical formulation:
+we now have a built-in mechanism to quantify the shapes of the
+wavefronts of the underlying electromagnetic field (via 𝜙𝑗), and to
+quantify the regions over which weakly-local interactions of light
+with matter may take place (via R𝑗).
+Local path sampling. Unlike the bilinear generalization in Sub-
+section 4.1, the contribution 𝑔is crucially always non negative—no
+interference across samples may arise. Therefore, local path sam-
+pling may proceed in a manner essentially identically to the classical
+case: sample an initial region R0, and then subsequent regions, using
+the emission function 𝐿and the transport operators 𝑇, respectively.
+5
+Weakly-Local Light Transport
+The ability to construct paths via local path sampling with our
+weakly-local path integral formulation, discussed in Subsection 4.2,
+is a major advantage over its bilinear counterpart. It comes at the
+cost of increased analytic and algorithmic complexities of the simu-
+lation: light transport is now formulated in terms of regions and not
+points, and our intersection queries are no longer ray–geometry
+intersections but volumetric queries. In this section we address
+these difficulties and present a general weakly-local light transport
+framework targeting wave-optics simulations.
+We build upon the physical light transport (PLT) framework
+for wave-optics simulation [Steinberg et al. 2024a, 2022]. Under
+that framework, the emission and sensing distributions of a rather
+general class of emitters and sensors can be written as a (countable)
+incoherent superposition of Gaussian beams. For example, the space-
+frequency (Wigner) distribution of an emitter is decomposed as
+𝐿
+
+®r, ®k
+
+=
+∑︁
+𝑗𝜙𝑗
+
+®r, ®k
+
+,
+(11)
+where we use ®r for spatial coordinates, and ®k is a wavevector—
+direction of propagation scaled by the wavenumber 𝑘= 2π
+𝜆—and 𝜙𝑗
+are space-frequency Gaussian distributions. A similar decomposi-
+tion can be written for a sensor’s sensitivity distribution. Please see
+our supplemental material for an extended overview of the relevant
+parts of PLT and explicit expressions for 𝜙𝑗.
+Path tracing and rendering with PLT involves: sourcing a sample,
+i.e. a beam 𝜙𝑗, from an emitter (or a sensor); propagating it across
+the scene and simulating its interaction with matter; and finally
+integrating over a sensor (or an emitter).
+5.1
+Wave Tracing
+A fundamental difference with classical path tracing is that the distri-
+butions 𝜙𝑗are not point samples, but weakly-local beams, confined
+to a bounded spatial region. We show in our supplemental material
+that the spatial extent of 𝜙𝑗, as it propagates in unobstructed space,
+2025-08-26 01:41. Page 5 of 1–12.
+Preprint
+
+
+===== wave-tracing-2025 | page 6/12 =====
+
+6
+•
+Shlomi Steinberg and Matt Pharr
+traces an elliptical cone. Therefore, these elliptical cones form tight
+geometric envelopes around these beams, and their geometry is de-
+fined by the spatial and wavevector means and variances of 𝜙𝑗. As
+the Gaussian beam is fully described by its first two moments, the
+geometric envelope defines the Gaussian beam 𝜙𝑗, and vice versa.
+Tracing the elliptical conic envelopes through space, i.e. wave
+tracing, serves to construct the path R = R1R2, . . . , R𝑛, composed
+of the weakly-local regions over which light transport takes place.
+Evaluating the path contribution function 𝑔(R) (Eq. (7)) over that
+path yields the sample contribution. In our renderer, each beam is
+parametrized by:
+(1) mean wavelength 𝜆0;
+(2) Stokes parameters quantifying its polarization and power;
+(3) its elliptical conic envelope, parametrized by (i) mean spatial
+position ®x0 at its origin, (ii) mean direction of propagation
+ˆd, (iii) major and minor axes ®a, ®b, of lengths 𝑎= |®a| ,𝑏= |®b| ,
+and (vi) major and minor opening (half) angles 𝛼𝑎, 𝛼𝑏≥0.
+Sourcing a beam is identical to PLT, and we provide explicit expres-
+sions in our supplemental material.
+Traversal. On free-space propagation of distance 𝑧≥0, the ge-
+ometry of the elliptical cone is transformed as follows:
+®x0 →®x0 + 𝑧ˆd ,
+𝑎→𝑎+ 𝑧tan𝛼𝑎
+and
+𝑏→𝑏+ 𝑧tan𝛼𝑏, (12)
+with the other parameters unchanged. We employ a BVH for ellipti-
+cal cone traversal acceleration [Emre et al. 2025]. Traversal is similar
+to a ray-based traversal, though a fundamental difference is that a
+cone may intersect multiple triangles. As we traverse the BVH we
+collect intersected triangles, and keep track of the distance to the
+closest triangle 𝑑min. The traversal routines returns all triangles that
+intersect the elliptical cone within a distance range [𝑑min,𝑑min + 𝛿),
+where 𝛿controls the depth of the intersection range. The “intersec-
+tion distance” is defined as the propagation distance along the mean
+ˆd (and not the radial distance), therefore the computed intersection
+region is an elliptical conic frustum (illustrated in orange in Fig. 2b).
+We set ad hoc 𝛿= 2𝑎, i.e., twice the length of the major axis, which
+is sufficient for most applications and a good compromise between
+accuracy and performance for others.
+Once the elliptical conic frustum that contains all the intersected
+triangles has been computed, it becomes the next interaction region
+R𝑗+1. The wave tracing process then repeats recursively in order
+to sample the complete path R: the interaction of the beam with
+the geometry at R𝑗+1 is simulated and a scattered beam—and its
+elliptical conic envelope—is sampled (discussed in Subsection 5.2),
+which is then beam traced to compute the next interaction region.
+Ballistic propagation. In order to allow a scattered beam to prop-
+agate away from an interaction region (without extensive self-
+intersections), as well as to allow it to explore tight regions (e.g., a
+waveguide that might be narrower than the geometric envelope),
+we perform ballistic propagation [Lemieux et al. 1998]. Immediately
+after sourcing or interaction, we assume the beam takes a ballis-
+tic path—traces a ray with a vanishing cross section—for a short
+distance, as follows:
+(1) We propagate the beam as a ballistic particle—via ray tracing—
+for a segment of up to 𝐵wavelengths in distance.
+(2) If the ray intersects geometry, a normal interaction is per-
+formed; after which we return to step 1.
+(3) Otherwise, we attempt to resume cone tracing from the end
+of the ballistic segment:
+(a) if the elliptical cone immediately (without any further prop-
+agation) intersects geometry:
+(i) 𝐵is doubled, up to some predefined maximum 𝐵max;
+(ii) return to step 1.
+(b) otherwise, elliptical cone tracing is continued.
+The doubling of the ballistic segment length 𝐵is designed to avoid
+excessive attempts to terminate ballistic propagation. Ballistic prop-
+agation also alleviates some of the chronic pains of cone tracing, like
+a beam propagating parallel to a wall and repeatedly intersecting it.
+A ballistic path is illustrated via a thick line in Fig. 2b.
+In addition to enabling a beam to explore tight confines in a
+physically-sensible manner, ballistic propagation also serves as a
+major performance optimization: the most expensive part of cone
+tracing is when the cone passes close to geometry and many expen-
+sive cone–primitive intersection tests are required. Our renderer
+sets ad hoc the ballistic segment lengths 𝐵and 𝐵max to 10 and 210
+wavelengths, respectively.
+5.2
+Interactions and Diffractions
+Let R𝑗be an interaction region: that is, the intersection of an ellipti-
+cal conic frustum with geometry. The incident beam 𝜙𝑗interacts
+with the matter and materials, and the scattered distribution from
+an interfering superposition of 𝑁≥1 triangles (and their materials)
+is a bilinear combination that accounts for interference:
+Φ
+
+®r, ®k
+
+=
+∑︁𝑁
+𝑙=1 T𝑙𝜙𝑗+ 2
+∑︁𝑁
+𝑚>𝑙T𝑙𝑚𝜙𝑗.
+(13)
+The terms T𝑙are operators which compute the scattered light pro-
+duced by each triangle (or material) 𝑙. The double-subscripted scat-
+tering operators T𝑙𝑚quantify the bilinear interference terms be-
+tween all triangle pairs. This is a very general expression—any
+interfering wave-optical interaction needs to account for such inter-
+ference terms. For example, if a triangle’s material models a rough
+surface, then T𝑙computes the scattering of a Gaussian beam by that
+surface over the triangle’s extent; often, an approximate surface
+scattering model will be used. See our supplemental material for
+more details.
+Our goal is to sample a new beam and its envelope from Eq. (13),
+enabling us to beam trace it and compute the next interaction region
+R𝑗+1. Formally, the power contained in some scattered Gaussian
+beam 𝜙′ is the inner functional product:
+𝐼′ =
+
+𝜙′, Φ
+
+=
+∑︁𝑁
+𝑙=1
+
+𝜙′, T𝑙𝜙𝑗
+
++ 2
+∑︁𝑁
+𝑚>𝑙
+
+𝜙′, T𝑙𝑚𝜙𝑗
+
+,
+(14)
+with the functional product taken over the space-frequency (Wigner)
+space: ⟨𝑓,𝑔⟩=
+∫
+d®r d®k𝑓𝑔★. The (unknown) beam 𝜙′ defines its geo-
+metric envelope, which in turn defines the next interaction region.
+Therefore, if we could derive from Eq. (14) and expression for 𝐼′ as
+a function of the envelope’s geometry, we could importance sample
+a scattered beam from the interaction.
+PLT invariants help us narrow down what kind of 𝜙′ we should
+consider: The space-frequency bandwidth of the Gaussian beams
+𝜙′ that decompose the scattered light Φ cannot decrease (we may
+Preprint
+2025-08-26 01:41. Page 6 of 1–12.
+
+
+===== wave-tracing-2025 | page 7/12 =====
+
+Wave Tracing: Generalizing The Path Integral To Wave Optics
+•
+7
+light
+60
+40
+20
+0
+20
+40
+60
+10
+0
+10
+20
+30
+40
+50
+Electric Field Magnitude
+BEM (wave solver)
+ours
+0
+10
+20
+30
+40
+50
+60
+BEM (wave solver)
+ours
+UTD (analytic)
+Fraunhofer (analytic)
+0
+10
+20
+30
+40
+50
+40
+20
+0
+20
+40
+10
+0
+10
+20
+30
+40
+Electric Field Magnitude
+electric field magnitude (BEM wave solver)
+electric field magnitude (BEM wave solver)
+-43 dB
+-35 dB
+-27 dB
+-19 dB
+-11 dB
+-3 dB
+double slits + reflectors
+double slits only
+geometric setup
+Fig. 3. Comparison with a wave solver: a collimated beam impinges upon a screen with two slits cut in it, and a couple of conductive reflectors are placed
+after the screen (setup illustrated on the left). Diffracted light reaches the far wall and the resulting diffraction pattern is rendered. We use a BEM wave solver
+[Betcke and Scroggs 2021] to solve for the electric field over a 2D vertical slice, and compare with results computed using our renderer (UTD free-space
+diffractions), see plots. Our results are shown below the plots. Multi-edge diffractions happen over two regions—slits and then reflectors—before reaching the
+wall. We also perform the experiment without the reflectors (double slits only) and plot analytic solutions to Fraunhofer and UTD diffractions: as expected our
+results closely match UTD and are more accurate than Fraunhofer diffraction. (Run costs) ours (full 3D): 4 min and 195 MB of memory, BEM (2D slice): 2
+hours, 27 min and 60 GB.
+not “break a beam into smaller beams”). Because the Gaussian beam
+is fully described by its elliptical conic envelope, this constraint
+implies a geometric invariant: the envelope of the new 𝜙′ contains
+the current interaction region R𝑗and propagates into an identical
+solid angle as the incident beam.
+To satisfy this geometric invariant, when constructing a new
+elliptical conic envelope for an arbitrary new tracing direction ˆd′
+we proceed as follows: we solve for the elliptical cone that contains
+R𝑗and propagates into the same solid angle as the incident beam, i.e.
+tan𝛼′𝑎tan𝛼′
+𝑏= tan𝛼𝑎tan𝛼𝑏. The ratio 𝛼′𝑎/𝛼′
+𝑏is chosen such that
+the beam’s eccentricity remains constant (this is valid and simplifies
+some intersection tests). This fixes the envelope, which in turn
+defines the scattered Gaussian beam 𝜙′.
+In general, computing closed forms expressions for the inner
+products in Eq. (14) can be difficult. In our supplemental material,
+Section S4, we study what assumptions (or approximations) need to
+be imposed upon the scattering operators T𝑙, in order to be able to
+write these inner products as functions of only incident and scat-
+tering directions and interaction footprint. We call such materials
+Fraunhofer materials, and show that for these materials the inner
+products above take an analytically-simpler form. We also show
+that classical BSDFs form a strict subset of Fraunhofer materials.
+5.2.1
+Importance sampling. We focus on the task of choosing the
+new direction ˆd′, and present a novel, general importance sampling
+strategy for interfering interactions. Our aim is to importance sam-
+ple Eq. (14). In general, energy conservation mandates the following:
+
+𝜙′, T𝑙𝑚
+ 𝜙𝑗
+2 ≤
+
+𝜙′, T𝑙
+ 𝜙𝑗
+ 
+𝜙′, T𝑚
+ 𝜙𝑗
+
+.
+(15)
+By the above, the terms
+
+𝜙′, T𝑙
+ 𝜙𝑗
+
+may act as a proposal distribu-
+tion for the entire sum in Eq. (14), and it must hold that
+𝐼′ ≤𝑁
+∑︁𝑁
+𝑙=1
+
+𝜙′, T𝑙
+ 𝜙𝑗
+
+.
+(16)
+This is a classical setting for rejection sampling.
+Assume that we are able to importance sample a new direction
+from each of the terms
+
+𝜙′, T𝑙
+ 𝜙𝑗
+
+, but not from the more compli-
+cated interference terms. Then, our importance sampling strategy
+involves rejection sampling the interfering sum in Eq. (14):
+(1) Draw a direction ˆd′ by importance sampling the (incoherent)
+sum of non-negative terms Í
+𝑙
+
+𝜙′, T𝑙
+ 𝜙𝑗
+
+.
+(2) For the sampled ˆd′, evaluate the actual power 𝐼′ using Eq. (14),
+and incoherent power e𝐼= Í
+𝑙
+
+𝜙′, T𝑙
+ 𝜙𝑗
+
+.
+(3) Rejection sample:
+(a) draw uniformly distributed 𝑢∈[0, 1);
+(b) if 𝑢< 𝐼′/(𝑁e𝐼) accept ˆd′, otherwise return to step 1.
+The above produces perfectly-distributed samples, and the expected
+number of trials is 𝑁[Casella et al. 2004].
+5.2.2
+Free-Space Diffractions. When an elliptical cone is partially
+occluded by geometry, one of the scattering operators T𝑙in Eq. (13)
+is a free-space propagation operator, and its restriction to a part of
+the incident beam gives rise to free-space diffractions. We consider
+two methods to simulate free-space diffractions: (i) building directly
+upon the Fraunhofer edge-based diffraction method of Steinberg
+et al. [2024b]; and, (ii) by utilizing UTD. Both methods ultimately
+reduce to writing the diffracted term as an interfering sum, in the
+manner of Eq. (13), therefore free-space diffraction operators should
+be understood as a special case of it. We summarize each method.
+Fraunhofer edge-based diffraction. This method proceeds exactly
+as in Steinberg et al. [2024b]: the edges of the silhouette of the
+diffracting aperture in an interaction region R𝑗are extracted. Each
+edge 𝑒𝑙gives rise to an edge diffraction operator T𝑒𝑙, while interfer-
+ence operators T𝑒𝑙𝑒𝑚account for the interference between the edges.
+Together, these operators shape the Fraunhofer diffraction pattern.
+Steinberg et al. [2024b] provide explicit formulae for both, as well
+as a simple importance sampling strategy for the edge diffraction
+operator T𝑒𝑙, but not for the more complicated interference opera-
+tors T𝑒𝑙𝑒𝑚. Our importance sampling strategy from Subsection 5.2.1
+improves upon theirs by importance sampling the entire interfering
+sum of edge diffractions. This enables high quality sampling, and
+we show in Fig. 5 that we are able to render complex diffraction
+patterns under complex light transport.
+UTD-based diffraction. Fraunhofer-based diffractions are less ac-
+curate for long-wavelength radiation, assume perfect conductors,
+ignore wedge geometry, and it can be difficult to correctly classify
+edges which are partially occluded by triangles within the interac-
+tion region. As an alternative, we propose a method that relies on
+2025-08-26 01:41. Page 7 of 1–12.
+Preprint
+
+
+===== wave-tracing-2025 | page 8/12 =====
+
+8
+•
+Shlomi Steinberg and Matt Pharr
+-155 dB
+-130 dB
+-105 dB
+-80 dB
+-55 dB
+-30 dB
+ray tracing
+30GHz
+1GHz
+diff w/ ray tracing
+diff w/ ray tracing
+Etoile
+13k triangles
+800 × 600 @ 25k samples, 3 min
+800 × 600 @ 80k samples, 2 hour : 05 min
+800 × 600 @ 80k samples, 1 hour : 50 min
+13k triangles
+800 × 600 @ 25k samples, 3 min
+800 × 600 @ 80k samples, 2 hour : 05 min
+800 × 600 @ 80k samples, 1 hour : 50 min
+-150 dB
+-128 dB
+-106 dB
+-84 dB
+-62 dB
+-40 dB
+diff w/ ray tracing
+diff w/ ray tracing
+München
+39k triangles
+800 × 528 @ 100k samples, 24 min
+800 × 528 @ 100k samples, 13 hours
+800 × 528 @ 100k samples, 11 hours
+39k triangles
+800 × 528 @ 100k samples, 24 min
+800 × 528 @ 100k samples, 13 hours
+800 × 528 @ 100k samples, 11 hours
+Fig. 4. Signal coverage simulations in realistic city scenes (from Hoydis et al. [2022]), done in full 3D. Visualized is the received signal strength (rss) in
+decibels that reaches the street level. Emitter position is marked with a red-yellow circle. Simulation is done using (left) pure ray tracing with no diffractions;
+or with UTD-based diffractions using a (middle) 30GHz or (right) 1GHz carrier. Note the greater rss reaching shadowed streets and areas when diffractions
+are simulated. Buildings’ surfaces are perfectly-specular surface with wavelength-dependent refractive indices matching common construction materials
+[ITU 2023] Coverage is computed over ground areas of (Etoile) 0.84 km, (München) 1 km in width. The elliptical conic envelopes’ cross-section areas and
+primitive counts on interactions (means and standard deviations): (Etoile 30GHz) (56 ± 250) m2, 7 ± 21; (Etoile 1GHz) (90 ± 290) m2, 9 ± 22; (München 30GHz)
+(49 ± 298) m2, 11 ± 129; (München 1GHz) (84 ± 364) m2, 10 ± 107. UTD-based free-space diffractions are used (see Subsection 5.2.2).
+the uniform theory of diffraction (UTD) [McNamara et al. 1990] to
+simulate free-space diffractions. This method can be understood as
+tracing a ray bundle confined within the beam’s envelope. At each
+interaction region R𝑗, we attempt to connect rays in the bundle
+from the previous region R𝑗−1 to the next one R𝑗+1 over edges in
+R𝑗, by checking if the diffracted Keller cone for each edge in R𝑗falls
+upon the destination.
+Similar to before, the rays in the bundle give rise to diffracted
+terms T𝑒𝑛, however these are not Fraunhofer materials, and impor-
+tance sampling is more difficult. Our sampling approach is very
+basic: a conservative frequency-dependent Gaussian is fitted to the
+UTD edge diffraction function, and at each interaction region an
+edge (that is involved in the diffraction) is selected at random and
+the next direction is sampled from that Gaussian. We do not con-
+sider the interference terms when sampling, nor perform multiple
+importance sampling (MIS) over the different edges. This leads to
+rather poor sampling; a sophisticated importance sampling strategy
+for UTD-based ray bundle diffractions is left for future work.
+6
+Discussion
+Subsections 5.1 and 5.2 describe the primary components of wave
+tracing as done in our system. We construct region-to-region paths
+by tracing the elliptical conic envelopes of Gaussian beam samples.
+Cone tracing allows us to sample a complete interaction region, with
+all the contained geometry that the Gaussian beam interacts with.
+In contrast to ray-based frameworks like Sionna [Hoydis et al. 2022],
+we do not need to perform a shooting-bouncing rays exploration
+pass in order to detect edges (which might fail to detect relevant
+edges that may lie in shadowed, unexplored regions, or due to high
+tesselation of the geometry). Cones are inherently able to sample
+zero-measure features, like the edges needed for free-space diffrac-
+tion, and could also be used to sample caustics in a unidirectional
+path tracer; to be explored in future work.
+The beams and their envelopes often exhibit significant anisotropy,
+for example, when a beam is scattered into a grazing angle on sur-
+face interaction. Proper wave tracing then requires support for full
+elliptical cone tracing, with accelerating data structure traversal
+and primitive (edges and triangles) intersection tests for arbitrary
+elliptical cones. We provide implementation details and additional
+comparisons in our supplemental material.
+6.1
+Results
+We have validated our approach by comparing results to a BEM
+wave solver; see Fig. 3. We find that our renderer overall matches
+the reference well, yet computes solutions in 3D (rather than a 2D
+slice) while requiring a fraction in computation resources. We have
+Preprint
+2025-08-26 01:41. Page 8 of 1–12.
+
+
+===== wave-tracing-2025 | page 9/12 =====
+
+Wave Tracing: Generalizing The Path Integral To Wave Optics
+•
+9
+75k triangles
+1920 × 1080 @ 4k samples, 1 hour : 15 min
+316k triangles
+1920 × 1080 @ 4k samples, 1 hour : 50 min
+75k triangles
+1920 × 1080 @ 4k samples, 1 hour : 15 min
+316k triangles
+1920 × 1080 @ 4k samples, 1 hour : 50 min
+Room
+Fig. 5. Wave optics rendering: A metal screen is placed between a powerful collimated light source and a wall. A geometric aperture is cut in the middle of
+the screen: (left) star shaped or (right) vertical double slits. Our simulation reproduces the expected diffraction patterns. To make the light transport more
+challenging we place a (left) mirror or (right) dielectric bunny, making direct sampling techniques difficult. This shows that we able to importance sample the
+entire multi-edge diffraction well. This scene is a miniaturized scene: the length of the far wall is 8 cm. The cross-sectional areas of the elliptical conic envelopes
+on interactions are (0.2 ± 1.0) mm2 (mean and standard deviation), and intersect with 14 ± 261 triangles. Fraunhofer edge-based free-space diffractions are
+used (see Subsection 5.2.2).
+-160 dB
+-134 dB
+-108 dB
+-82 dB
+-56 dB
+-30 dB
+ray tracing
+5GHz
+diff w/ RT
+Office
+197k triangles
+1024 × 1002 @ 4k samples, 19 min
+1024 × 1002 @ 10k samples, 18 hour
+197k triangles
+1024 × 1002 @ 4k samples, 19 min
+1024 × 1002 @ 10k samples, 18 hour
+-190 dB
+-160 dB
+-130 dB
+-100 dB
+-70 dB
+-40 dB
+ray tracing
+5GHz
+diff w/ RT
+Building
+12.8k triangles
+1024 × 765 @ 50k samples, 23 min
+1024 × 765 @ 150k samples, 31 hour
+12.8k triangles
+1024 × 765 @ 50k samples, 23 min
+1024 × 765 @ 150k samples, 31 hour
+Fig. 6. Indoor 5GHz simulations. We simulate signal coverage with a 5GHz wireless carrier in two indoor scenes with more challenging light transport.
+Visualized is the received signal strength (rss) in decibels that reaches the floor. No geometric simplifications are done; the geometry used for the wireless
+simulation is as visualized in the optical rendering insets. The surface materials are different from the optical materials: at 5GHz frequency, surfaces are
+effectively perfectly specular, and the material (refractive index) is selected from the appropriate construction material [ITU 2023]: wood, plywood, chipboard,
+plasterboard, concrete, or metal. (Office) This scene contains complex geometry and fine geometric details. The transmitter is placed at the top right corner;
+note the increased rss around the lobby on the left and the meeting room on the right. (Building) rss is computed on the 3rd floor, while the transmitter is
+placed at 2nd floor level in the stairwell (top right). Due to the transmitter’s placement, most emitted energy does not propagate to the 3rd floor, or is diffracted
+by the staircase or railing. Paths that diffract several times are needed to reach the far areas of the large room on the left. Both scenes contain many glass
+windows, through which significant energy radiates away. The elliptical conic envelopes’ cross-section areas and primitive counts on interactions (means and
+standard deviations): (Office) (1.100 ± 1.364) m2, 34 ± 470; (Building) (2 ± 40) m2, 29 ± 905. UTD-based free-space diffractions are used (see Subsection 5.2.2).
+also evaluated our algorithms for optical rendering and modeling
+radio wave propagation.
+In these results, we also report the means and standard deviations
+of the areas of the beams’ cross-sectional areas and primitive count
+at interaction regions. Note the large difference in areas between
+different wavelengths. For convenience, these statistics are also
+summarised in Table 2 for all of our results.
+Optical rendering. Our optical results, Fig. 5, demonstrate the
+ability of our implementation to simulate free-space diffractions in
+scenes with extensive geometric detail and complex light transport.
+All renders are spectral and polarimetric.
+These results were rendered with a bidirectional path tracing
+(BDPT) extension of our weakly-local path integral. When forming
+connections between paths under BDPT, we wave trace each beam
+from the two path vertices involved in the connection strategy
+halfway towards each other. If both beams are unoccluded, the
+beams meet and we integrate the beams over their respective space-
+frequency footprint [Steinberg et al. 2024a]. Compared with the
+classical approach, multiple importance sampling (MIS) for BDPT
+changes as some connection strategies may be occluded while others
+are not. For our implementation, we use the classical strategy as
+an approximation, and leave correcting MIS for BDPT for future
+2025-08-26 01:41. Page 9 of 1–12.
+Preprint
+
+
+===== wave-tracing-2025 | page 10/12 =====
+
+10
+•
+Shlomi Steinberg and Matt Pharr
+-20 dB
+-13 dB
+-7 dB
+0 dB
+7 dB
+13 dB
+20 dB
+ray tracing
+wave tracing
+Building
+Office
+Fig. 7. Received signal strength (rss) differences between ray tracing
+and wave tracing. Blue indicates areas where a ray tracing simulation
+computes a higher rss compared with wave tracing, and red indicates regions
+where the situation is reversed.
+work. See Subsection S4.2 of our supplemental material for more
+information on our BDPT extension and explicit formulae.
+Signal coverage. We perform signal coverage simulations with
+long-wavelength radiation in two large-scale city scenes (Fig. 4)
+and two more complex indoor scenes (Fig. 6). At these wavelengths,
+all the surfaces become perfectly specular, and light transport is
+simulated unidirectionally from the emitter only. The wavelength-
+dependent complex refractive indices for all materials are given
+by ITU [2023] recommendations for construction materials, and
+include concrete, glass, brick, wood, and metal surfaces. For com-
+parison, same scenes are rendered with pure ray tracing; note the
+significantly higher received signal strength that reaches the shad-
+owed regions with wave tracing. See our supplemental for additional
+analysis.
+6.1.1
+Additional Comparison with ray tracing. We compare the
+received signal strength (rss) that reaches the floor in the Building
+and Office scenes between ray tracing and wave tracing, see Fig. 7.
+The color-coded blue and red areas indicate areas where ray tracing
+or wave tracing, respectively, produce a greater rss. As expected,
+over most areas wave tracing gives rise to a higher rss, as light is able
+to diffract and penetrate into harder-to-reach regions. Nevertheless,
+in some areas ray tracing dominates, at times substantially so. These
+blue areas are errors induced by the ray tracing simulation: light that
+should have diffracted continues to propagate unobstructed. For
+example, light that passes through the railings around the stairwell
+in the Building scene (top right), or light that is reflected by ceiling
+fixtures towards the lobby in the Office scene (left).
+6.1.2
+Comparison with Sionna. Sionna [Hoydis et al. 2022] (ver-
+sion 0.19) is a communications systems simulation framework that
+employs UTD to simulate diffractions. An initial ray tracing pass
+is used to find triangles and their edges that might participate in
+diffraction. All these edges, across all samples, are stored in memory,
+and a subsequent pass attempts to connect emitter–edge–receiver
+diffraction paths via every found edge and to every receiver (or pixel
+in a coverage map). No diffractions are mixed with reflections or
+scattering events, likewise no multiple diffractions, or multi-edge
+diffractions are simulated.
+We do a comparison with Sionna in a very simple scene, where
+single-edge, direct (emitter–edge–receiver) diffractions dominate,
+see Fig. 8. There are small differences between the material and
+emitter models, nevertheless most differences are minor. Most dif-
+ferences arise in the bottom parts of the image, where the majority
+of the energy arrives by reflecting off the buildings first and then
+diffracting, which cannot be simulated with Sionna.
+Note the memory requirements: Sionna’s memory requirements
+become prohibitive with more complex scenes that require higher
+sample counts.
+7
+Conclusion
+Our discussion began with analyzing the power—in terms of re-
+producing wave-optical phenomena—of the classical path integral
+formulation of light transport; then, we generalized it to two for-
+mulations that are used in wave simulations: (i) ray-based bilin-
+ear transport; and (ii) weakly-local (region-to-region) transport.
+Region-to-region path tracing, as formalized by our weakly-local
+path integral formulation, enables formulating—and in turn, im-
+portance sampling—scattering functions that account for the en-
+tire interfering interaction within a region. Contrast this to typical
+scene
+elliptical cone statistics
+throughput
+(samples per millisecond)
+cross-sectional area
+(mean ± std. dev.)
+triangles per cone
+(mean ± std. dev.)
+Etoile
+30 GHz
+(56 ± 250) m2
+7 ± 21
+5.1k
+1 GHz
+(90 ± 290) m2
+9 ± 22
+5.9k
+München
+30 GHz
+(49 ± 298) m2
+11 ± 129
+900
+1 GHz
+(84 ± 364) m2
+10 ± 107
+1.1k
+Office
+5 GHz
+(1.100 ± 1.364) m2
+34 ± 470
+150
+Building
+5 GHz
+(2 ± 40) m2
+29 ± 905
+1.05k
+Room
+optical
+(0.2 ± 1.0) mm2
+14 ± 261
+1.2k
+Table 2. Performance statistics. A summary of the average cross-sectional area of a traced elliptical cone on an interaction, as well as average count of
+triangles per interaction; as well as performance (samples per millisecond) for all of the scenes in our results.
+Preprint
+2025-08-26 01:41. Page 10 of 1–12.
+
+
+===== wave-tracing-2025 | page 11/12 =====
+
+Wave Tracing: Generalizing The Path Integral To Wave Optics
+•
+11
+-130 dB
+-106 dB
+-82 dB
+-58 dB
+-34 dB
+-10 dB
+ours
+Sionna
+diff
+<1 min , 1.5 GB memory
+<1.5 min , 30 GB memory
+506 × 768 @ 4k samples/pixel
+506 × 768 @ 108 samples (total)
+<1 min , 1.5 GB memory
+<1.5 min , 30 GB memory
+506 × 768 @ 4k samples/pixel
+506 × 768 @ 108 samples (total)
+Fig. 8. Comparison with Sionna. The scene is “simple street canyon” from
+Hoydis et al. [2022]. The position of emitter illustrated by the yellow circle.
+The received signal strength (rss) in decibels that reaches the street level
+is visualized, with a rendering of the occluding and diffracting building
+geometry overlaid (buildings’ colors are for visualization only). Not only can
+our approach account for path that involve both diffractions and reflections,
+but ours uses significantly less memory as well.
+shooting-bouncing rays or UTD-based approaches, where interfer-
+ence is resolved later at the sensor (as formalized by our bilinear
+path integral), and importance sampling turns into a global problem.
+We discussed how to design a system for wave simulations, based
+on our weakly-local path integral formulation, and we release a
+complete rendering system that implements the ideas in this paper.
+Our renderer is a fully polarimetric spectral renderer, designed from
+scratch to target elliptical cone tracing and wave simulations across
+the EM spectrum. Our system supports multi-material and multi-
+edge interactions, as well as multiple such interactions over a path.
+Both our path integral generalizations serve to relax some of the
+limitations of the classical path integral, discussed in Section 3. The
+far-field and high-frequency assumptions are often relaxed (the de-
+gree of which depends on the optical formalism), and the restriction
+to statistically stationary materials is eliminated entirely. Future
+work may focus on eliminating the time-averaging assumption, en-
+abling interference across spectral samples for acoustics simulations,
+for example. Future work may also target the differentiability of our
+rendering system for wave-optics modeling; differentiable rendering
+is likely to be more efficient in a non-bilinear framework like ours.
+References
+James Arvo. 1995. Analytic Methods for Simulated Light Transport. Ph. D. Dissertation.
+Yale University.
+Laurent Belcour and Pascal Barla. 2017. A Practical Extension to Microfacet Theory
+for the Modeling of Varying Iridescence. ACM Trans. Graph. 36, 4, Article 65 (July
+2017), 14 pages. doi:10.1145/3072959.3073620
+Timo Betcke and Matthew Scroggs. 2021. Bempp-cl: A fast Python based just-in-time
+compiling boundary element library. J. Open Source Softw. 6, 59 (March 2021), 2879.
+D Bilibashi, EM Vitucci, and V Degli-Esposti. 2020. Dynamic ray tracing: Introduction
+and concept. In 2020 14th European Conference on Antennas and Propagation (EuCAP).
+IEEE, 1–5.
+George Casella, Christian P. Robert, and Martin T. Wells. 2004. Generalized Accept-Reject
+sampling schemes. Institute of Mathematical Statistics, 342–347. doi:10.1214/lnms/
+1196285403
+Tom Cuypers, Tom Haber, Philippe Bekaert, Se Baek Oh, and Ramesh Raskar. 2012.
+Reflectance model for diffraction. ACM Transactions on Graphics 31, 5 (Aug 2012),
+1–11. doi:10.1145/2231816.2231820
+Umut Emre, Aryan Kanak, and Shlomi Steinberg. 2025. High-Performance Elliptical
+Cone Tracing. Computer Graphics Forum 44, 7 (Oct 2025). doi:10.1111/cgf.70230
+V. Falster, A. Jarabo, and J. R. Frisvad. 2020. Computing the Bidirectional Scattering
+of a Microstructure Using Scalar Diffraction Theory and Path Tracing. Computer
+Graphics Forum 39, 7 (Oct 2020), 231–242. doi:10.1111/cgf.14140
+Ibón Guillén, Julio Marco, Diego Gutierrez, Wenzel Jakob, and Adrian Jarabo. 2020. A
+General Framework for Pearlescent Materials. ACM Transactions on Graphics 39, 6
+(2020). doi:10.1145/3414685.3417782
+Nicolas Holzschuch and Romain Pacanowski. 2017. A Two-scale Microfacet Reflectance
+Model Combining Reflection and Diffraction. ACM Trans. Graph. 36, 4, Article 66
+(July 2017), 12 pages. doi:10.1145/3072959.3073621
+Jakob Hoydis, Sebastian Cammerer, Fayçal Ait Aoudia, Merlin Nimier-David, Lorenzo
+Maggi, Guillermo Marcus, Avinash Vem, and Alexander Keller. 2022.
+Sionna.
+https://nvlabs.github.io/sionna/.
+Weizhen Huang, Julian Iseringhausen, Tom Kneiphof, Ziyin Qu, Chenfanfu Jiang, and
+Matthias B. Hullin. 2020. Chemomechanical simulation of soap film flow on spherical
+bubbles. ACM Transactions on Graphics 39, 4 (Jul 2020). doi:10.1145/3386569.3392094
+ITU. 2023. Recommendation ITU-R P.2040-3. https://www.itu.int/dms_pubrec/itu-
+r/rec/p/R-REC-P.2040-3-202308-I!!PDF-E.pdf
+KL Jensen and FA Buot. 1991. The methodology of simulating particle trajectories
+through tunneling structures using a Wigner distribution approach. IEEE Transac-
+tions on Electron Devices 38, 10 (1991), 2337–2347.
+James T. Kajiya. 1986. The rendering equation. In Proceedings of the 13th annual
+conference on Computer graphics and interactive techniques - SIGGRAPH ’86. ACM
+Press. doi:10.1145/15922.15902
+Tom Kneiphof, Tim Golla, and Reinhard Klein. 2019. Real-time Image-based Lighting of
+Microfacet BRDFs with Varying Iridescence. Computer Graphics Forum 38, 4 (2019),
+77–85. doi:10.1111/cgf.13772
+Andrey Krywonos. 2006. Predicting surface scatter using a linear systems formulation of
+non-paraxial scalar diffraction. Ph. D. Dissertation. University of Central Florida.
+P-A Lemieux, M U Vera, and D J Durian. 1998. Diffusing-light spectroscopies beyond the
+diffusion limit: The role of ballistic transport and anisotropic scattering. Phys. Rev.
+E Stat. Phys. Plasmas Fluids Relat. Interdiscip. Topics 57, 4 (April 1998), 4498–4515.
+Jacob Mackay and David Johnson. 2021. Millimetre wave ray tracing simulator with
+phase and beam effects using the Wigner distribution function. In Passive and Active
+Millimeter-Wave Imaging XXIV, Vol. 11745. SPIE, 43–57.
+D A McNamara, Carl W I Pistorius, and J A G Malherbe. 1990. Introduction to the
+uniform geometrical theory of diffraction. Artech House, Norwood, MA.
+Marco Mout, Michael Wick, Florian Bociort, Joerg Petschulat, and Paul Urbach. 2018.
+Ray tracing the Wigner distribution function for optical simulations. Optical Engi-
+neering 57, 1 (2018), 014106–014106.
+Hae-Won Son and Noh-Hoon Myung. 1999. A deterministic ray tube method for
+microcellular wave propagation prediction model. IEEE Transactions on Antennas
+and Propagation 47, 8 (1999), 1344–1350.
+Jos Stam. 1999. Diffraction shaders. In Proceedings of the 26th annual conference on
+Computer graphics and interactive techniques - SIGGRAPH ’99. ACM Press. doi:10.
+1145/311535.311546
+Shlomi Steinberg, Ravi Ramamoorthi, Benedikt Bitterli, Eugene d’Eon, Ling-Qi Yan, and
+Matt Pharr. 2024a. A Generalized Ray Formulation For Wave-Optical Light Transport.
+ACM Trans. Graph. 43, 6, Article 241 (Nov. 2024), 15 pages. doi:10.1145/3687902
+Shlomi Steinberg, Ravi Ramamoorthi, Benedikt Bitterli, Arshiya Mollazainali, Eugene
+D’Eon, and Matt Pharr. 2024b. A Free-Space Diffraction BSDF. ACM Trans. Graph.
+43, 4, Article 113 (jul 2024), 15 pages. doi:10.1145/3658166
+Shlomi Steinberg, Pradeep Sen, and Ling-Qi Yan. 2022. Towards Practical Physical-
+Optics Rendering. ACM Transactions on Graphics 41, 4 (Jul 2022), 1–13. doi:10.1145/
+3528223.3530119
+Shlomi Steinberg and Ling-Qi Yan. 2021. A Generic Framework for Physical Light
+Transport. ACM Transactions on Graphics 40, 4 (Aug 2021), 1–20. doi:10.1145/
+3450626.3459791
+Shlomi Steinberg and Ling-Qi Yan. 2022. Rendering of Subjective Speckle Formed by
+Rough Statistical Surfaces. ACM Trans. Graph. 41, 1, Article 2 (feb 2022), 23 pages.
+doi:10.1145/3472293
+Antoine Toisoul and Abhijeet Ghosh. 2017. Practical Acquisition and Rendering of
+Diffraction Effects in Surface Reflectance. ACM Transactions on Graphics 36, 5 (Jul
+2017), 1–16. doi:10.1145/3012001
+Eric Veach. 1997. Robust Monte Carlo Methods For Light Transport Simulation. Ph. D.
+Dissertation. Stanford University.
+Eric Veach and Leonidas J Guibas. 1997. Metropolis light transport. In Proceedings of
+the 24th annual conference on Computer graphics and interactive techniques. 65–76.
+Z. Velinov, S. Werner, and M. B. Hullin. 2018. Real-Time Rendering of Wave-Optical
+Effects on Scratched Surfaces. Computer Graphics Forum 37, 2 (2018), 123–134.
+doi:10.1111/cgf.13347
+Frank Weinmann. 2006. Ray tracing with PO/PTD for RCS modeling of large complex
+objects. IEEE Transactions on Antennas and Propagation 54, 6 (2006), 1797–1806.
+doi:10.1109/TAP.2006.875910
+2025-08-26 01:41. Page 11 of 1–12.
+Preprint
+
+
+===== wave-tracing-2025 | page 12/12 =====
+
+12
+•
+Shlomi Steinberg and Matt Pharr
+Sebastian Werner, Zdravko Velinov, Wenzel Jakob, and Matthias Hullin. 2017. Scratch
+Iridescence: Wave-Optical Rendering of Diffractive Surface Structure. Transactions
+on Graphics (Proceedings of SIGGRAPH Asia) 36, 6 (Nov. 2017). doi:10.1145/3130800.
+3130840
+Haofan Yi, Danping He, P Takis Mathiopoulos, Bo Ai, Juan Moreno Garcia-Loygorri,
+Jianwu Dou, and Zhangdui Zhong. 2022. Ray tracing meets terahertz: Challenges
+and opportunities. IEEE Communications Magazine (2022).
+Yunchen Yu, Mengqi Xia, Bruce Walter, Eric Michielssen, and Steve Marschner. 2023.
+A Full-Wave Reference Simulator for Computing Surface Reflectance. 17 pages.
+doi:10.1145/3592414
+Preprint
+2025-08-26 01:41. Page 12 of 1–12.

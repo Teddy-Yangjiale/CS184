@@ -1,0 +1,2096 @@
+
+
+===== caustic-surface-light-2025 | page 1/17 =====
+
+IEEE TRANSACTIONS ON VISUALIZATION AND COMPUTER GRAPHICS
+1
+Computational Caustic Design for Surface Light
+Source
+Sizhuo Zhou, Yuou Sun, Bailin Deng, Member, IEEE, and Juyong Zhang†, Member, IEEE
+Abstract—Designing freeform surfaces to control light based on real-world illumination patterns is challenging, as existing caustic lens
+designs often assume oversimplified point or parallel light sources. We propose representing surface light sources using an optimized set
+of point sources, whose parameters are fitted to the real light source’s illumination using a novel differentiable rendering framework. Our
+physically-based rendering approach simulates light transmission using flux, without requiring prior knowledge of the light source’s
+intensity distribution. To efficiently explore the light source parameter space during optimization, we apply a contraction mapping that
+converts the constrained problem into an unconstrained one. Using the optimized light source model, we then design the freeform lens
+shape considering flux consistency and normal integrability. Simulations and physical experiments show our method more accurately
+represents real surface light sources compared to point-source approximations, yielding caustic lenses that produce images closely
+matching the target light distributions.
+Index Terms—differentiable rendering, surface optimization, light source modeling, computational design.
+✦
+1
+INTRODUCTION
+T
+HE interaction between light and objects can produce
+various captivating illumination effects, such as caustic
+phenomena that occur when light undergoes refraction
+or reflection. Precisely controlling this caustic process by
+designing freeform surfaces has important applications in
+computer graphics [1], [2] and geometric optics [3], [4].
+Additionally, accurately controlling the caustic process to
+achieve desired flux distributions has broad applications in
+fields such as art design, interior lighting, and industrial
+manufacturing.
+In the field of non-imaging optics, the shape of freeform
+surface lenses is typically designed to control various proper-
+ties of light in order to create the desired illumination effects.
+Freeform surfaces here refer to optical surfaces without linear
+or rotational symmetry [5]. They offer a high degree of
+freedom, thereby enabling precise control over light beams.
+Existing methods in computer graphics typically recon-
+struct the final freeform surface by calculating certain shape
+characteristics of the required lens, such as its normals [1]
+or visibility diagram [2]. However, these methods almost
+always assume Lambertian point light sources or parallel
+light [1], [2], [6], which are inaccurate for real-world scenarios
+as ideal point or parallel light sources do not exist. Instead,
+real light sources often have a finite area. This discrepancy
+affects the accuracy of caustic design, causing the designed
+lenses to produce blurred images on the receiving plane.
+The root cause of this issue is the failure to accurately
+simulate the emission pattern of LED surface light sources
+during the design process of freeform caustic lenses. When
+using a point light source or parallel light for illumination
+•
+S. Zhou is with the School of Mathematical Sciences, University of Science
+and Technology of China and Shanghai Innovation Institute.
+•
+Y. Sun, and J. Zhang are with the School of Mathematical Sciences,
+University of Science and Technology of China.
+•
+B. Deng is with the School of Computer Science and Informatics, Cardiff
+University.
+†Corresponding author. Email: juyong@ustc.edu.cn.
+simulation, each point in space receives light from only
+one direction. In contrast, with a surface light source, each
+position in space receives light from multiple directions
+emitted by the extended source. Especially when the light
+source is close to the object or is itself large, using a
+Lambertian point light source to simulate actual illumination
+will significantly compromise the accuracy of caustic design.
+Additionally, existing methods for simulating surface
+light source illumination typically sample rays based on the
+actual light intensity distribution on the surface [7], [8], [9].
+This deviates from true physical behavior and incurs high
+computational costs. More critically, the exact light intensity
+distribution of an LED surface light source is often unknown,
+making it impossible for ray-sampling-based methods to
+accurately simulate illumination [10].
+To overcome these issues, we propose a novel freeform
+caustic lens design scheme based on surface light sources.
+Our method is divided into two parts: 1) modeling and
+optimizing an LED surface light source representation, and
+2) optimizing the lens shape under the optimized surface
+light source model. We first propose a novel surface light
+source representation strategy and construct a fully differen-
+tiable rendering framework based on the light path control
+characteristics of freeform surfaces. This rendering frame-
+work accurately simulates the propagation and refraction
+behavior of light and can be used for both optimization of
+our light source model and optimization of the caustic lens
+shape.
+Specifically, we first select a set of lenses with known
+shapes represented by triangle meshes. We then use the
+differences in brightness distribution between the rendered
+patterns, produced by the interaction of the light source
+model with these lenses, and the corresponding reference
+patterns to drive the optimization of the model parameters.
+This approach enables the model to continuously improve its
+ability to accurately represent the illumination characteristics
+of the surface light source. Afterwards, using the optimized
+arXiv:2511.09361v2  [cs.GR]  22 Nov 2025
+
+
+===== caustic-surface-light-2025 | page 2/17 =====
+
+IEEE TRANSACTIONS ON VISUALIZATION AND COMPUTER GRAPHICS
+2
+Realistic Surface
+Light Source
+Light Source Model
+Target Image
+Point Light Source
+Based
+Our Method
+Fig. 1. The rendered results of the optimized freeform surface lens under the illumination of a surface light source according to the target image. The
+above lenses were obtained through the caustic design based on a point light source and an optimized surface light source model, respectively. The
+light pattern produced by the caustic lens based on our method closely resembles the target image. Some regions are enlarged for better inspection
+of details.
+area light source model, we constructed an optimization
+scheme for the shape of the freeform surface lens.
+It is worth noting that optimizing the parameters of the
+surface light source model with the help of caustic lenses
+with known shapes is a crucial aspect of our design. In
+the optimization process of the model, the introduction of
+caustic lenses can amplify the differences in the propagation
+directions of various light rays, clearly highlighting the
+illumination characteristics of the surface light source. At
+the same time, using caustic lenses can form meaningful
+patterns on the receiving plane, making it easier for us to
+evaluate image details. To address the issue of imprecision in
+ray sampling strategies, we introduced the concept of light
+flux. By calculating the light flux within a region, we achieve
+an exact simulation of the light propagation process. This
+light energy transfer approach is more accurate in a physical
+sense and does not require prior knowledge of the intensity
+distribution on the light source surface when combined with
+our light source model. Furthermore, considering that the
+inherent size of the surface light source introduces boundary
+constraints, we designed a contraction mapping [11] to
+transform the constrained optimization problem into an
+unconstrained one, which can be efficiently solved by using
+the L-BFGS algorithm [12]. To further reduce the time cost of
+the rendering process, we incorporated a parallel design into
+the optimization process.
+This paper addresses a fundamental limitation in com-
+putational caustic design: the rendering blur caused by
+idealized point or parallel light source assumptions. By in-
+troducing a physically-based, optimizable model for surface
+light sources, our method significantly improves the accuracy
+of caustic generation (see Figure 1). This advance is critical
+for a variety of practical applications where precision is im-
+portant, including artistic design [13], industrial lighting [14],
+[15], solar energy collection [16], [17], [18], and the design
+of advanced optical instruments and lenses for medical,
+biochemical [19], [20], and astronomical applications [21].
+In summary, our contributions include:
+• A concise and effective representation model for surface
+light sources, which can reflect the lighting characteristics
+of real light sources;
+• A differentiable rendering framework and algorithm to
+optimize model parameters based on this rendering frame-
+work;
+• A freeform surface optimization method that applies an
+optimized surface light source model, which results in a
+rendered image closer to the target image compared to a
+point light source-based caustic design.
+2
+RELATED WORK
+Freeform caustic surface design.
+Freeform surfaces are
+special optical devices commonly used to achieve beam
+control. Specifically, by designing a high degree of freedom
+optical surface (usually a lens), the light emitted by the
+light source is redirected to produce a specified irradiance
+distribution [22]. Compared with traditional optical surfaces
+(including spherical, non-spherical, and cylindrical surfaces),
+due to the huge degree of freedom of freeform surfaces, the
+performance of optical systems can reach new heights in
+fields such as imaging [23], [24], [25], illumination [26], [27],
+and laser beam shaping [28]. In fact, many real-life scenarios
+require specialized optical systems, such as automobile
+headlights [14] and projectors [29], [30]. Thus, it can be seen
+that freeform surfaces play an important role in achieving
+specific control of light beams [27], [31].
+Another type of work was first proposed by Finckh et
+al. [32]. They used freeform surfaces to refract or reflect
+light to form the desired caustic image. This work uses a
+stochastic approximation optimization algorithm to deter-
+mine the surface geometry from the caustics. This requires a
+large amount of computation and cannot achieve accurate
+control of areas with weak light intensity. Subsequent work
+starts from the principle of local energy conservation and
+formulates it as a problem of solving a class of Monge-
+Amp`ere equations [14], [33], [34]. These methods assume
+that the lens shape is a continuous and smooth surface,
+thereby reducing artifacts to achieve higher-quality images.
+Some other works solve the shape of the freeform surface by
+means of the integral normal field [13] or formulate it as a
+Poisson reconstruction problem [35]. However, the freeform
+surfaces obtained based on these methods cannot produce
+high-contrast images. Schwartzburg et al. [1] solved this
+problem. They obtained the lens surface by calculating the
+normal of the lens surface through optimal transport, which
+can produce a pure black area on the receiving plane. Meyron
+et al. [2] proposed an algorithm to solve the optimal transport
+problem using visibility maps, further reducing the loss of
+light energy. Marc et al. [36] combined caustic design with
+novel neural denoising components and a learned gradient
+
+
+===== caustic-surface-light-2025 | page 3/17 =====
+
+IEEE TRANSACTIONS ON VISUALIZATION AND COMPUTER GRAPHICS
+3
+Fig. 2. Light source model optimization process: optimizing the surface light source model based on the difference between the rendering result and
+the reference image.
+descent optimizer, improving the stability and quality of the
+iterative reconstruction process.
+Differentiable rendering.
+Differentiable rendering is in-
+cluded in the field of inverse rendering, which estimates
+physical parameters from imaging data using a differentiable
+renderer. These rendering methods describe the image
+formation process in a differentiable way and can effectively
+calculate the gradients of relevant free parameters. Therefore,
+they can be used in parameter search strategies based on
+gradient descent. In caustic design, differentiable rendering
+is used to obtain images generated by the joint action of
+illumination sources and free lenses, as well as the gradients
+of relevant physical parameters. However, traditional render-
+ing methods usually include non-differentiable components.
+Rasterization [37] is a typical example. Therefore, it is not
+easy to directly optimize the physical properties in the
+rendering scene based on the simulation results. In recent
+years, many works have been studying how to make the
+rendering process differentiable. Liu et al. [38] proposed
+soft rasterization, which uses probability distributions and
+aggregation functions to make the rendering pipeline differ-
+entiable. Other works [39], [40], [41], [42] solve the problem
+of computing gradients with respect to the scene geometry,
+which is not differentiable due to the discontinuity of the
+mesh. After that, some differentiable renderers have emerged,
+such as Mitsuba2 [43], [44], [45], Mitsuba3 [46], [47], and
+Path Replay Backpropagation [48]. The ray tracing-based
+approach in Mitsuba3 can be applied to caustic design. How-
+ever, since this renderer is not specifically tailored for caustic
+design, there remains considerable room for improvement
+in its rendering results. Wang et al. [49] proposed a strategy
+based on ray tracing and deep lens systems, which can be
+applied to a variety of inverse design problems. However,
+certain limitations still remain regarding its performance and
+applicability.
+In addition to path tracing algorithms, photon mapping
+is also a classic global illumination algorithm. Originally
+proposed by Jensen in 1996 [50], it efficiently simulates
+complex lighting effects such as caustics by tracing photon
+paths and constructing a photon map. To optimize memory
+usage, Hachisuka et al. [51] introduced Progressive Photon
+Mapping (PPM), which performs photon tracing in multi-
+ple iterations. Several other studies have also introduced
+various improvements to the photon mapping algorithm.
+Stochastic Progressive Photon Mapping (SPPM) [52] enabled
+the support of effects such as glossy reflections. Georgiev
+et al. [53] and Hachisuka et al. [54] reformulated photon
+mapping as a vertex merging technique compatible with
+path integration, which laid the foundation for differentiable
+photon mapping. Xing et al. [55] leveraged Extended Path
+Space Manifolds (EPSMs) to achieve differentiability of path
+vertex positions and color contributions with respect to the
+scene parameters. However, the rendered results still exhibit
+significant noise and continue to require light path sampling.
+To achieve a physically more accurate caustic design, we use
+a differentiable framework based on flux transport.
+Optimal Transport in Caustic Design.
+The problem of
+caustic lens design is essentially an issue of adjusting
+the light field distribution. Finding the correspondence
+between two density distributions is an important problem
+in mathematics, and optimal transport (OT) is an effective
+tool for solving this problem. It finds an optimal way to
+transfer one mass distribution into another, minimizing the
+total transportation cost. This problem was first proposed
+by the French mathematician Gaspard Monge in 1781 [56]
+and was later extended by Kantorovich to allow for the
+splitting of mass [57]. The classic optimal transport problem
+includes both discrete and continuous forms. Subsequently,
+an important semi-discrete form emerged, which seeks an
+optimal mapping that converts a discrete distribution into
+a continuous one [58], [59]. [1], [28], [60], [61] all adopt the
+optimal transport strategy. However, this strategy is only
+suitable for caustics based on point light sources or parallel
+light. Taking the triangle mesh representation of a lens as an
+example, when the input light source is a surface light source,
+each triangular area on the lens surface no longer controls
+only a single light ray. Our approach solves the above issue.
+3
+METHOD
+We aim to develop a design method for the shape of caustic
+lenses based on surface light sources. Given a surface light
+
+
+===== caustic-surface-light-2025 | page 4/17 =====
+
+IEEE TRANSACTIONS ON VISUALIZATION AND COMPUTER GRAPHICS
+4
+Rectangular Light Source
+Surface Light Source Model
+Fig. 3.
+The surface light source model. Each point light source in
+this model contains three attributes: x-coordinate, y-coordinate, and
+its illumination intensity qk.
+source and a target image, our computational caustic design
+approach consists of two key steps:
+1) First, we approximate the surface light source with a
+small number of point light sources (see Figure 3), and
+optimize their positions and intensities by minimizing
+the differences between their caustic images on a set of
+reference lens shapes. These point light sources constitute
+our light source model.
+2) Afterwards, we utilize the optimized light source model
+and rendering models (see Figure 4) to obtain the rendered
+images, while simultaneously optimizing the lens shape
+based on the differences between these images and the
+target images.
+Essentially, the rendered images obtained based on our
+light source model are the superposition of caustic images
+formed by individual point light sources in terms of flux. It
+is worth noting that both steps use the same differentiable
+method to model the rendering process. The main differences
+between the two steps lie in the variables being optimized
+and some design details, such as the loss terms. In the
+following, we present the details of our rendering model.
+3.1
+Surface light source representation model
+For simplicity, we consider surface light sources with planar
+shapes in this paper, i.e., the light-emitting surface can be
+represented as a 2D region D within the plane z = 0. To
+optimize a lens shape according to a target image and a
+surface light source, we need to derive a rendering model
+that determines the caustic image for any given lens shape.
+However, since the planar light source contains a continuous
+light-emitting region, direct computation of the caustic
+image would require integrating the caustics resulting from
+each point in the region, which is complicated and time-
+consuming.
+To simplify the rendering model, we approximate the
+planar light source using N ideal point light sources
+{lk | k = 1, 2, . . . , N}. Each point light source lk has three
+attributes: the local x- and y-coordinates (xk, yk) in the light
+source plane, and the light intensity weight qk. We can easily
+determine the resulting caustic image of these N point light
+sources by superposition of the caustics from each individual
+point light source.
+To approximate the surface light source, we simultane-
+ously optimize the attributes {(xk, yk, qk)} of all point light
+Light Source
+Model
+Lens
+Receiving Plane
+Rendered Image
+Fig. 4. Our rendering model. It consists of three components: an input
+light source, a lens, and a receiving plane. The light undergoes two
+refractions through the front and back surfaces of the lens before forming
+an image on the receiving plane.
+sources such that the caustic image is as close to the ground-
+truth caustics of the surface light source as possible. This
+optimization process ensures that our light source model
+faithfully represents the illumination characteristics of the
+original surface light source.
+3.2
+Luminous flux
+After modeling the surface light source, we introduce the
+concept of luminous flux to render the illumination intensity
+of each point light source onto every pixel of the resulting
+image. In our rendering model, for a certain area on the
+front surface of the lens, its luminous flux is determined by
+the solid angle generated by the illumination of point light
+sources. The luminous flux on the back surface of the lens is
+determined according to the corresponding relationship with
+the area on the front surface, which we call the source flux.
+Source flux. We assume that the front surface of each lens is
+a plane positioned parallel to the light source plane, while the
+back surface is a freeform surface represented by a triangle
+mesh. We denote the domain of the front surface as U ⊂R2.
+The back surface can then be represented as a height field
+over U.
+In this paper, we assume the front and back surfaces
+of the lens are regulated with the same connectivity and
+with one-to-one correspondence between their vertices and
+edges. For a single point light source lk, to determine the
+flux passing through a triangle t′
+i on the back surface, we use
+Snell’s law to compute its corresponding triangle tk
+i on the
+front surface (see Section 3.3 for more details). Assuming no
+energy loss during the refraction process, we have
+Φk(t′
+i) = Φk(tk
+i ),
+(1)
+where Φk(I) represents the flux passing through the region I
+given by lk. Note that the flux Φk(tk
+i ) is directly proportional
+to the solid angle Ωk
+i of the triangle tk
+i with respect to the
+point light source lk, which is the area of the spherical
+triangle formed by the three unit vectors connecting lk and
+the three vertices of tk
+i (see Figure 5) and can be computed as
+Ωk
+i = 2 arctan
+
+⃗r1 · (⃗r2 × ⃗r3)
+1 + ⃗r1 · ⃗r2 + ⃗r1 · ⃗r3 + ⃗r2 · ⃗r3
+
+,
+(2)
+After normalization, we obtain the flux Φk(t′
+i) passing
+through triangle t′
+i given by the point light source lk.
+3.3
+Differentiable rendering
+In order to solve the corresponding relationship of triangular
+areas on the front and back surfaces of the lens and on
+
+
+===== caustic-surface-light-2025 | page 5/17 =====
+
+IEEE TRANSACTIONS ON VISUALIZATION AND COMPUTER GRAPHICS
+5
+Fig. 5. Schematic diagram of solid angle calculation: ⃗r1, ⃗r2 and ⃗r3 are
+the unit vectors connecting lk and the three vertices of tk
+i .
+the receiving plane, we need to model the process of
+light propagation and rendering. Given a freeform surface
+represented by a triangle mesh and an input light source, our
+objective is to develop a differentiable algorithm to compute
+the flux distribution on the receiving plane, and adjust the
+distribution to closely match the reference image.
+Reverse solution of incident triangle.
+Assuming the
+position of the light source lk has been given (without loss
+of generality, translate it to the origin O), we first need to
+determine the position of triangle tk
+i on the front surface. In
+other words, for each vertex A′(xA′, yA′, zA′) on the back
+surface, we want to find the refraction point A, that is, the
+intersection point of the light ray passing through A′ and the
+front surface. Assume that the front surface lies in the plane
+z = z0 and has a normal n = (0, 0, 1), then the coordinate
+of A can be expressed as (kxA′, kyA′, z0), where k is an
+unknown constant. According to Snell’s Law (see Figure 6),
+we can deduce that
+(ηb −a) ∝n,
+(3)
+where η is the refractive index of the medium, b and a
+are unit vectors of −−→
+AA′ and −→
+OA, respectively. Using this
+relationship, we can further derive the following quartic
+equation about k:
+(η2 −1)(x2
+A′ + y2
+A′) · k4 −2(η2 −1)(x2
+A′ + y2
+A′) · k3
++[(η2 −1)(x2
+A′ + y2
+A′) + η2 · z2
+0 −(zA′ −z0)2] · k2
+−2η2z2
+0 · k + η2z2
+0 = 0.
+(4)
+It is easy to prove the existence of solutions to the quartic
+equation within the interval [0, 1]. Therefore, we can solve the
+equation to obtain the specific coordinates of the intersection
+point A on the front surface. If the position of the point light
+source is not at the origin, a coordinate transformation is
+required to convert it into the same form. Note that to ensure
+the model remains differentiable, algorithms for solving
+approximate solutions of high-order equations cannot be
+used here.
+Recall that for any triangular region t′
+i on the back surface
+of the lens, its source flux Φk(t′
+i) is equal to the source flux
+Φk(ti) of the corresponding triangle ti on the front surface
+(see Equation (1)). Therefore, the flux of all triangles on the
+back surface can be determined by calculating the flux of the
+corresponding triangles on the front surface. Next, we will
+establish the flux relationship between the triangular area
+on the back surface of the lens and each pixel area on the
+receiving plane.
+Target flux. The light passing through the triangle t′
+i on
+the surface will undergo a second refraction, and the exit
+Refractive process
+Law of refraction
+Fig. 6. From left to right: the refraction process of light on the front
+surface of the lens; according to Snell’s law, the relationship between the
+incident light a, refracted light b and the surface normal n.
+direction b′ can be calculated by the following equation
+derived from Snell’s law:
+b′ = n′q
+1 + η2((a′ · n′)2 −1) + η(a′ −(a′ · n′)n′),
+(5)
+where a′ and n′ are the unit vector of incident light and the
+normal of triangle t′
+i, respectively. Since the back surface is
+represented as a triangle mesh, each point inside triangle t′
+i
+has the same surface normal:
+n′
+i =
+(v2
+i −v1
+i ) × (v3
+i −v1
+i )
+∥(v2
+i −v1
+i ) × (v3
+i −v1
+i )∥,
+(6)
+where v1
+i , v2
+i , v3
+i are the vertices of t′
+i in the positive ori-
+entation. The light passing through t′
+i will intersect with
+the receiving plane, forming a projection triangle area t′′
+i .
+Each vertex of triangle t′′
+i is located on the outgoing ray b′
+i
+corresponding to the vertex of triangle t′
+i on the back surface
+of the lens. Since there is no energy loss during the refraction
+process, the following holds:
+Φk(t′′
+i ) = Φk(t′
+i).
+(7)
+Assuming that the distribution of flux is uniform within
+any sufficiently small triangular region, we can allocate the
+source flux of the projected triangle t′′
+i to each pixel pj on
+the plane based on the intersecting area, as shown in the
+following equation:
+Φk
+ij = Φk
+i
+A(t′′
+i ∩pj)
+A(t′′
+i )
+.
+(8)
+where Φk
+ij represents the source flux contributed by the
+image triangle t′′
+i to the pixel pj, A(·) denotes the area size of
+a region. Therefore, the total flux Φj of a pixel pj is the sum
+of the flux assigned to this pixel by each projection triangle
+t′′
+i on the back surface of the lens:
+Φj =
+N
+X
+k=1
+Nt
+X
+i=1
+Φk
+ij,
+(9)
+where Nt is the number of triangles, Φk
+ij is the flux allocated
+to pixel pj by the k-th point light source lk through the
+triangle t′′
+i . Figure 7 provides an intuitive illustration. We
+refer to Φj as the target flux on the receiving plane. In order
+to reduce the cost of the rendering process, we only consider
+the projected triangles that intersect with each pixel in our
+calculations. For each projection triangle t′′
+i , the scan-line
+algorithm can be used within its bounding box to determine
+
+
+===== caustic-surface-light-2025 | page 6/17 =====
+
+IEEE TRANSACTIONS ON VISUALIZATION AND COMPUTER GRAPHICS
+6
+Fig. 7. The refraction process on the back surface of lenses with different
+shapes and the rendering process on the receiving plane. The area with
+more luminous flux distribution on the receiving plane will have higher
+brightness.
+which pixels it intersects with. Therefore, Equation (9) can
+be further rewritten as:
+Φj =
+X
+k
+X
+i∈Ij
+Φk
+ij,
+(10)
+where Ij represents the index set of all projected triangles
+intersecting with pj.
+Gamma correction. We have obtained the target flux of each
+pixel area on the receiving plane. Next, we will establish
+the relationship between it and the pixel grayscale value.
+Assuming the total brightness of the reference image is G˜Φ,
+then the grayscale value ˜gj of pixel pj on the reference image
+satisfies:
+np
+X
+j=1
+γ(˜gj) = G˜Φ,
+(11)
+where γ(·) is the gamma correction, np is the total number of
+pixels on the reference image. Denote γj = γ(gj), where gj is
+the grayscale value at pixel pj in the rendered image. There
+is a proportional relationship between γj and the target flux
+Φj. Thus, we can derive that:
+gj = γ−1
+
+G˜Φ ·
+Φj
+Pnp
+v=1 Φv
+
+(12)
+At this point, we have calculated the grayscale value of each
+pixel on the rendered image.
+This rendering model accurately allocates luminous flux
+in a physically based way, eliminating the need for sampling
+light rays, thus significantly reducing computational costs
+and ensuring the differentiability of the entire process. In the
+next subsection, we will employ a gradient-based solver to
+optimize the variables of our light source model.
+3.4
+Optimization design for light source model
+After establishing the above differentiable rendering method,
+we can optimize our light source model based on its proper-
+ties. For a surface light source of a certain size, we give an
+appropriate numerical parameter N and choose a relatively
+uniform initial distribution {(xk, yk) | k = 1, 2, . . . , N}. The
+initial intensity parameters qk of each ideal point light source
+are equal. By optimizing their positions and light intensity,
+we ensure that the model, after passing through a lens
+with a known shape, forms an image that closely matches
+the reference image on the receiving plane (see Figure 2).
+Here, the reference image refers to the caustic image formed
+after the surface light source passes through the input lens.
+Next, we will introduce our philosophy and formulas in
+optimization design.
+Reference data. In order to enable the light source model
+to improve its expression ability of surface light source
+characteristics during the optimization process, we need
+to utilize two types of data: the input lens and its reference
+image.
+To generate intricate lens shapes that can serve as effective
+references in the optimization process, we select target
+images with specific details and derive the input lenses
+through an optimization process that jointly considers flux
+consistency and normal integrability.
+After obtaining these input lenses, we generate their
+caustic images under a real surface light source using
+LuxCoreRender1, a physically-based renderer, referred to
+as reference images. These reference images are the ground
+truth in the optimization process of our light source model.
+Optimization settings. We take a rectangular light source
+with a side length of B as an example. Assume that the
+plane where the surface light source, the front surface of
+the lens, and the receiving plane are located is parallel (all
+perpendicular to the z-axis of the spatial coordinate system),
+and the x and y-coordinates of their centers are all zero.
+The front surfaces of these lenses are rectangles with side
+lengths of w × h. The back surfaces are composed of triangle
+meshes, and their boundaries are rectangular and identical
+to the front surfaces. Denote the number of vertices of the
+triangle mesh on the boundary of the back surface as wv and
+hv, respectively. The imaging area Ut on the receiving plane
+is set to [−W/2, W/2] × [−H/2, H/2], and the resolution is
+Wp ×Hp. And we let the z-coordinate of the plane where the
+surface light source is located be zero, the z-coordinate of the
+planes where the front surface of the lens and the receiving
+plane are located be zf, zr.
+We use the following initialization method for the light
+source model to be optimized: for the position parameters
+(xk, yk), we choose a relatively uniform initial distribution
+within the rectangular area, and at the same time make their
+initial intensity parameters all equal. Since the rectangular
+light source has symmetry, we can further limit the position
+parameters of the model to be optimized in the first quadrant
+of the x −y plane, and then obtain the information of the
+other three quadrants through symmetry.
+Flux term. To quantify the difference between the rendered
+image and the reference image, we introduce a term rep-
+resenting the mean squared error of the pixel flux values
+between the two images:
+Eflux =
+Np
+X
+j=1
+(Φj −˜Φj)2,
+(13)
+where Φj and ˜Φj are the target flux of the rendered image
+and the reference image at pixel pj. Among them, ˜Φj can be
+calculated by the following equation:
+˜Φj = γ(˜gj)
+(14)
+By penalizing Eflux, we can ensure that the rendered result
+becomes increasingly close to the reference image.
+1. https://luxcorerender.org/
+
+
+===== caustic-surface-light-2025 | page 7/17 =====
+
+IEEE TRANSACTIONS ON VISUALIZATION AND COMPUTER GRAPHICS
+7
+Reference Image
+Initialization
+1st Optimization
+10th Optimization
+100th Optimization
+Final Result
+Fig. 8. The process of model initialization and optimization iterations. The first line is a visualized image of model parameters, x and y coordinates
+are the model’s position parameters, while the color depth of the points indicates the light intensity parameters q. Darker colors represent higher light
+intensities at those positions. The second line is the rendered result based on the current model. The third line is the color coding of the average pixel
+error between the rendered result and the observed image. The labels at the bottom display the current iteration count of the model.
+Optimization problem.
+Next, we will present the opti-
+mization problem defined for the light source model. Before
+presenting the specific optimization problem, we first define
+two boundary penalty terms. These two boundary terms
+are respectively for the position parameters and intensity
+parameters of the light source model. Since the position
+of each primitive lk in the light source model needs to be
+inside the actual surface light source, we define the position
+boundary term:
+Ebp =
+N
+X
+k=1
+
+σ(|xk|−B
+2 )(|xk|−B
+2 )2+σ(|yk|−B
+2 )(|yk|−B
+2 )2
+
+,
+(15)
+The definition of σ(·) here is as follows:
+σ(x) =
+(
+1,
+|x| > 0,
+0,
+|x| ≤0.
+(16)
+At the same time, since the intensity of lk is not less than
+zero, we define the light intensity boundary term:
+Ebi =
+N
+X
+k=1
+ σ(−qk) · q2
+k
+.
+(17)
+The introduction of these two hard constraints ensures that,
+after each optimization iteration, our light source model
+remains physically consistent (see Figure 8). Thus, our
+optimization problem can be expressed as:
+min
+Etotal = λ1
+M
+X
+m=1
+E(m)
+flux + λ2Ebp + λ3Ebi,
+(18)
+where {λi} are user-specified weights, E(m)
+flux
+is the flux
+penalty term for the m-th set of reference data, and M is the
+total number of input lenses.
+Contraction function.
+In the above optimization prob-
+lem (18), the penalty for boundary constraints does not nec-
+essarily ensure that these parameters are strictly controlled
+within the boundaries. Furthermore, the selection of the
+coefficient of each penalty term has a significant impact on
+the optimization process and may lead to early termination.
+Inspired by [11], we design a monotonic and continuously
+differentiable contraction function for the position parame-
+ters:
+T (x) =
+
+
+
+
+
+
+
+B
+2 (|x| −1),
+|x| ≤1,
+B
+2 (1 −1
+|x|),
+|x| > 1.
+(19)
+We regard the currently to-be-optimized parameters (xk, yk)
+as intermediate variables and construct new variables
+(ˆxk, ˆyk) that are directly optimized (see Figure 10). The
+relationship between them satisfies:
+xk = T (|ˆxk|),
+yk = T (|ˆyk|),
+(ˆxk, ˆyk ∈R).
+(20)
+Similarly, we also construct new optimization variables
+ˆqk ∈R for the light intensity parameters, which satisfy:
+qk = |ˆqk|. Thus, the optimization problem (18) is transformed
+into the following unconstrained optimization problem:
+min
+M
+X
+m=1
+E(m)
+flux ( ˆX, ˆY , ˆQ) =
+X
+m
+X
+j
+(Φj
+m −˜Φj
+m)2,
+(21)
+where ˆX = {ˆxk}, ˆY = {ˆyk} and ˆQ = {ˆqk} are directly
+optimized parameters of the model, Φj
+m and ˜Φj
+m respectively
+represent the target fluxes of the m-th group of rendered
+images and reference images. It is worth emphasizing that
+since the contraction function has good differentiability, the
+entire optimization problem is fully differentiable throughout
+
+
+===== caustic-surface-light-2025 | page 8/17 =====
+
+IEEE TRANSACTIONS ON VISUALIZATION AND COMPUTER GRAPHICS
+8
+Input Lens
+Reference Image
+Our Model(N = 64)
+Fig. 9. The image rendered based on our light source model. The rendering results obtained by our method are very close to the observed images
+under the real surface light source. The number in the lower right corner of each image represents the MAE with the reference image, and the
+color-coding shows pixel-wise absolute error (see Equation (31)) compared to the reference image.
+T (x)
+Fig. 10. Left: contraction function curve. Right: mapping diagram of
+position parameters (xk, yk) (assuming B = 1 in the figures). The
+rectangular area in the lower left corner of the right figure is the physical
+boundary of our light source model.
+the process. Through the above optimization process, the ex-
+pression ability of the light source model for the illumination
+characteristics of the surface light source can be continuously
+improved. It should be noted that, in the actual optimization
+process, we first perform a reverse contraction transformation
+T −1(·) on the initial values of (xk, yk, qk) to obtain the initial
+values of (ˆxk, ˆyk, ˆyk). After optimizing to convergence, the
+results are then mapped back to the actual region using the
+mapping T (·).
+To solve unconstrained optimization problems (21), we
+use the L-BFGS algorithm [12] to compute the numerical
+solution and leverage GPU parallel computation for the
+target value and its gradient (discussed in the next section).
+Due to the scale and complexity of the aforementioned
+optimization problem, we use an automatic differentiation
+data structure to precisely evaluate the gradient after each
+iteration.
+Parallel design. Due to the high computational costs for
+the rendering and optimization process, we have designed
+a parallel algorithm to improve the solution efficiency. The
+scale of the optimization problem (21) mainly depends on
+the size of the number parameter N of the light source model
+and the number of triangle meshes on the back surface of the
+input lens. It is easy to find that in the actual optimization
+process, the latter is often much larger than the former.
+Therefore, we take each triangle mesh on the back surface as
+a thread for parallel design.
+Another important factor affecting the efficiency of the
+algorithm is the calculation of the gradient. The gradient
+of the optimization problem (21) can be obtained by the
+following formula:
+∂E
+∂v =
+X
+m
+X
+j
+∂
+∂v (Φj
+m( ˆX, ˆY , ˆQ) −˜Φj
+m)2,
+(22)
+where v ∈{xk}∪{yk}∪{qk}. To solve these gradient values,
+
+
+===== caustic-surface-light-2025 | page 9/17 =====
+
+IEEE TRANSACTIONS ON VISUALIZATION AND COMPUTER GRAPHICS
+9
+Fig. 11. Caustic lens optimization process: using the optimized light source model as input to guide the optimization of the caustic surface through
+image loss and smooth loss.
+we use an automatic differentiation data structure in the
+algorithm. Therefore, each step involves the calculation of
+3N partial derivatives (each intermediate variable is 3N + 1
+dimensional, including variable values and partial derivative
+values), which incurs huge time and space overhead. To
+solve this problem, we make full use of the characteristics of
+this light source model and propose an algorithm that can
+significantly reduce the computational cost. We re-express
+the optimization problem (21) as:
+min
+E( ˆX, ˆY , ˆQ) =
+X
+m
+X
+j
+(
+X
+i
+X
+k
+Φk,m
+ij
+−˜Φj
+m)2,
+(23)
+where Φk,m
+ij
+represents the flux allocated by lk to pixel pj of
+the m-th rendered image through t′
+i. With the help of the
+chain rule, we can infer that:
+∂E
+∂vs
+= 2
+X
+m
+X
+j
+(Φj
+m −˜Φj
+m) · ∂
+∂vs
+ X
+i
+X
+k
+Φk,m
+ij
+( ˆX, ˆY , ˆQ)
+
+= 2
+X
+m
+X
+j
+(Φj
+m −˜Φj
+m) ·
+X
+i
+∂
+∂vs
+Φs,m
+ij (xs, ys, qs),
+(24)
+where vs ∈{xs, ys, qs}. This takes advantage of the inde-
+pendence between each primitive in the light source model.
+Therefore, we only need to store three partial derivatives in
+the automatic differentiation structure (not related to the size
+of N). Accordingly, we need to additionally add a parallel
+process of summing the partial derivatives Φs,m
+ij (xs, ys, qs).
+Through the above design, we greatly reduce the com-
+putational overhead of the overall optimization by only
+adding a small-scale parallel process. In the next section,
+we will embed the optimized light source model into the lens
+optimization process.
+3.5
+Caustic design based on optimized model
+After obtaining the optimized light source model, our current
+goal is to optimize the lens shape so that the caustic
+images formed under the combination of these point light
+sources are closely aligned with the given target images (see
+Figure 11). Given the high complexity and nonlinearity of this
+optimization, it would be challenging to optimize the lens
+shape directly from a planar surface. We comprehensively
+consider flux consistency and normal integrability to obtain
+the initial shape of the lens. Then, for optimization, we adapt
+the design of several loss terms from [62].
+Image term. In order to make the rendering results close
+to the target image, we introduce a penalty term for the
+difference in their pixel values:
+Eimg =
+Np
+X
+j=1
+(gj −˜gj)2,
+(25)
+where gj and ˜gj are the pixel values of the rendered image
+and the target image at pixel pj.
+The transition to a pixel-based error metric for this stage,
+in contrast to the flux-based metric used for light source
+optimization (Equation (13)), reflects the different objectives
+of the two optimization phases. While the light source
+optimization aims to match the physical flux distribution as
+accurately as possible, the goal of caustic design is to produce
+an image that is visually similar to the target. It is well-known
+that human perception of brightness does not scale linearly
+with physical flux values. The pixel grayscale values, which
+incorporate gamma correction (as described in Section 3.3),
+provide a much better approximation of perceived brightness.
+Therefore, optimizing on pixel differences allows our method
+to prioritize perceptually significant improvements in the
+final caustic image.
+Meanwhile, in order to preserve the prominent features
+in the target image, we construct a penalty term for the
+difference between their image gradients:
+Egrad = ∥Gx −eGx∥2
+F + ∥Gy −eGy∥2
+F ,
+(26)
+where Gx, Gy and eGx, eGy represent the gradient matrices of
+the rendered image and target images, respectively.
+In addition, we also introduce a light energy loss term to
+penalize the situation where light rays are refracted outside
+the specified imaging area:
+Eout =
+nt
+X
+i=1
+3
+X
+k=1
+∥evk
+i −PI(evk
+i )∥2,
+(27)
+where evk
+i ∈R2 is k-th vertex position of the projected triangle
+t′′
+i , and PI(evk
+i ) ∈R2 is the closest point to evk
+i from the
+imaging region.
+Smooth term. Compared to an optical surface design with a
+smooth shape, rough surfaces are very difficult to machine.
+
+
+===== caustic-surface-light-2025 | page 10/17 =====
+
+IEEE TRANSACTIONS ON VISUALIZATION AND COMPUTER GRAPHICS
+10
+Moreover, polishing a rough surface is also a major challenge,
+especially on a surface represented as a high-resolution mesh.
+To make the fabricated lens closer to the precision in the
+design stage, we hope to obtain freeform surfaces with
+better overall smoothness. Therefore, a smoothness term
+that penalizes the mean curvature is introduced:
+Esmooth =
+nt
+X
+i=1
+(Hi)2Ai,
+(28)
+where Hi is the discrete mean curvature for the face ti, Ai is
+the area of ti. Specific details can be referred to [62].
+Optimization problem. Combining all the above loss terms,
+we present the final surface optimization problem:
+min
+µ1Eimg + µ2Egrad + µ3Eout + µ4Esmooth,
+(29)
+where {µi} represents the weights of each loss term. To
+maintain consistency, we still adopt the same solver and the
+design of the automatic differentiation structure as those
+used in optimizing the light source model.
+4
+EXPERIMENTS
+In this section, we will first present some specific details
+of the experimental setup and the evaluation metrics. Sub-
+sequently, we will display the optimization results of the
+light source model to verify its effectiveness. Based on
+the optimized model, we provide the shape optimization
+results of the freeform surface lens. Finally, we present
+the real rendering results of the physical prototypes of the
+corresponding lenses.
+4.1
+Implementation Details
+Light source model. In the actual computation, taking into
+account both computational costs and model performance,
+we choose M = 4 as the number of groups of reference data.
+We set the side length of the rectangular light source B = 1
+cm. The front surface of the lens is a rectangle with side
+lengths w = 10 cm and h = 10 cm. The back surface of the
+lens has wv = 641 and hv = 641 vertices on the boundary.
+The width and height of the reference image W = 9.9 cm,
+H = 9.9 cm. And the resolution of images is set to 640 × 640.
+The z-coordinates of planes where the front surface of the lens
+and the receiving plane are located are 120cm and 150cm,
+respectively. The refractive index η of the lens is 1.49. For the
+number parameter of point light sources that constitute the
+overall light source model, we select N = 36, 64, and 100,
+respectively.
+Caustic lens. In caustic design, we let the light source be
+parallel to the front surface of the lens and the receiving plane.
+The distance between the plane of the surface light source
+and the front surface of the lens is 120 cm. The distance
+between the light source and the receiving plane is 240 cm.
+The resolution of the rendered image is 640 × 640 with an
+actual size of 20.0 cm ×20.0 cm. The size of the light source
+model is set to 0.1 cm. The size of the front surface of the
+lens is 10 cm ×10 cm. The triangle mesh representing the
+back surface of the lens consists of 1,638,400 triangles. The
+refractive index η of the lens is 1.49.
+Optimization. In the optimization process of the surface
+light source model, we set the termination condition as the
+norm of the current gradient of the objective function being
+less than 10−2. In the optimization process of caustics design,
+the termination condition is met if either the norm of the
+current gradient of the objective function is less than 10−4,
+or the total number of iterations reaches 300, 000. All the
+rendering and optimization processes are implemented on
+the GPU. In the optimization stage of the light source model,
+we use NVIDIA GeForce RTX 3090 GPUs, and in the caustic
+design stage, we use NVIDIA H100 GPUs.
+4.2
+Evaluation metrics
+In the process of light source modeling and caustic design,
+to verify the effectiveness of our method, we introduce two
+evaluation metrics: mean absolute error (MAE) and peak
+signal-to-noise ratio (PSNR).
+MAE refers to the average of the absolute errors between
+two objects, which can directly reflect the degree of closeness
+between two sets of data. In Table 1 and Table 2, we evaluate
+the difference between two images by using (MAE):
+MAE =
+ np
+X
+j=1
+ej
+
+/np,
+(30)
+where ej is the pixel-wise absolute error defined as:
+ej = |pj −qj|/Cmax,
+(31)
+pj and qj are the pixel values of the rendered image and the
+target image, Cmax is the maximum possible pixel value of
+images.
+Additionally, we also use the peak signal-to-noise ratio to
+evaluate the similarity of the images. PSNR is a full-reference
+quality evaluation metric. It can reflect to some extent the
+differences that are not directly observable by the human
+eye, such as image blurring, noise, block effects, and other
+distortion phenomena:
+PSNR = 10 · log10
+C2
+max
+MSE
+
+,
+(32)
+where MSE is given by the following formula:
+MSE =
+1
+Hp × Wp
+·
+Np
+X
+j=1
+(pj −qj)2.
+(33)
+4.3
+Surface light source model
+Recall that when light emitted by a surface light source passes
+through a lens, a blurred image is formed on the receiving
+plane. This reflects its unique illumination characteristics.
+However, in many computational rendering scenarios, it is
+usually assumed that the light source is a point light source
+or parallel light, which is obviously inaccurate. Therefore,
+we hope to model the real surface light source and optimize
+the model parameters based on the rendering model, so that
+the light source model can reflect the real characteristics of
+the physical light source.
+Table 1 reflects the effectiveness of our model. The MAE
+value indicates that the rendered image generated by our
+proposed light source model after optimization is very close
+to the reference image, as shown in Figure 9. In addition, we
+
+
+===== caustic-surface-light-2025 | page 11/17 =====
+
+IEEE TRANSACTIONS ON VISUALIZATION AND COMPUTER GRAPHICS
+11
+TABLE 1
+The MAE and PSNR of the rendered images with the reference image
+for both the un-optimised and optimised models through four freeform
+lenses. MAE0 and PSNR0 are obtained from the model with initial
+parameters, whereas MAE∗and PSNR∗come from the model after
+optimisation converges.
+Image
+N
+MAE0
+(×10−2)
+MAE∗
+(×10−2) ↓
+PSNR0
+(dB)
+PSNR∗
+(dB) ↑
+Skadii
+36
+4.320
+2.240
+23.61
+30.03
+64
+4.397
+1.574
+23.44
+32.52
+100
+4.441
+1.532
+23.36
+32.69
+Tom
+36
+3.792
+2.160
+23.34
+30.60
+64
+3.878
+1.578
+23.15
+33.95
+100
+3.870
+1.565
+23.07
+34.03
+Harry
+36
+3.759
+2.117
+24.04
+30.61
+64
+3.825
+1.508
+23.88
+33.96
+100
+3.827
+1.457
+23.81
+34.27
+Kirby
+36
+3.025
+1.915
+25.49
+31.75
+64
+3.101
+1.539
+25.34
+34.16
+100
+3.057
+1.533
+25.33
+34.20
+visualized the changes in the model’s parameters during the
+optimization process (see Figure 8). As the number of iter-
+ations increases, the rendered image gradually approaches
+the reference image, which verifies the effectiveness of the
+optimization algorithm.
+4.4
+Caustic design
+Given the input light source, target image, and refractive
+index of the lens, caustic design is achieved by optimizing
+the shape of the lens to control the direction of light, resulting
+in an image on the receiving plane that is close to the target
+image. In the rendering process, the light source is usually
+assumed to be an ideal point light source, which is not
+physically accurate. Specifically, if the lens is optimized based
+on the illumination mode of a point light source, a blurred
+observed image will be formed under the actual light source.
+We obtain the caustic lens corresponding to the target
+image based on the point light source and our light source
+models respectively. Figure 12 shows their caustic effects
+under a surface light source. We can intuitively find that
+the caustic design based on the optimized light source
+model obtains a rendering result that is very close to the
+target image and is also relatively accurate in details. At
+the same time, combined with the results in Table 2, we
+verify the correctness of the overall method. Table 3 shows
+some specific situations during the optimization process of
+different lenses.
+Our analysis ignores errors from reflection, absorption,
+and surface imperfections, an assumption justified by our use
+of acrylic (PMMA) for the physical prototypes. This material
+was chosen for its ideal optical and mechanical properties. In
+the visible spectrum, acrylic exhibits very low reflectance and
+near-zero absorption, which minimizes energy loss during
+light transport. Furthermore, its excellent wear resistance
+and machinability allow for a high-fidelity surface finish that
+reduces the impact of fabrication-related imperfections [63],
+TABLE 2
+The MAE and PSNR of the rendered images with the target images
+under surface light source illumination for caustic design, which
+respectively used a point light source model and our rectangular surface
+light source model (N=100).
+Image
+Light source
+MAE
+(×10−3) ↓
+PSNR (dB) ↑
+Kirby
+Point-based
+8.7695
+31.4568
+Ours
+2.3148
+44.2671
+Tree
+Point-based
+13.908
+29.6808
+Ours
+1.4142
+46.0483
+Palace
+Point-based
+14.865
+28.8148
+Ours
+1.8217
+41.9505
+Bridge
+Point-based
+13.174
+32.3940
+Ours
+3.5797
+41.5131
+House
+Point-based
+31.740
+25.7199
+Ours
+18.812
+29.7512
+Flower
+Point-based
+7.6488
+35.9808
+Ours
+1.8860
+44.0043
+Table
+Point-based
+11.670
+33.1791
+Ours
+5.1339
+38.7847
+[64]. Since these secondary physical effects are demonstrably
+minimal in our experimental setup, it is a valid and well-
+justified simplification for our model to focus on controlling
+light transport purely through the refractive properties of the
+lens geometry.
+TABLE 3
+The total time for optimizing different lenses and the average time for a
+single iteration. The GPU memory size occupied by these lenses during
+the optimization process is approximately 3305 MB.
+Lens
+Total time
+(hours)
+Avg. time
+(s/iter)
+MAE
+(×10−3)
+PSNR
+(dB)
+Kirby
+1.21
+2.12
+2.31
+31.46
+Tree
+2.13
+2.63
+1.41
+46.05
+Palace
+2.32
+2.85
+1.82
+41.95
+Bridge
+2.14
+2.77
+3.58
+41.51
+House
+2.62
+3.10
+18.8
+29.8
+Flower
+3.72
+2.72
+1.89
+44.00
+Table
+4.10
+3.01
+5.13
+38.78
+4.5
+Effectiveness of algorithm components
+Light transmission.
+In the simulation of light transmis-
+sion, we adopt a flux-based transmission mode. Compared
+with sampling light rays, our method has the following
+advantages. First of all, each primitive in our transmission
+model has continuous illumination characteristics (flux has
+regionality), which is more accurate in a physical sense. At
+the same time, compared to a large number of sampled light
+rays, our method obviously has a lower computational cost
+in the rendering process. Most importantly, the sampling
+strategy needs to know the actual intensity distribution on
+the surface of the light source to accurately characterize
+its illumination characteristics, which is not easy in many
+
+
+===== caustic-surface-light-2025 | page 12/17 =====
+
+IEEE TRANSACTIONS ON VISUALIZATION AND COMPUTER GRAPHICS
+12
+Target Image
+Point Light Source Based
+Our Model(N = 100)
+Fig. 12. The first column: Some target images with rich details. The second column: Rendering results of the lens obtained by caustic design
+based on point light sources under the surface light source. The third column: Color-coding of the mean absolute error (MAE) between the rendering
+images in the second column and the target images. The fourth column: Rendering results of the lens obtained by caustic design based on our
+model under the surface light sources. The fifth column: Color-coding of the MAE between the rendering images in the fourth column and the target
+images. All error maps are processed using the same method. The number in the lower right corner of each image represents the MAE (×10−3) with
+the target image. Some regions are enlarged for better inspection of details.
+
+
+===== caustic-surface-light-2025 | page 13/17 =====
+
+IEEE TRANSACTIONS ON VISUALIZATION AND COMPUTER GRAPHICS
+13
+Fig. 13. Comparison between our method and the rendered images produced by Mitsuba3. The rendering results of Mitsuba3 in caustic design
+exhibit a noticeable accuracy gap compared to our method from a visual perspective. In addition, its performance is suboptimal for caustic designs
+targeting images with high-contrast regions, such as areas containing pure white or pure black pixels.
+scenarios. However, our method does not need to determine
+any physical properties of the input light source in advance,
+so it has simplicity and universality.
+We conducted comparative experiments with Mit-
+suba3 [46]. Mitsuba3 uses a path tracing algorithm to
+simulate the light transport process, which is a variant of ray
+tracing. It employs a Monte Carlo estimator to compute
+integral values by randomly emitting multiple rays to
+evaluate light intensity, thereby simulating the propagation
+of light in space. This method requires sampling light rays,
+which has certain limitations in computational efficiency.
+Moreover, Mitsuba3 is not specifically designed for caustic
+design, and therefore its performance in terms of contrast
+and accuracy is inferior to our method (see Figure 13). It also
+completely neglects the consideration of actual fabrication in
+the overall design process.
+Light source model. In caustic scenes, it is not accurate
+enough to use a point light source to represent an actual
+LED surface light source. Especially when the actual light
+source is relatively large in size or far away from an object, it
+will significantly affect the accuracy of lens shape calculation
+(see Figure 14). Our light source model solves this problem.
+Table 2 gives a comparison between our method and the
+point light source based strategy. Obviously, performing
+caustic design based on our optimized light source model
+can obtain rendering images that are closer to the target
+compared with a point light source. In the seven examples
+provided, our approach achieved an average reduction of
+71% in the MAE metric and an average improvement of 9.87
+dB in the PSNR metric. It can also be found from Figure 12
+that our method can significantly improve the quality of
+the rendered image, and at the same time, it also has better
+effects in some details.
+Furthermore, our modeling method for light sources
+has good scalability and is directly applicable to curved
+surface light sources in three-dimensional space. For LED
+light sources with different sizes but the same light intensity
+distribution, the corresponding model parameters can be
+obtained by means of scaling transformation, eliminating
+the need for repeated calculations. In addition, our light
+source model only needs to be pre-optimized once. Once the
+model parameters are optimized, the pre-packaged model
+can be directly applied to rendering calculations in different
+scenarios.
+A key methodological choice in our work is the discrete
+point source approximation. We considered an alternative,
+fully continuous formulation, but concluded that it is theo-
+retically complex and computationally prohibitive for this
+application. A continuous approach would require comput-
+ing the flux from the entire surface light source onto each
+triangle of the lens’s rear face. This necessitates evaluating a
+2D integral over the light source area for every triangle on the
+lens, which presents two fundamental challenges. Firstly, the
+integrand itself is non-trivial, as it must implicitly account
+for the first refraction at the lens’s front surface. Deriving a
+closed-form, differentiable integral under these conditions is
+exceptionally difficult. Secondly, for a high-resolution lens
+mesh like ours (with over 1.6 million triangles), this method
+would require performing millions of 2D integrations at each
+optimization step, leading to an intractable computational
+cost. In contrast, our discrete model provides a pragmatic
+and effective solution. By approximating the source with
+a finite set of points, we avoid the complexity and cost of
+continuous integration. As demonstrated by our results (e.g.,
+Figure 9), this approach still achieves the accuracy required
+to faithfully model the surface light source and produce
+high-quality caustic images.
+4.6
+Physical verification
+We have presented the physical prototype of the lens de-
+signed using our method in Figure 16. The material of the
+physical lens shown in this figure is acrylic (IOR: 1.49). The
+
+
+===== caustic-surface-light-2025 | page 14/17 =====
+
+IEEE TRANSACTIONS ON VISUALIZATION AND COMPUTER GRAPHICS
+14
+Target Image
+Point Light Source Based
+Our Model (N = 400)
+Target Image
+Point-Based
+Ours
+Target Image
+Point-Based
+Ours
+Fig. 14. Comparison between the point light source based method and our method (N=400) under a surface light source with a side length of 0.2 cm.
+The first line shows the rendering results of the two methods, while the second and third lines provide a comparison of the details between these two
+methods. When the actual size of the surface light source is larger, the advantages of our method become more apparent.
+Fig. 15. The surface light source used in the physical experiment. The
+side length of it is roughly 1 mm. Its output power is 50W, and it is driven
+by a direct current of 12V and 4.2A.
+machining process is mainly carried out through a JDGR100
+milling machine in a three-axis mode. Firstly, it undergoes
+rough milling and is then fabricated using a 0.4-mm ball-end
+mill. Finally, the lens needs to be manually polished with
+polishing wax and a cloth wheel.
+During the experiment, we all used a rectangular surface
+light source with a side length of approximately 1 millimeter
+as the input light source, as shown in Figure 15.
+Figure 17 presents the physical results from lenses de-
+signed using both a point light source and our proposed
+surface light source model. The manufacturing process
+inevitably introduces minor imperfections, which appear
+as stripes or ringing artifacts in the final image. These are
+inherent to the fabrication method (specifically the visible
+tool marks left by the ball-end mill during CNC machining),
+Fig. 16. The physical prototype of the lens shape designed based on
+our method. Although some machining errors are introduced during the
+manufacturing process of the physical object, the real image generated
+by the prototype is still quite close to the image produced by our rendering
+model. Lower right corner: The target image corresponding to the lens.
+and consequently appear in both fabricated lenses. Despite
+these shared manufacturing limitations, a careful comparison
+reveals that the lens designed with our method produces
+a caustic image with details that more accurately match
+the target. This demonstrates the superior performance of
+our algorithm, as its advantages are evident even when
+accounting for real-world fabrication constraints.
+4.7
+Ablation study
+To verify the effectiveness of Egrad, Eout, and Esmooth in loss
+function (29), we conducted ablation studies on each of
+
+
+===== caustic-surface-light-2025 | page 15/17 =====
+
+IEEE TRANSACTIONS ON VISUALIZATION AND COMPUTER GRAPHICS
+15
+TABLE 4
+Partial results of the ablation experiment. We present the impact on experimental results when Egrad, Eout are removed from the loss function (29).
+Image
+Without Egrad
+Without Eout
+With All
+MAE (×10−3)
+PSNR (dB)
+MAE (×10−3)
+PSNR (dB)
+MAE (×10−3) ↓
+PSNR (dB) ↑
+Bridge
+4.63
+41.23
+4.08
+40.96
+3.58
+41.51
+House
+19.06
+29.82
+19.17
+29.67
+18.81
+29.75
+Flower
+3.43
+41.37
+2.83
+42.63
+1.89
+44.00
+Table
+6.45
+38.27
+5.76
+38.23
+5.13
+38.78
+Butterfly
+3.72
+41.93
+3.80
+41.43
+3.07
+42.66
+Bear
+2.25
+46.32
+2.18
+46.01
+1.93
+47.12
+Target Image
+Point Light Source
+Based
+Our Method
+Fig. 17. Comparison of physical results. From left to right: the target
+image, the caustic pattern from the lens designed using a point light
+source, and the pattern from the lens designed with our method.
+Target Image
+Without Esmooth
+With Esmooth
+Fig. 18.
+Ablation study on the Esmooth loss term during the lens
+optimization process. From left to right: the target image, the physical
+experiment result without the Esmooth term, and the physical experiment
+result with the Esmooth term.
+them individually. Table 4 presents the MAE and PSNR
+of the rendered results after removing Egrad or Eout. As
+shown in Table 4, the Egrad and Eout loss terms improve the
+quality of the rendering results to a certain extent. Unlike
+the previous two terms, the term Esmooth does not improve
+the evaluation metrics. Instead, it results in a smoother lens
+surface after optimization, which reduces the difficulty of
+actual fabrication. We have included physical experiments
+for this term, as shown in Figure 18. The introduction of
+the Esmooth term enables the fabricated lens to produce
+images that more closely match our designed results. In
+addition, we conducted ablation experiments on whether to
+use contraction mapping during the light source optimization
+stage, as shown in Figure 19. The experimental results
+indicate that contraction mapping can improve the accuracy
+of rendering results to a certain extent. More importantly, it
+limits the position of all optimized point light sources to the
+area of the real surface light source, making the light source
+model conform to physical reality.
+Target Image
+Without Contraction
+With Contraction
+Fig. 19. Ablation study on the contraction mapping. From left to right: the
+target image, rendering results of light source model optimized based
+on non contraction mapping, rendering results of light source model
+optimized based on contraction mapping.
+5
+CONCLUSION AND DISCUSSION
+In this paper, we propose a strategy to design the entire caus-
+tic process in two parts, incorporating the precise modeling
+of surface light sources into the lens shape design process.
+For simulating illumination light sources, we propose a
+novel method for representing surface light sources and
+design a differentiable rendering framework, then utilize the
+differences between the caustic images of the input lenses
+and the reference image to drive the optimization of model
+parameters. For the design of the lens shape, based on the
+optimized light source model, we guide the optimization of
+the free-form surface shape through the design of multiple
+types of penalty terms. Experimental results show that our
+method better matches the illumination pattern of LED light
+sources, significantly improves the accuracy of caustic design,
+and achieves better detail performance.
+Our method still has some limitations. The light source
+model design in this paper is only for the most common
+planar LED light source. In future work, it can be considered
+to be extended to three-dimensional curved light sources to
+adapt to more lighting scenarios.
+Some existing renderers, such as Mitsuba3, have imple-
+mented colored caustics at the simulation level. In future
+work, our method could be extended to colored caustics
+by incorporating wavelength or color attributes into the
+parameters of each point light source and using different
+refractive indices for different colors or wavelengths during
+the lens refraction process. Additionally, future work can
+incorporate CNC milling and polishing processes into the
+design of freeform surfaces to improve the precision of lens
+fabrication.
+
+
+===== caustic-surface-light-2025 | page 16/17 =====
+
+IEEE TRANSACTIONS ON VISUALIZATION AND COMPUTER GRAPHICS
+16
+ACKNOWLEDGMENTS
+This research was supported by the National Natural Science
+Foundation of China(No.62441224, No.62272433), the Funda-
+mental Research Funds for the Central Universities, and the
+USTC Fellowship (No.S19582024).
+REFERENCES
+[1]
+Y. Schwartzburg, R. Testuz, A. Tagliasacchi, and M. Pauly, “High-
+contrast computational caustic design,” ACM Transactions on
+Graphics (TOG), vol. 33, no. 4, pp. 1–11, 2014.
+[2]
+J. Meyron, Q. M´erigot, and B. Thibert, “Light in power: a general
+and parameter-free algorithm for caustic design,” ACM Transactions
+on Graphics (TOG), vol. 37, no. 6, pp. 1–13, 2018.
+[3]
+J. Budhu and Y. Rahmat-Samii, “A novel and systematic approach
+to inhomogeneous dielectric lens design based on curved ray geo-
+metrical optics and particle swarm optimization,” IEEE Transactions
+on Antennas and Propagation, vol. 67, no. 6, pp. 3657–3669, 2019.
+[4]
+M. Kassubeck, F. B¨urgel, S. Castillo, S. Stiller, and M. Magnor,
+“Shape from caustics: Reconstruction of 3d-printed glass from
+simulated caustic images,” in 2021 IEEE Winter Conference on
+Applications of Computer Vision (WACV), 2021, pp. 2876–2885.
+[5]
+J. Reimers, A. Bauer, K. P. Thompson, and J. P. Rolland, “Freeform
+spectrometer enabling increased compactness,” Light: Science &
+Applications, vol. 6, no. 7, pp. e17 026–e17 026, 2017.
+[6]
+F. Shen, L. Yang, G. Hu, Z. Ding, J. She, Y. Zhang, and R. Wu,
+“Freeform and precise irradiance tailoring in arbitrarily oriented
+planes,” Opt. Express, vol. 29, no. 26, pp. 42 844–42 854, Dec 2021.
+[Online]. Available: https://opg.optica.org/oe/abstract.cfm?URI=
+oe-29-26-42844
+[7]
+J. Xu, Z. Zhu, H. Bao, and W. Xu, “Hybrid mesh-neural representa-
+tion for 3d transparent object reconstruction,” Computational Visual
+Media, vol. 11, no. 1, pp. 123–140, 2025.
+[8]
+Z. Li, Y. Yeh, and M. Chandraker, “Through the looking
+glass: Neural 3d reconstruction of transparent shapes,” in
+2020
+IEEE/CVF
+Conference
+on
+Computer
+Vision
+and
+Pattern
+Recognition (CVPR).
+Los Alamitos, CA, USA: IEEE Computer
+Society, jun 2020, pp. 1259–1268. [Online]. Available: https:
+//doi.ieeecomputersociety.org/10.1109/CVPR42600.2020.00134
+[9]
+Q. Sun, C. Wang, F. Qiang, D. Xiong, and H. Wolfgang, “End-to-end
+complex lens design with differentiable ray tracing,” ACM Trans.
+Graph, vol. 40, no. 4, pp. 1–13, 2021.
+[10] R. L. Cook, T. Porter, and L. Carpenter, “Distributed ray tracing,”
+in Proceedings of the 11th annual conference on Computer graphics and
+interactive techniques, 1984, pp. 137–145.
+[11] J. T. Barron, B. Mildenhall, D. Verbin, P. P. Srinivasan, and
+P. Hedman, “Mip-nerf 360: Unbounded anti-aliased neural radiance
+fields,” CVPR, 2022.
+[12] D.
+C.
+Liu
+and
+J.
+Nocedal,
+“On
+the
+limited
+memory
+bfgs
+method
+for
+large
+scale
+optimization,”
+Mathematical
+Programming, vol. 45, pp. 503–528, 1989. [Online]. Available:
+https://api.semanticscholar.org/CorpusID:5681609
+[13] T. Kiser, M. Eigensatz, M. M. Nguyen, P. Bompas, and M. Pauly,
+“Architectural caustics-controlling light with geometry,” in Advances
+in architectural geometry 2012.
+Springer, 01 2013, pp. 91–106.
+[14] X. Zhu, Q. Zhu, H. Wu, and C. Chen, “Optical design of led-based
+automotive headlamps,” Optics & Laser Technology, vol. 45, pp.
+262–266, 2013.
+[15] T. Y. Kim, M.-H. Shin, and Y.-J. Kim, “Design of off-axis wide angle
+lens for the automobile application,” Journal of the optical society of
+korea, vol. 17, no. 4, pp. 336–343, 2013.
+[16] I. Wallhead, T. M. Jim´enez, J. V. G. Ortiz, I. G. Toledo, and C. G.
+Toledo, “Design of an efficient fresnel-type lens utilizing double
+total internal reflection for solar energy collection,” Optics express,
+vol. 20, no. S6, pp. A1005–A1010, 2012.
+[17] W. Xie, Y. Dai, R. Wang, and K. Sumathy, “Concentrated solar
+energy applications using fresnel lenses: A review,” Renewable and
+Sustainable Energy Reviews, vol. 15, no. 6, pp. 2588–2606, 2011.
+[18] R. Leutz and A. Suzuki, Nonimaging Fresnel lenses: design and
+performance of solar concentrators.
+Springer, 2012, vol. 83.
+[19] J. P. Goure, Optics in instruments: applications in biology and medicine.
+John Wiley & Sons, 2013.
+[20] L. Rovati, F. Fankhauser, and J. Ricka, “Design and performance
+of a new ophthalmic instrument for dynamic light-scattering
+measurements in the human eye,” Review of scientific instruments,
+vol. 67, no. 7, pp. 2615–2620, 1996.
+[21] J. Bland-Hawthorn and P. Kern, “Astrophotonics: a new era for
+astronomical instruments,” Optics express, vol. 17, no. 3, pp. 1880–
+1884, 2009.
+[22] R. Winston, J. C. Mi˜nano, P. G. Benitez et al., Nonimaging optics.
+Elsevier, 2005.
+[23] J. P. Rolland, M. A. Davies, T. J. Suleski, C. Evans, A. Bauer, J. C.
+Lambropoulos, and K. Falaggis, “Freeform optics for imaging,”
+Optica, vol. 8, no. 2, pp. 161–176, Feb 2021. [Online]. Available:
+https://opg.optica.org/optica/abstract.cfm?URI=optica-8-2-161
+[24] S. Mao, Y. Li, J. Jiang, S. Shen, K. Liu, and M. Zheng,
+“Design of a hyper-numerical-aperture deep ultraviolet lithography
+objective with freeform surfaces,” Chin. Opt. Lett., vol. 16,
+no.
+3,
+p.
+030801,
+Mar
+2018.
+[Online].
+Available:
+https:
+//opg.optica.org/col/abstract.cfm?URI=col-16-3-030801
+[25] D. Cheng, H. Chen, T. Yang, J. Ke, Y. Li, and Y. Wang,
+“Optical design of a compact and high-transmittance compressive
+sensing imaging system enabled by freeform optics,” Chin. Opt.
+Lett., vol. 19, no. 11, p. 112202, Nov 2021. [Online]. Available:
+https://opg.optica.org/col/abstract.cfm?URI=col-19-11-112202
+[26] R. Wu, Z. Feng, Z. Zheng, R. Liang, P. Ben´ıtez, J. Mi˜nano, and
+F. Duerr, “Design of freeform illumination optics,” Laser and
+Photonics Reviews, vol. 12, no. 7, jul 2018.
+[27] Z. Feng, D. Cheng, and Y. Wang, “Iterative freeform lens
+design for prescribed irradiance on curved target,” Opto-Electronic
+Advances, vol. 3, no. 11, pp. 200 010–1, 7 2020. [Online]. Available:
+https://www.researching.cn/articles/OJ179ebc6972708535
+[28] ——, “Iterative freeform lens design for optical field control,”
+Photon.
+Res.,
+vol.
+9,
+no.
+9,
+pp.
+1775–1783,
+Sep
+2021.
+[Online]. Available: https://opg.optica.org/prj/abstract.cfm?URI=
+prj-9-9-1775
+[29] G. Damberg, J. Gregson, and W. Heidrich, “High brightness hdr
+projection using dynamic freeform lensing,” ACM Transactions on
+Graphics (TOG), vol. 35, no. 3, pp. 1–11, 2016.
+[30] S. Zhao, K. Wang, F. Chen, Z. Qin, and S. Liu, “Integral freeform
+illumination lens design of led based pico-projector,” Applied Optics,
+vol. 52, no. 13, pp. 2985–2993, 2013.
+[31] F. Duerr and H. Thienpont, “Analytic design of a zoom
+xy-beam expander with freeform optical surfaces,” Opt. Express,
+vol. 23, no. 23, pp. 30 438–30 447, Nov 2015. [Online]. Available:
+https://opg.optica.org/oe/abstract.cfm?URI=oe-23-23-30438
+[32] M. Finckh, H. Dammertz, and H. P. Lensch, “Geometry construction
+from caustic images,” in Computer Vision–ECCV 2010: 11th European
+Conference on Computer Vision, Heraklion, Crete, Greece, September
+5-11, 2010, Proceedings, Part V 11.
+Springer, 2010, pp. 464–477.
+[33] Y. Zhang, R. Wu, P. Liu, Z. Zheng, H. Li, and X. Liu,
+“Double freeform surfaces design for laser beam shaping with
+monge–amp`ere equation method,” Optics Communications, vol. 331,
+pp. 297–305, 2014. [Online]. Available: https://www.sciencedirect.
+com/science/article/pii/S0030401814005902
+[34] S. Chang, R. Wu, L. An, and Z. Zheng, “Design beam
+shapers with double freeform surfaces to form a desired
+wavefront with prescribed illumination pattern by solving
+a monge-amp`ere type equation,” Journal of Optics, vol. 18,
+no.
+12,
+p.
+125602,
+oct
+2016.
+[Online].
+Available:
+https:
+//dx.doi.org/10.1088/2040-8978/18/12/125602
+[35] Y. Yue, K. Iwasaki, B.-Y. Chen, Y. Dobashi, and T. Nishita,
+“Poisson-based continuous surface generation for goal-based
+caustics,” ACM Transactions on Graphics (TOG), vol. 33, no. 3, Jun.
+2014. [Online]. Available: https://doi.org/10.1145/2580946
+[36] M. Kassubeck, M. Kappel, S. Castillo, and M. Magnor, “N-sfc:
+Robust and fast shape estimation from caustic images,” in Proc.
+Vision, Modeling and Visualization (VMV), T. Grosch and M. Guthe,
+Eds.
+Eurographics, Sep 2023, pp. 33–41.
+[37] J. Pineda, “A parallel algorithm for polygon rasterization,” in
+Proceedings of the 15th annual conference on Computer graphics and
+interactive techniques, 1988, pp. 17–20.
+[38] S. Liu, T. Li, W. Chen, and H. Li, “Soft rasterizer: A differentiable
+renderer for image-based 3d reasoning,” in Proceedings of the
+IEEE/CVF International Conference on Computer Vision, 2019, pp.
+7708–7717.
+[39] S. P. Bangaru, T.-M. Li, and F. Durand, “Unbiased warped-
+area
+sampling
+for
+differentiable
+rendering,”
+ACM
+Trans.
+Graph.,
+vol.
+39,
+no.
+6,
+Nov.
+2020.
+[Online].
+Available:
+https://doi.org/10.1145/3414685.3417833
+[40] T.-M. Li, M. Aittala, F. Durand, and J. Lehtinen, “Differentiable
+monte
+carlo
+ray
+tracing
+through
+edge
+sampling,”
+ACM
+
+
+===== caustic-surface-light-2025 | page 17/17 =====
+
+IEEE TRANSACTIONS ON VISUALIZATION AND COMPUTER GRAPHICS
+17
+Trans. Graph., vol. 37, no. 6, Dec. 2018. [Online]. Available:
+https://doi.org/10.1145/3272127.3275109
+[41] C. Zhang, B. Miller, K. Yan, I. Gkioulekas, and S. Zhao, “Path-space
+differentiable rendering,” ACM Trans. Graph., vol. 39, no. 4, Aug.
+2020. [Online]. Available: https://doi.org/10.1145/3386569.3392383
+[42] C. Zhang, Z. Yu, and S. Zhao, “Path-space differentiable rendering
+of participating media,” ACM Trans. Graph., vol. 40, no. 4, pp.
+76:1–76:15, 2021.
+[43] G. Loubet, N. Holzschuch, and W. Jakob, “Reparameterizing
+discontinuous integrands for differentiable rendering,” Transactions
+on Graphics (Proceedings of SIGGRAPH Asia), vol. 38, no. 6, Dec.
+2019.
+[44] M. Nimier-David, S. Speierer, B. Ruiz, and W. Jakob, “Radiative
+backpropagation: An adjoint method for lightning-fast differen-
+tiable rendering,” Transactions on Graphics (Proceedings of SIG-
+GRAPH), vol. 39, no. 4, Jul. 2020.
+[45] M. Nimier-David, D. Vicini, T. Zeltner, and W. Jakob, “Mitsuba 2: A
+retargetable forward and inverse renderer,” Transactions on Graphics
+(Proceedings of SIGGRAPH Asia), vol. 38, no. 6, Dec. 2019.
+[46] W. Jakob, S. Speierer, N. Roussel, M. Nimier-David, D. Vicini,
+T. Zeltner, B. Nicolet, M. Crespo, V. Leroy, and Z. Zhang, “Mitsuba
+3 renderer,” 2022, https://mitsuba-renderer.org.
+[47] W. Jakob, S. Speierer, N. Roussel, and D. Vicini, “Dr.jit: A just-in-
+time compiler for differentiable rendering,” Transactions on Graphics
+(Proceedings of SIGGRAPH), vol. 41, no. 4, Jul. 2022.
+[48] D. Vicini, S. Speierer, and W. Jakob, “Path replay backpropagation:
+Differentiating light paths using constant memory and linear time,”
+Transactions on Graphics (Proceedings of SIGGRAPH), vol. 40, no. 4,
+pp. 108:1–108:14, Aug. 2021.
+[49] C. Wang, N. Chen, and W. Heidrich, “do: A differentiable engine
+for deep lens design of computational imaging systems,” IEEE
+Transactions on Computational Imaging, vol. 8, pp. 905–916, 2022.
+[50] H. W. Jensen, “Global illumination using photon maps,” in Render-
+ing Techniques’ 96: Proceedings of the Eurographics Workshop in Porto,
+Portugal, June 17–19, 1996 7.
+Springer, 1996, pp. 21–30.
+[51] T. Hachisuka, S. Ogaki, and H. Jensen, “Progressive photon
+mapping,” ACM Trans. Graph., vol. 27, p. 130, 12 2008.
+[52] T. Hachisuka and H. Jensen, “Stochastic progressive photon
+mapping,” ACM Trans. Graph., vol. 28, 12 2009.
+[53] I. Georgiev, J. Krivanek, T. Davidovivc, and P. Slusallek, “Light
+transport simulation with vertex connection and merging,” ACM
+Trans. Graph., vol. 31, pp. 192:1–192:10, 11 2012.
+[54] T. Hachisuka, J. Pantaleoni, and H. Jensen, “A path space extension
+for robust light transport simulation,” ACM Transactions on Graphics,
+vol. 31, p. 1, 11 2012.
+[55] J. Xing, Z. Li, F. Luan, and K. Xu, “Differentiable photon mapping
+using generalized path gradients,” ACM Transactions on Graphics
+(TOG), vol. 43, no. 6, pp. 1–15, 2024.
+[56] G. Monge, “M´emoire sur la th´eorie des d´eblais et des remblais,”
+Mem. Math. Phys. Acad. Royale Sci., pp. 666–704, 1781.
+[57] L. V. Kantorovich, “On the translocation of masses,” Journal of
+Mathematical Sciences, vol. 133, no. 4, pp. 1381–1382, 2006.
+[58] B. L´evy, “A numerical algorithm for l2 semi-discrete optimal
+transport in 3d,” ESAIM: Mathematical Modelling and Numerical
+Analysis-Mod´elisation Math´ematique et Analyse Num´erique, vol. 49,
+no. 6, pp. 1693–1715, 2015.
+[59] Q. M´erigot, “A multiscale approach to optimal transport,” in
+Computer Graphics Forum, vol. 30, no. 5.
+Wiley Online Library,
+2011, pp. 1583–1592.
+[60] V. Oliker, “Optical design of freeform two-mirror beam-shaping
+systems,” J. Opt. Soc. Am. A, vol. 24, no. 12, pp. 3741–3752, Dec
+2007. [Online]. Available: https://opg.optica.org/josaa/abstract.
+cfm?URI=josaa-24-12-3741
+[61] ——, “Designing freeform lenses for intensity and phase control
+of coherent light with help from geometry and mass transport,”
+Archive for Rational Mechanics and Analysis, vol. 201, pp. 1013–1045,
+09 2011.
+[62] Y. Sun, B. Deng, and J. Zhang, “End-to-end surface optimization
+for light control,” ACM Transactions on Graphics, vol. 44, no. 3, pp.
+1–19, 2025.
+[63] E. Pawar, “A review article on acrylic pmma,” IOSR J. Mech. Civ.
+Eng, vol. 13, no. 2, pp. 1–4, 2016.
+[64] G. AL-Dahash, H. Najeeb, A. Balakit, and A. Kodeary, “Study of
+the optical properties of poly (methyl methacrylate) (pmma) doped
+with a new diarylethen compound,” Academic Research International,
+vol. 5, pp. 48–56, 01 2014.
+Sizhuo Zhou is currently working toward a PhD
+degree in the School of Mathematical Sciences,
+University of Science and Technology of China.
+His research interests include computer graphics
+and non-image optics. In addition, he is also
+interested in autonomous driving and 3D AIGC.
+Yuou Sun is currently working toward a PhD
+degree in the School of Mathematical Sciences,
+University of Science and Technology of China.
+His research interests include computer graphics,
+numerical optimization and non-image optics.
+Bailin Deng is a senior lecturer in the School of
+Computer Science and Informatics at Cardiff Uni-
+versity. He received the BEng degree in computer
+software (2005) and the MSc degree in computer
+science (2008) from Tsinghua University (China),
+and the PhD degree in technical mathematics
+(2011) from Vienna University of Technology
+(Austria). His research interests include geom-
+etry processing, numerical optimization, compu-
+tational design, and digital fabrication. He is a
+member of the IEEE.
+Juyong Zhang is a professor in the School of
+Mathematical Sciences at University of Science
+and Technology of China. He received the BS de-
+gree from the University of Science and Technol-
+ogy of China in 2006, and the Ph.D degree from
+Nanyang Technological University, Singapore. He
+mainly conducts research at the intersection of
+Vision, Graphics, and AI with a special focus on
+capturing, modeling and synthesizing objects, hu-
+mans and large-scale scenes. He is an associate
+editor of IEEE Transactions on Mobile Computing
+and IEEE Computer Graphics and Applications.
